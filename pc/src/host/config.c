@@ -55,7 +55,6 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "hd_textures_font", &g_config.hd_textures_font, 0, 1 },
     { "hd_textures_ui", &g_config.hd_textures_ui, 0, 1 },
     { "interpolate", &g_config.interpolate, 0, 1 },
-    { "smooth_menus", &g_config.menu_smooth, 0, 1 },
     { "frame_blend", &g_config.frame_blend, -1, 1 },
     { "coop_port", &g_coop.port, 1, 65535 },
     { "coop_char", &g_coop.chr, 0, COOP_CHR_MAX },

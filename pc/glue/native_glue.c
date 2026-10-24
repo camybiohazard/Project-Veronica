@@ -150,7 +150,6 @@ void pc_native_strip(const unsigned short* idx_uv, int n, const VU1_STRIP_BUF* v
    path. Returns the deferred strip's number; *zavg gets the ordering-table key the original
    computes (mean GS depth, clamped to 0..65534 per vertex). */
 extern uint32_t pc_cur_mesh, pc_cur_strip;
-uint32_t pc_menu_tag(unsigned int prim, int n, const NativeVertex* v, const NativeRawVertex* r);   /* view_glue.c */
 uint32_t pc_native_prim3d(unsigned int prim, const VU1_PRIM_BUF* in, int n, int deferred, float* zavg)
 {
     NativeVertex v[64];   /* what native_draw draws; the key is over all vertices */
@@ -218,10 +217,6 @@ uint32_t pc_native_prim(unsigned int prim, const unsigned int* dp, int n, int cl
         o->fog = f2[3];
         o->cull = clip_3d_on && (dp[3] & 0x8000) ? 2 : 0;
     }
-    if (!clip_3d_on && !pc_cur_mesh) {   /* 2D outside a mesh: in a menu, a tag of its look (smooth menus) */
-        uint32_t tag = pc_menu_tag(prim, n, v, NULL);
-        if (tag) return native_defer(prim, v, n, tag, 0);
-    }
     return native_defer(prim, v, n, deferred ? pc_cur_mesh : 0, pc_cur_mesh & 1 ? pc_cur_strip++ : pc_cur_strip);   /* an effect's polygons by number */
 }
 
@@ -233,7 +228,6 @@ uint32_t pc_native_prim_raw(unsigned int prim, const unsigned int* dp, int n, in
 {
     NativeRawVertex v[64];
     unsigned int clip_flag = 0;
-    uint32_t tag;
     if (n > 64) n = 64;
     *last_sz = 0.0f;
     for (int i = 0; i < n; i++, dp += 12) {
@@ -254,10 +248,9 @@ uint32_t pc_native_prim_raw(unsigned int prim, const unsigned int* dp, int n, in
         o->r = (uint8_t)dp[4]; o->g = (uint8_t)dp[5]; o->b = (uint8_t)dp[6]; o->a = (uint8_t)dp[7];
         o->adc = clip_3d_on && (clip_flag != 0 || (dp[3] & 0x8000));
     }
-    tag = !clip_3d_on && !pc_cur_mesh ? pc_menu_tag(prim, n, NULL, v) : 0;   /* of the whole sprite, before the 4:3 cut */
     if (!clip_3d_on && clip43()) {
         if ((prim & 7) == 6) for (int i = 0; i + 1 < n; i += 2) clip_sprite(&v[i], &v[i + 1], (prim >> 4) & 1);
         else if ((prim & 7) == 0) for (int i = 0; i < n; i++) v[i].adc |= v[i].x < CLIP_X0 * 16.0f || v[i].x >= CLIP_X1 * 16.0f;
     }
-    return native_defer_raw(prim, v, n, tag);
+    return native_defer_raw(prim, v, n);
 }

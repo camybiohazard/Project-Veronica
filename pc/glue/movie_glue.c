@@ -147,8 +147,6 @@ void termAll(void)
     rmi.iMovieState = 0;
 }
 
-int pc_movie_on(void) { return rmi.iMovieState != 0; }   /* a movie is set up or playing (view_glue.c pc_menu_smooth) */
-
 /* vblanks until the playing movie of `frames` pictures would end by itself (readMpeg's end test),
    all of it before it plays; a skipped ending adds them to the play time (sdfunc.c) */
 int pc_movie_vblanks_left(int frames)

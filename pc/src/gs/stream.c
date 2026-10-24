@@ -32,8 +32,6 @@
 
 #define NOEV 0xFFFFFFFFu
 #define NATIVE_KEY (1ull << 63)   /* Group.key0 of a native 3D strip (v0 = its event) */
-#define RAW_KEY (1ull << 62)      /* ... of a menu's points, lines or sprites (EV_RAW under a menu tag, pc_menu_tag) */
-#define MENU_TAG(m) (((m) & 3) == 2)
 enum { EV_REG, EV_IMAGE, EV_DISP, EV_DOWNLOAD, EV_TAG, EV_STRIP, EV_NATIVE, EV_TEXDEF, EV_TEXDEF_END, EV_TEXBIND, EV_TEXFORGET, EV_RAW, EV_RTEX, EV_MOVIE, EV_TAGLAST };
 typedef struct { uint8_t kind, reg; uint32_t len; uint64_t v; } Ev;
 typedef struct { uint64_t key0; uint32_t v0, nv, strip, ord, sp; } Group;   /* sp: native strip's first Frame.spos */
@@ -252,12 +250,12 @@ static Deferred* deferred; static size_t ndef, cdef;
 static NativeVertex* defv; static size_t ndefv, cdefv;
 static NativeRawVertex* defr; static size_t ndefr, cdefr;
 
-uint32_t native_defer_raw(unsigned int prim, const NativeRawVertex* v, int n, uint32_t mesh)
+uint32_t native_defer_raw(unsigned int prim, const NativeRawVertex* v, int n)
 {
     GROW(defr, ndefr, cdefr, (size_t)n);
     memcpy(defr + ndefr, v, (size_t)n * sizeof(*v));
     GROW(deferred, ndef, cdef, 1);
-    deferred[ndef] = (Deferred){ prim, (uint32_t)ndefr, (uint32_t)n, mesh, 0, 1 };
+    deferred[ndef] = (Deferred){ prim, (uint32_t)ndefr, (uint32_t)n, 0, 0, 1 };
     ndefr += (size_t)n;
     return (uint32_t)ndef++;
 }
@@ -281,14 +279,12 @@ void native_marker(uint64_t v)
     if (d->raw) {
         Frame* f;
         uint32_t len = d->n * (uint32_t)sizeof(NativeRawVertex);
-        if (d->mesh) { stream_tag(d->mesh); stream_strip(0); }
         f = recording();
         GROW(f->pool, f->npool, f->cpool, len);
         memcpy(f->pool + f->npool, defr + d->first, len);
         GROW(f->ev, f->nev, f->cev, 1);
         f->ev[f->nev++] = (Ev){ EV_RAW, 0, d->n, f->npool | ((uint64_t)d->prim << 32) };
         f->npool += len;
-        if (d->mesh) stream_tag(0);
         return;
     }
     if (d->mesh) stream_tag(d->mesh);
@@ -298,8 +294,6 @@ void native_marker(uint64_t v)
 }
 
 static const NativeVertex* native_verts(const Frame* f, uint32_t ev) { return (const NativeVertex*)(f->pool + (uint32_t)f->ev[ev].v); }
-static const NativeRawVertex* raw_verts(const Frame* f, uint32_t ev) { return (const NativeRawVertex*)(f->pool + (uint32_t)f->ev[ev].v); }
-
 void stream_disp(uint32_t fbp, uint32_t fbw, uint32_t psm) { push_ev(EV_DISP, 0, 0, fbp | ((uint64_t)fbw << 16) | ((uint64_t)psm << 32)); }
 
 static void submit(int partial)
@@ -430,13 +424,6 @@ void stream_exec(Frame* f)
             ntex_forget((uint32_t)e->v);
             break;
         case EV_RAW:
-            if (inst >= 0 && MENU_TAG(f->in[inst].mesh)) {   /* a group of its own, matched like a native strip */
-                GROW(f->g, f->ng, f->cg, 1);
-                f->g[f->ng++] = (Group){ RAW_KEY | (e->v >> 32), (uint32_t)i, e->len, strip, ord++, (uint32_t)f->nspos };
-                f->nspos += e->len;
-                f->in[inst].ng++;
-                f->new_group = 1;
-            }
             gs_draw_raw((unsigned int)(e->v >> 32), (const NativeRawVertex*)(f->pool + (uint32_t)e->v), (int)e->len);
             break;
         case EV_REG:
@@ -548,13 +535,6 @@ static const Frame* matched_for;
    catch a teleport within a camera cut. At 128 px, near walls in a fast turn (third person,
    mouse) lost their interpolation and visibly jumped against the rest */
 #define NATIVE_JUMP (1024 * 16)
-/* a menu's 2D piece (MENU_TAG) is paired by its look only, so another piece of the same look can
-   stand in for one that wrapped round or left: the OPTION screen's two picture bands show the same
-   pictures 368 px apart and scroll round, the map's lines all look alike. No menu moves a piece
-   further than 320 px in a game frame (the status screen's panels sliding in): a pair further
-   apart than that is two pieces, not one that moved */
-#define MENU_JUMP (336 * 16)
-
 static long moved(uint64_t x, uint64_t y)
 {
     long dx = labs((long)(x & 0xFFFF) - (long)(y & 0xFFFF)), dy = labs((long)((x >> 16) & 0xFFFF) - (long)((y >> 16) & 0xFFFF));
@@ -593,11 +573,6 @@ static void frame_spos(const Frame* cf)
     for (size_t i = 0; i < f->ng; i++) {
         const Group* g = &f->g[i];
         const NativeVertex* nv;
-        if (g->key0 & RAW_KEY) {   /* already GS XYZ form */
-            const NativeRawVertex* rv = raw_verts(f, g->v0);
-            for (uint32_t v = 0; v < g->nv; v++) f->spos[g->sp + v] = rv[v].x | (uint64_t)rv[v].y << 16;
-            continue;
-        }
         if (!(g->key0 & NATIVE_KEY)) continue;
         nv = native_verts(f, g->v0);
         for (uint32_t v = 0; v < g->nv; v++) f->spos[g->sp + v] = project(&nv[v]);
@@ -606,7 +581,7 @@ static void frame_spos(const Frame* cf)
 }
 static uint64_t gpos(const Frame* f, const Group* g, uint32_t v)
 {
-    return g->key0 & (NATIVE_KEY | RAW_KEY) ? f->spos[g->sp + v] : vtx(f, g->v0 + v);
+    return g->key0 & NATIVE_KEY ? f->spos[g->sp + v] : vtx(f, g->v0 + v);
 }
 
 /* Pair the groups of instance b (frame c) with those of instance a (frame p) by strip and
@@ -642,7 +617,7 @@ static long inst_pair(const Frame* p, const Inst* a, const Frame* c, const Inst*
                     if (pa == NO_POS || pb == NO_POS) { total--; n--; continue; }   /* no screen position: not judged */
                     d = moved(pa, pb);
                     sum += d < 2 * JUMP ? d : 2 * JUMP;
-                    near += d <= (MENU_TAG(b->mesh) ? MENU_JUMP : (g->key0 & NATIVE_KEY) && !(b->mesh & 1) ? NATIVE_JUMP : JUMP);   /* effects: JUMP (a slot reused within a frame) */
+                    near += d <= ((g->key0 & NATIVE_KEY) && !(b->mesh & 1) ? NATIVE_JUMP : JUMP);   /* effects: JUMP (a slot reused within a frame) */
                 }
                 n += g->nv;
                 paired += g->nv;
@@ -652,19 +627,9 @@ static long inst_pair(const Frame* p, const Inst* a, const Frame* c, const Inst*
         }
     }
     if (!paired) return -1;
-    if (!native || MENU_TAG(b->mesh)) return n * 2 >= total && near * 2 >= total && n ? (long)(sum / n) : -1;   /* GS path, menus: half of all */
+    if (!native) return n * 2 >= total && near * 2 >= total && n ? (long)(sum / n) : -1;   /* GS path: half of all */
     if (!n) return 2 * JUMP;   /* no vertex in front of both cameras to judge it by: paired by its tags alone, last choice */
     return near * 2 >= n ? (long)(sum / n) : -1;
-}
-
-/* how far instance b (frame c) lies from instance a (frame p): the first vertex of each, d[0] x,
-   d[1] y in 1/16 px (a menu piece: one group) */
-#define AMBIG (4 * 16)
-static void inst_move(const Frame* p, const Inst* a, const Frame* c, const Inst* b, long d[2])
-{
-    uint64_t pa = gpos(p, &p->g[a->g0], 0), pb = gpos(c, &c->g[b->g0], 0);
-    d[0] = (long)(pb & 0xFFFF) - (long)(pa & 0xFFFF);
-    d[1] = (long)((pb >> 16) & 0xFFFF) - (long)((pa >> 16) & 0xFFFF);
 }
 
 int stream_point_at(const Frame* prev, const Frame* cur, float t, float* x, float* y)
@@ -808,7 +773,6 @@ int stream_match(const Frame* p, const Frame* c)
     static uint32_t* order; static uint8_t* used; static size_t cap_order;
     size_t tagged[2] = { 0, 0 }, matched[2] = { 0, 0 }, no_inst = 0, unpaired = 0, with_cam = 0;   /* [1]: effects (odd tags, pc_effect_tag) */
     int moving;
-    long menu_move[2] = { 0, 0 };   /* how the last matched menu piece moved (1/16 px) */
     matched_for = NULL;
     if (!p || !c || c->continuation || p->partial || (!c->nvx && !c->nin)) return 0;
     if (p->scene != c->scene) {
@@ -841,7 +805,7 @@ int stream_match(const Frame* p, const Frame* c)
     for (size_t i = 0; i < c->nin; i++) {
         const Inst* b = &c->in[i];
         size_t lo = 0, hi = p->nin, best = (size_t)-1;
-        long best_d = 2 * JUMP + 1, next_d = 2 * JUMP + 1;
+        long best_d = 2 * JUMP + 1;
         int fx = b->mesh & 1;
         if (!b->ng) continue;
         if (b->ng > cap_pair) { cap_pair = b->ng * 2; pair = xrealloc(pair, cap_pair * sizeof(*pair)); }
@@ -855,26 +819,7 @@ int stream_match(const Frame* p, const Frame* c)
             long d;
             if (used[m]) continue;
             d = inst_pair(p, a, c, b);
-            if (d >= 0 && d < best_d) { next_d = best_d; best_d = d; best = m; }
-            else if (d >= 0 && d < next_d) next_d = d;
-        }
-        if (MENU_TAG(b->mesh) && best != (size_t)-1) {
-            /* a menu piece whose look is there more than once (the "On" of every row of a list):
-               when two candidates are about as near (the list scrolled a row) the nearer one is
-               a guess, and a wrong one slides a row's text over the next. Take the candidate that
-               moved as the menu piece matched before it did (its row), or none */
-            if (next_d - best_d < AMBIG) {
-                long err_best = AMBIG;
-                best = (size_t)-1;
-                for (size_t m = lo; m < p->nin && p->in[order[m]].mesh == b->mesh; m++) {
-                    long d[2], err;
-                    if (used[m] || inst_pair(p, &p->in[order[m]], c, b) < 0) continue;
-                    inst_move(p, &p->in[order[m]], c, b, d);
-                    err = labs(d[0] - menu_move[0]) > labs(d[1] - menu_move[1]) ? labs(d[0] - menu_move[0]) : labs(d[1] - menu_move[1]);
-                    if (err < err_best) { err_best = err; best = m; }
-                }
-            }
-            if (best != (size_t)-1) inst_move(p, &p->in[order[best]], c, b, menu_move);
+            if (d >= 0 && d < best_d) { best_d = d; best = m; }
         }
         if (best == (size_t)-1) {
             for (uint32_t k = 0; k < b->ng; k++) {
@@ -892,12 +837,6 @@ int stream_match(const Frame* p, const Frame* c)
                 const Group *g = &c->g[b->g0 + k], *h;
                 if (pair[k] < 0) { unpaired += g->nv; lone += !!(g->key0 & NATIVE_KEY); continue; }
                 h = &p->g[pair[k]];
-                if (g->key0 & RAW_KEY) {   /* a menu's sprites: blended in replay unless they stand still */
-                    const NativeRawVertex *ra = raw_verts(p, h->v0), *rb = raw_verts(c, g->v0);
-                    for (uint32_t v = 0; v < g->nv; v++) if (ra[v].x != rb[v].x || ra[v].y != rb[v].y) { nat_prev[g->v0] = (int32_t)h->v0; break; }
-                    matched[fx] += g->nv;
-                    continue;
-                }
                 if (g->key0 & NATIVE_KEY) {   /* native strip: blended vertex for vertex in replay, unless it stands still */
                     if (!nv_same_pos(native_verts(p, h->v0), native_verts(c, g->v0), g->nv)) nat_prev[g->v0] = (int32_t)h->v0;
                     matched[fx] += g->nv;
@@ -1020,19 +959,7 @@ void stream_replay(const Frame* r, float t)
         if (e->kind == EV_IMAGE) continue;   /* a replay writes no GS memory: its textures and render-target
                                                   reloads are the executed frame's (gs_gl.c, replay resources) */
         if (e->kind == EV_RAW) {
-            const NativeRawVertex* cur = raw_verts(r, (uint32_t)i);
-            if (nat_prev[i] >= 0) {   /* a menu's sprites that moved (stream_match): the in-between position */
-                const NativeRawVertex* prv = raw_verts(nat_prev_frame, (uint32_t)nat_prev[i]);
-                NativeRawVertex bl[64];
-                int n = e->len > 64 ? 64 : (int)e->len;
-                for (int k = 0; k < n; k++) {
-                    bl[k] = cur[k];
-                    bl[k].x = (uint16_t)(prv[k].x + ((float)cur[k].x - prv[k].x) * t + 0.5f);
-                    bl[k].y = (uint16_t)(prv[k].y + ((float)cur[k].y - prv[k].y) * t + 0.5f);
-                }
-                gs_draw_raw((unsigned int)(e->v >> 32), bl, n);
-            } else
-                gs_draw_raw((unsigned int)(e->v >> 32), cur, (int)e->len);
+            gs_draw_raw((unsigned int)(e->v >> 32), (const NativeRawVertex*)(r->pool + (uint32_t)e->v), (int)e->len);
             continue;
         }
         if (e->kind == EV_NATIVE) {

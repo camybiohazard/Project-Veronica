@@ -61,7 +61,6 @@ int pc_battle_unlocked(void) { return g_config.battle_unlocked; }
 int pc_difficulty_select(void) { return g_config.difficulty_select; }
 int pc_skip_intro(void) { return g_config.skip_intro; }
 int pc_movie_zoom(void) { return g_config.movie_zoom; }
-int pc_menu_smooth_on(void) { return g_config.menu_smooth && g_config.interpolate; }   /* view_glue.c pc_menu_tag */
 /* fog at i % of the original: the fog density (njCalcFogPower) x 100 / i, so everything's fog is
    that of something i % as far: 50 % = x 2. 0 %: every distance reads the table's nearest
    entry, 254 or 255 of 255 (no fog) */
@@ -99,7 +98,7 @@ float pc_overlay_x(float x)
     return overlay_stretch ? 320.0f + (x - 320.0f) * pc_hor_scale() : x;
 }
 
-HostConfig g_config = { .window_w = 1280, .window_h = 960, .borderless_extra = 1,.vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .menu_smooth = 1, .frame_blend = 0, .aspect = 2, .show_fps = 1, .show_ping = 1,
+HostConfig g_config = { .window_w = 1280, .window_h = 960, .borderless_extra = 1,.vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .frame_blend = 0, .aspect = 2, .show_fps = 1, .show_ping = 1,
                        .screen_filter = 1, .cinema_bars = 1, .screen_effects = 1, .native_3d = 1, .model_cull = 1, .native_tex = 1, .hd_textures = 1, .hd_textures_ui = 1, .quick_knife = 1, .head_blowoff = 1,
                        .skip_doors = 1, .fast_loading = 1, .auto_stairs = 1, .skip_intro = 1, .battle_unlocked = 1, .difficulty_select = 1, .contrast = 100, .gamma = 10, .fog_intensity = 100 };   /* first-start defaults; recvx.ini overrides */
 SDL_Window* g_window;
@@ -134,7 +133,6 @@ void host_pump_events(void)
         if (ev.type == SDL_EVENT_GAMEPAD_ADDED || ev.type == SDL_EVENT_GAMEPAD_REMOVED) { extern void pad_devices_changed(void); pad_devices_changed(); }
         if (bind_event(&ev)) continue;   /* a "press a key" of the settings */
         if (overlay_event(&ev)) continue;
-        bind_latch_event(&ev);
         if ((ev.type == SDL_EVENT_KEY_DOWN && !ev.key.repeat) || ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN || ev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN)
             SDL_AddAtomicInt(&presses, 1);
         tps_input_event(&ev);

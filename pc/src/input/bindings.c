@@ -480,58 +480,6 @@ const bool* bind_keys(void)
     return merged;
 }
 
-/* ---------------------------------------------------------------- quick presses in menus
-   The game reads the pad once a game frame (30 a second): a key tapped between two reads, or let go
-   and pressed again between them, was never seen. With "Smooth menus", while a menu is up, every
-   key and gamepad button change (main thread, in order) is shown to at least one pad report: each
-   report (bind_latch_frame) takes at most one queued change per key or button and holds that state
-   for the report; the rest waits for the next. Keys without queued changes read as they are. */
-typedef struct { short code; unsigned char pad, down; } LatchEv;
-static LatchEv latch_q[128];
-static int latch_n;
-static SDL_SpinLock latch_lock;
-static signed char latch_key[SDL_SCANCODE_COUNT], latch_btn[SDL_GAMEPAD_BUTTON_COUNT];   /* this report: -1 as it is, 0 up, 1 down */
-static int latch_on;   /* game thread: during the pad report */
-
-static void latch_push(int pad, int code, int down)
-{
-    SDL_LockSpinlock(&latch_lock);
-    if (latch_n < (int)(sizeof(latch_q) / sizeof(latch_q[0]))) latch_q[latch_n++] = (LatchEv){ (short)code, (unsigned char)pad, (unsigned char)down };
-    SDL_UnlockSpinlock(&latch_lock);
-}
-
-void bind_latch_event(const void* e)
-{
-    const SDL_Event* ev = (const SDL_Event*)e;
-    if ((ev->type == SDL_EVENT_KEY_DOWN || ev->type == SDL_EVENT_KEY_UP) && !ev->key.repeat && ev->key.scancode < SDL_SCANCODE_COUNT)
-        latch_push(0, ev->key.scancode, ev->type == SDL_EVENT_KEY_DOWN);
-    else if ((ev->type == SDL_EVENT_GAMEPAD_BUTTON_DOWN || ev->type == SDL_EVENT_GAMEPAD_BUTTON_UP) && gamepad &&
-             ev->gbutton.which == SDL_GetGamepadID(gamepad) && ev->gbutton.button < SDL_GAMEPAD_BUTTON_COUNT)
-        latch_push(1, ev->gbutton.button, ev->type == SDL_EVENT_GAMEPAD_BUTTON_DOWN);
-}
-
-const bool* bind_latch_frame(int on, const bool* keys)
-{
-    static bool merged[SDL_SCANCODE_COUNT];
-    int w = 0;
-    memset(latch_key, -1, sizeof(latch_key));
-    memset(latch_btn, -1, sizeof(latch_btn));
-    SDL_LockSpinlock(&latch_lock);
-    for (int i = 0; i < latch_n && on; i++) {
-        signed char* s = latch_q[i].pad ? &latch_btn[latch_q[i].code] : &latch_key[latch_q[i].code];
-        if (*s < 0) *s = (signed char)latch_q[i].down;
-        else latch_q[w++] = latch_q[i];   /* a second change of this key: the next report */
-    }
-    latch_n = w;   /* off: dropped */
-    SDL_UnlockSpinlock(&latch_lock);
-    latch_on = on;
-    if (!on) return keys;
-    memcpy(merged, keys, sizeof(merged));
-    for (int i = 0; i < SDL_SCANCODE_COUNT; i++) if (latch_key[i] >= 0) merged[i] = latch_key[i];
-    return merged;
-}
-void bind_latch_end(void) { latch_on = 0; }
-
 static int tps_uses(int dev, int code)
 {
     for (int r = B_TPS_FWD; r <= B_TPS_RECENTER; r++)
@@ -547,7 +495,6 @@ static int pad_down(int c)
         int lim = a >= SDL_GAMEPAD_AXIS_LEFT_TRIGGER ? 8000 : 16000;
         return (c - BIND_AXIS) & 1 ? v < -lim : v > lim;
     }
-    if (latch_on && c >= 1 && c <= SDL_GAMEPAD_BUTTON_COUNT && latch_btn[c - 1] >= 0) return latch_btn[c - 1];
     return SDL_GetGamepadButton(gamepad, (SDL_GamepadButton)(c - 1));
 }
 

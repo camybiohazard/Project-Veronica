@@ -2,13 +2,6 @@
 
 ## 0.6.8 (2026-10-23)
 
-### Display
-
-- **Smooth menus** (DISPLAY, on by default): the inventory, map, files, item box, typewriter, title
-  menu and OPTION now move at your display's frame rate like the game itself: panels slide, windows
-  open and the cursor glides smoothly. Menus also react sooner to a press, and quick taps are no
-  longer missed. Off: menus as before.
-
 ### Gameplay
 
 - **Difficulty select** (GAMEPLAY, on by default): NEW GAME now lets you choose Normal, Easy or Very

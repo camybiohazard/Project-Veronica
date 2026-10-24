@@ -276,26 +276,6 @@ shows in-between images at the display rate:
   (`inst_still`: within a pixel), so a wall's strips coming into view stay joined to it. Effects,
   new strips of moving meshes and meshes whose instances all moved too far to pair stay as in the
   new frame; so does everything when the camera did not change.
-- **Menus** ("Smooth menus", `smooth_menus`; `view_glue.c pc_menu_smooth`: on, display-rate
-  frames on, and the Firstmovie (title menu), Title, Itemselect (status screen, files, item box),
-  Map, Typewriter or Option task running, no movie open): the menus are 2D, which was never tagged,
-  so they were shown at 30 FPS. Each 2D polygon or sprite drawn outside a mesh is tagged by its
-  look (`pc_menu_tag`, from `native_glue.c pc_native_prim` / `pc_native_prim_raw`): primitive,
-  depth, texture and texture coordinates, not position or colour. Tags end in binary 10 (meshes
-  are aligned pointers, effects odd). The matcher pairs it with the least-moved polygon of the
-  same look in the previous frame (as instances of one mesh, `NATIVE_JUMP`); sprites, lines and
-  points (`EV_RAW`) under such a tag become groups too (`RAW_KEY`) and their positions are blended
-  in the replay. An untextured piece also carries its colour and which way each corner lies from
-  the first (left and right arrows, horizontal and vertical lines differ). A letter of the font
-  (`sys->ef_tlist`) carries the letters before it on its line and the steps between them, so a
-  changed text never slides letters from one string to another. Looks repeat (both OPTION picture
-  bands show the same pictures 368 px apart and scroll round; every row of a list says "On"), so
-  two more rules: a pair further apart than `MENU_JUMP` (336 px; the furthest a menu moves a
-  piece in a game frame is 320 px, the status screen's panels) is two pieces, and when two
-  candidates are about as near (within `AMBIG`, 4 px: a list scrolled a row) the one that moved
-  as the menu piece matched before it did is taken, or none. Colours, texture coordinates and new
-  or changed parts are the current frame's, so a cursor highlight or a new text shows at once.
-  Executed frames are unchanged (the tags only add stream events).
 - **Frame blend**: `PS2_swap` mixes each new frame 75% over the previous display image (a
   motion trail). Replays start from the display image as the frame found it, so the trail stays
   correct. With frame blend off the swap copies the frame instead (as during movies).
@@ -326,12 +306,8 @@ rate limit (`fps_limit`: 30/60/90/120/144) caps presents per second below the di
 
 The game reads the pad at the start of its frame and draws the frame at once, but
 `ps2_NaSystem.c Ps2SwapDBuff` hands it over (`PS2_swap`, `sceGsSwapDBuffDc` -> `stream_submit`)
-only after waiting for the second VBLANK since the last swap, as the PS2 did: a picture appeared a
-whole game frame after the pad read that made it. With "Smooth menus" in a menu
-(`pc_menu_smooth`) the hand-over comes first and the wait after it; the game's pace and the order
-of its work are the same, only the frame reaches the render thread about 30 ms sooner. Measured
-headless in the inventory (press to the first image showing it, 40 presses at random times):
-60 Hz 67 -> 34 ms, 120 Hz 60 -> 26 ms on average. Gameplay keeps the original order.
+only after waiting for the second VBLANK since the last swap, as the PS2 did: a picture appears a
+whole game frame after the pad read that made it.
 
 Picture calibration (`brightness`, `contrast`, `gamma`) is applied in the present shader
 (`gs_gl.c draw_display`, uniform `u_pic`), so executed frames, in-between images and movies get it
@@ -566,13 +542,6 @@ village, collision. The render thread (GS emulation, replays: `r_exec`, `r_inter
   and the list's arrows become that frame's `sys->pad_ps` / `pad_on` bits; `menu_pad` leaves the
   mouse to it while the screen runs). The OS cursor is hidden unless such a screen or
   an overlay is open; third person releases the captured mouse while a screen is open.
-- **Quick presses in menus** ("Smooth menus", `bindings.c bind_latch_frame`): the pad report is
-  built once a game frame from the devices' current state, so a key tapped between two reports, or
-  let go and pressed again between them, was lost (headless, 20 ms taps: 17 of 40). The main
-  thread queues every key and gamepad button change (`bind_latch_event`); in a menu each report
-  takes at most one queued change per key or button and holds that state for the report, the rest
-  wait for the next one, so every press and release is seen at least once, in order. Outside menus
-  the queue is dropped.
 - **Idle dimming**: the game's screen saver (`bhSysCallScreenSaver`, 50% black after 10800
   frames without pad input) only reads the PS2 pad. `pc_input_active` (`tps_glue.c`) also counts
   third-person mouse motion and PC-only input, so it no longer dims during mouse/keyboard play.

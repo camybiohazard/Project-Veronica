@@ -167,7 +167,6 @@ static const char* size_name(int v, char* b, int n)
     else snprintf(b, n, "%d x %d", sizes[v].w, sizes[v].h);
     return b;
 }
-static const char* interp_off(void) { return g_config.interpolate ? NULL : "Needs Display-rate frames."; }
 static const char* fullscreen_on(void) { return g_config.fullscreen ? "Only in windowed mode." : NULL; }
 /* Display mode: windowed / borderless / exclusive over fullscreen + fullscreen_exclusive (F11 flips
    only the first, so it returns to the kind chosen last) */
@@ -337,8 +336,6 @@ const Setting g_settings[] = {
     { SP_DISPLAY, "Aspect ratio", V(g_config.aspect), 0, 2, 1, aspects, .help = "Widescreen: 3D fills the window, 2D and menus stay 4:3 in the middle.", .group = "PICTURE" },
     { SP_DISPLAY, "Internal resolution", V(g_config.scale), 0, 8, 1, .name = scale_name, .help = "The resolution the game is drawn at; Auto follows the window." },
     { SP_DISPLAY, "Display-rate frames", V(g_config.interpolate), 0, 1, 1, .help = "In-between frames blended from the last two game frames. The game still runs at 30 FPS; half a frame of latency." },
-    { SP_DISPLAY, "Smooth menus", V(g_config.menu_smooth), 0, 1, 1, .locked = interp_off,
-      .help = "Menus at the display rate too (windows slide, the cursor glides), a frame quicker to react, quick taps never missed. Off: 30 FPS menus." },
     { SP_DISPLAY, "Frame blend (trail)", V(g_config.frame_blend), -1, 1, 1, onoff_auto, .help = "As on the PS2: each frame mixed over the previous one. Auto: on in vanilla, off with display-rate frames." },
     { SP_DISPLAY, "Cutscene bars", V(g_config.cinema_bars), 0, 2, 1, modes3, .help = "Original keeps them 4:3 in widescreen; fades always fill the screen.", .group = "WIDESCREEN" },
     { SP_DISPLAY, "Camera vignette", V(g_config.screen_filter), 0, 2, 1, modes3, .help = "Original keeps it 4:3 in widescreen." },

@@ -64,10 +64,6 @@ int  bind_hotkey(const void* sdl_event, int row);               /* a key-down ev
 void* bind_gamepad(void);              /* the open SDL_Gamepad (pad.c) */
 void bind_set_gamepad(void* gamepad);
 const bool* bind_keys(void);           /* SDL keyboard state plus scripted keys (RECVX_KEYS) */
-void bind_latch_event(const void* sdl_event);              /* main thread: a key or button change, for bind_latch_frame */
-const bool* bind_latch_frame(int on, const bool* keys);    /* pad report: on (a menu, Smooth menus), keys and buttons that changed since the last report at least once each */
-void bind_latch_end(void);                                 /* the report's device reads are done */
-int  pc_menu_smooth(void);             /* view_glue.c: Smooth menus, and a menu is up */
 int  bind_quickturn(int which, int held);   /* which 0 game, 1 third person: 0 off, 1 hold back, 2 back + run (pad.c) */
 int  pad_quick_knife(void);            /* the quick-knife row is held (pad.c) */
 int  pad_reload(void);                 /* a reload row is held (pad.c) */

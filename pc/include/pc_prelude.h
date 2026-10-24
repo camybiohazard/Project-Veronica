@@ -134,9 +134,6 @@ int   pc_overlay_wide(void);   /* inside a stretched overlay */
 /* hor+ widescreen: while on, 2D (Ps2AddPrim with clip_3d_on 0) is clipped to the 4:3 screen,
    except stretched overlays and full-width fills (native_glue.c) */
 void  pc_menu_clip(int on);
-/* "Smooth menus" on and a menu task up (view_glue.c): ps2_NaSystem.c Ps2SwapDBuff hands the finished
-   frame over before its wait for the second VBLANK */
-int   pc_menu_smooth(void);
 /* enhanced frame interpolation: GS output between begin and end belongs to this mesh */
 void  pc_mesh_begin(const void* model);
 void  pc_mesh_end(void);

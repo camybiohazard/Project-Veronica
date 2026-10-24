@@ -24,24 +24,9 @@ static int held(int row, int sc) { memset(keys, 0, sizeof(keys)); if (sc) keys[s
 static void report(int a, int b) { memset(keys, 0, sizeof(keys)); keys[a] = keys[b] = 1; keys[0] = 0; bind_combo_frame(1, keys, 0); }
 static int now(int row) { return bind_held(row, BIND_KB, keys, 0); }
 
-static void key_ev(int sc, int down) { SDL_Event e = { 0 }; e.type = down ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP; e.key.scancode = (SDL_Scancode)sc; bind_latch_event(&e); }
-
 int main(void)
 {
     char buf[64];
-    {   /* quick presses in menus: a tap and a release-and-press between two reports are each seen, in order */
-        static const bool up[SDL_SCANCODE_COUNT];
-        key_ev(SDL_SCANCODE_Z, 1); key_ev(SDL_SCANCODE_Z, 0);   /* tapped between two reports, now up */
-        CHECK(bind_latch_frame(1, up)[SDL_SCANCODE_Z]);
-        CHECK(!bind_latch_frame(1, up)[SDL_SCANCODE_Z]);
-        CHECK(!bind_latch_frame(1, up)[SDL_SCANCODE_Z]);
-        memset(keys, 0, sizeof(keys)); keys[SDL_SCANCODE_X] = 1;   /* held, let go and pressed again */
-        key_ev(SDL_SCANCODE_X, 0); key_ev(SDL_SCANCODE_X, 1); key_ev(SDL_SCANCODE_Z, 1); key_ev(SDL_SCANCODE_Z, 0);
-        CHECK(!bind_latch_frame(1, keys)[SDL_SCANCODE_X] && bind_latch_frame(1, keys)[SDL_SCANCODE_X]);
-        key_ev(SDL_SCANCODE_Z, 1); key_ev(SDL_SCANCODE_Z, 0);   /* outside menus: dropped, the state as it is */
-        CHECK(!bind_latch_frame(0, up)[SDL_SCANCODE_Z] && !bind_latch_frame(1, up)[SDL_SCANCODE_Z]);
-        bind_latch_end();
-    }
     /* defaults: the layout pad.c had built in */
     CHECK(held(B_CROSS, SDL_SCANCODE_Z) && held(B_CIRCLE, SDL_SCANCODE_X) && held(B_SQUARE, SDL_SCANCODE_A));
     CHECK(held(B_TRIANGLE, SDL_SCANCODE_S) && held(B_L1, SDL_SCANCODE_Q) && held(B_R1, SDL_SCANCODE_W));
