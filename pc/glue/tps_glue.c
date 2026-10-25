@@ -252,6 +252,7 @@ void tps_camera(void)
     tps_cam_active = g_tps.cam_active = 1;
 
     aim = aiming() && !lock_aim();
+    if (g_tps.aiming && !aiming() && !g_tps.pad_modern) recenter = 20;   /* Classic gamepad: lowering the weapon recenters */
     g_tps.aiming = aiming();
     if (!(sys->sp_flg & 0x40)) mouse_dx = mouse_dy = stick_yaw = stick_pitch = 0;   /* frozen (above): no mouse look */
     if (recenter > 0 && !aiming()) {   /* gamepad: the camera eases behind the character */
