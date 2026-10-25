@@ -96,8 +96,8 @@ int   pc_model_cull(void);      /* actors/objects off-screen are skipped (bhChec
 int   pc_frame_blend(void);     /* PS2_swap blends the new frame 75% over the previous one (motion trail) */
 unsigned int pc_noclip(void);   /* F2 cheat: player flags whose enemy/wall push bhControlPlayer skips */
 /* plp's frame and blend count as its bhSetMotion in bhControlPlayer takes them (it then advances and
-   decrements them), -1 none this tick, and the motion and set they belong to: the gender-matched copy and
-   the co-op partner play these (actor_glue.c) */
+   decrements them), -1 none this tick, and the motion and set they belong to: the gender-matched copy
+   plays these (actor_glue.c) */
 extern int pc_plp_frm, pc_plp_hokan;
 extern unsigned int pc_plp_mtn;
 extern void* pc_plp_set;
@@ -142,39 +142,22 @@ void  pc_margin_next(int mode);   /* the next mesh is drawn only outside the 4:3
 int   pc_margin_reaches_43(const struct VU1_STRIP_BUF* v, int n);   /* such a mesh would cover the view (native_glue.c): left out */
 void  pc_effect_tag(const void* op);      /* effect.c: the following output is this effect (O_WRK*, NULL: none) */
 unsigned long long pc_effect_poly(void); /* ps2_dummy.c Ps2AddOT: STREAM_TAG_REG value for an effect polygon (0: none) */
-/* online co-op (pc/glue/coop_glue.c, docs/COOP.md): the hooks are only called while coop_on */
-extern int coop_on;
-void  coop_control_remote(void);
-void  coop_draw_remote(void);
-void  coop_textures_released(void);
-void  coop_player_unload(void);                /* system.c bhSysCallMonitor: the player's textures go, another character loads (story switch, Battle Game rooms) */
-struct BH_PWORK;
-int   coop_enemy_begin(struct BH_PWORK* ep);   /* 1 = step done (client puppet) */
-void  coop_enemy_end(struct BH_PWORK* ep);
-void  coop_scd1(void);                         /* event.c bhControlEvent: runs the room's per-frame script */
-void  coop_fx_player(void);                    /* game.c, before bhControlPlayer: our step's effects to the partner */
-int   coop_fx_step(int i, int after);          /* effect.c bhControlEffect, around effect i's step (1 before: call after) */
-void  coop_item_granted(int item);            /* sub1.c GetItem: an event gave us this item without asking */
-void  coop_item_taken(int bit, int etc);      /* event.c bhItmCk: we took the item of trigger etc, its it_flg bit */
-void  coop_item_late(int bit);                /* event.c bhItmCk: we took an item whose it_flg bit was set already (the partner was first) */
-void  coop_retry_point(void);                 /* room.c bhPushGameData: our continue point moved (the host keeps the guest's items with it) */
-int   pc_no_ink_ribbon(void);                 /* typewriters save without an ink ribbon (setting; in co-op the host's rule) */
-int   pc_detector_skipped(void);              /* co-op rule "Metal detector: Skipped" (pc/glue/detector_glue.c): event.c bhPlItemCheck in 0/9 finds no metal */
-void  pc_detector_scd1(void);                 /* ... event.c bhControlEvent before scd1: the empty security boxes rest */
-void  pc_quick_start(void);                   /* co-op rule "Quick start" (pc/glue/coop_glue.c): system.c bhSysCallMonitor after a new game's AllItemInit */
+int   pc_no_ink_ribbon(void);                 /* setting: typewriters save without an ink ribbon (host.c) */
 int   pc_battle_unlocked(void);               /* host.c: setting "Battle Game unlocked" (event.c bhCk: every Battle Game character) */
 int   pc_difficulty_select(void);             /* host.c: setting "Difficulty select" (adv.c CheckButton: NEW GAME opens the difficulty menu) */
-void  coop_fx_particle(struct BH_PWORK* ewP, int lnk, const void* offP, const void* dirP, unsigned int col, unsigned int dst, int typ, int mk2);   /* effsub3.c bhSetEffParticle(Mk2) */
-/* "You appear as" (pc/glue/actor_glue.c): another model drawn in place of the player / of the
-   played character's cutscene double; appear_on: in use without co-op (coop_control_remote runs) */
+/* "You appear as" (pc/glue/actor_glue.c, pc/glue/appear_glue.c): another model drawn in place of the
+   player / of the played character's cutscene double; appear_on: in use (game.c runs appear_control) */
 extern int actor_on, appear_on;
+void  appear_control(void);                   /* game.c bhMainSequence, after bhControlPlayer */
+void  appear_textures_released(void);         /* ps2_NaTextureFunction.c njReleaseTextureAll */
+void  appear_player_unload(void);             /* system.c bhSysCallMonitor: the player's textures go, another character loads (story switch, Battle Game rooms) */
 int   actor_put_player(void);                 /* 1 = drawn */
 int   actor_put_enemy(struct BH_PWORK* ep);   /* 1 = drawn */
 /* enemy variants (pc/glue/variant_glue.c, docs/ENEMIES.md "Enemy variants"): pc_variant_n variant enemies in
    this room (0: none of these is called) */
 extern int pc_variant_n;
 int   pc_variant_pre(struct BH_PWORK* ep, int slot);    /* eneset.c bhControlEnemy, before ep's step: how many steps (speed) */
-void  pc_variant_post(struct BH_PWORK* ep, int slot);   /* after them (also for a co-op puppet) */
+void  pc_variant_post(struct BH_PWORK* ep, int slot);   /* after them */
 int   pc_variant_is(struct BH_PWORK* ep);               /* ep is (part of) an enemy variant (en17.c: Mutated Steve) */
 int   pc_variant_draw(struct BH_PWORK* ep);             /* eneset.c bhDrawEnemy, in place of bhPutModel(ep): 1 = drawn */
 int   pc_variant_sound(int enemy_no, int se, signed char* bank);   /* sdfunc.c RequestEnemySeBasic: the sound to request */
@@ -200,8 +183,7 @@ void  actor_hands_back(void);                 /* game.c, before bhControlPlayer:
 #define PC_PBUFF_SIZE (4608 << 10)
 /* ROM_WORK.flg bit that rdxbuild sets in "budget": "pc" rooms (retail rooms use bits 0..1): the
    player (and every actor through bhCheckWallEx) stands on type-6 slope walls, its y read from
-   the slope at its x/z (hitchk.c pc_slope_ground); the camera and the co-op partner follow that
-   y. Retail rooms never have it: unchanged. docs/modding/ROOM_FORMAT.md "Floors and heights". */
+   the slope at its x/z (hitchk.c pc_slope_ground); the camera follows that y. Retail rooms never have it: unchanged. docs/modding/ROOM_FORMAT.md "Floors and heights". */
 #define PC_ROOM_SLOPES 0x100
 struct BH_PWORK;
 int   pc_slope_ground(struct BH_PWORK* pw, void* pos, float ah);   /* hitchk.c: 1 = on a slope, pos y + floor set */
@@ -216,17 +198,10 @@ extern int pc_enemy_added;         /* eneset.c: the room got enemies its file do
 void  pc_enemy_mark_added(void);   /* eneset.c: sets it, the shared helper functions as they are then kept for the room's earlier children */
 void  enemy_room_finished(void);   /* room.c bhFinishRoom: enemy options (pc/glue/enemyopt_glue.c) */
 
-/* title menu MULTIPLAYER entry and the co-op lobby screen (pc/glue/lobby_glue.c) */
-void  pc_title_menu_init(void);                  /* Adv_BioCvTitle mode 0: the MULTIPLAYER row */
-void  pc_title_plates(int cursor, int n, float fade, int flag);   /* DisplayGameModePlate */
+/* the title menu (pc/glue/title_glue.c) */
+void  pc_title_menu_init(void);                  /* Adv_BioCvTitle mode 0: BATTLE GAME by setting */
 void  pc_title_mouse(int level, int flag);       /* CheckButton: hover moves the cursor, a click confirms */
-void  pc_title_mouse_active(int on);             /* a title menu or the lobby is up: the OS cursor is shown */
-int   pc_lobby(void);                            /* Adv_BioCvTitle mode 30: 1 back, 2 new game, 3 load the chosen save */
-void  pc_lobby_close(void);                      /* the title ends */
-void  pc_lobby_load_save(void);                  /* bhSysCallFirstmovie return code 8 */
-void  pc_lobby_textures_released(void);          /* njReleaseTextureAll */
-void  pc_title_leave(void);                      /* co-op: the host's game is joined from the title */
-void  pc_adv_in_game(void);                      /* co-op: the guest is in a game now (AdvWork.AppMode 1) */
+void  pc_title_mouse_active(int on);             /* a title menu is up: the OS cursor is shown */
 
 /* ENHANCED SETTINGS in the OPTION menu (pc/glue/options_glue.c): option level 4 */
 void  pc_options_frame(void);                    /* Adv_GameOptionScreen, every frame */
@@ -257,11 +232,6 @@ int   pc_syssave_native(struct SYSSAVE_SCREEN* p);   /* 0 memory card, else the 
 
 /* mouse in the inventory screens (pc/glue/menu_glue.c) */
 unsigned int menu_pad(unsigned int pad);
-/* the co-op trade screen (pc/glue/trade_glue.c, docs/COOP.md "Trade screen") */
-unsigned int trade_pad(unsigned int pad);   /* pad.c bhSetPad, after menu_pad: the screen's input, the player stands still */
-void  trade_draw(void);                     /* game.c bhMainSequence, after the frame's drawing */
-int   pc_trade_screen(void);                /* the screen is open (menu_pad leaves the mouse to it) */
-void  trade_textures_released(void);        /* njReleaseTextureAll */
 /* quick knife (pc/glue/knife_glue.c) */
 unsigned int knife_pad(unsigned int pad);
 void knife_game_exit(void);   /* cheat_game_exit (bhExitGame): the knife's state of that game goes */
@@ -290,7 +260,7 @@ void  tps_player_mode(void);   /* before the player's mode handler: the straight
 void  tps_player(void);
 void  tps_calc_model(void);
 struct BH_PWORK;
-void  tps_bend(struct BH_PWORK* p, float pitch);   /* the free-aim bend by pitch (radians) on a display copy (actor_glue.c), the partner */
+void  tps_bend(struct BH_PWORK* p, float pitch);   /* the free-aim bend by pitch (radians) on a display copy (actor_glue.c) */
 float tps_aim_pitch(void);   /* the pitch of our free-aim bend this tick (radians, 0: none) */
 #include "ps2sdk_shim.h"
 #include "ps2_hw.h"

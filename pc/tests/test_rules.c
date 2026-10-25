@@ -231,35 +231,6 @@ static void unlock(void)
     CHECK(!pc_unlock_rule(1, 0, 0x25, 1, 7, 0));    /* no use spot for it here */
 }
 
-/* co-op trades and the item box: an item word in and out of an inventory block, never lost or doubled;
-   a count of 0 (the Combat Knife as picked up, an empty gun) is an item like any other */
-static void inventory(void)
-{
-    static ITEM_WORK it[156];
-    unsigned int a[12] = { 2, 0x370001, 0x5000f, 0x80000 }, b[12] = { 2, 0x370001, 0x5000f }, w;
-    int i;
-    it[5].type = 0xc01; it[8].type = 0x401; it[12].type = 0xe02; it[33].type = 0xd01;
-    w = pc_inv_take(a, 8, 3, 0, 1, it);                        /* the knife out of the giver's bag */
-    CHECK(w == 0x80000 && !a[3] && a[0] == 2);
-    CHECK(pc_inv_add(b, 8, w, it) && b[3] == 0x80000);         /* into the receiver's: it is there */
-    CHECK(pc_inv_room(b, 8, it) == 6);
-    CHECK(!pc_inv_take(b, 8, 2, 0, 1, it));                    /* the equipped handgun stays */
-    CHECK(pc_inv_add(b, 8, 0x50000, it) && b[4] == 0x50000);   /* an empty gun */
-    for (i = 5; i < 10; i++) b[i] = 0x150001 + (i << 16);      /* full */
-    memcpy(a, b, sizeof(a));
-    CHECK(!pc_inv_add(b, 8, 0x80000, it) && !memcmp(a, b, sizeof(a)));   /* no room: refused, nothing changed */
-    CHECK(!pc_inv_add(b, 8, 0x0c0000, it));                    /* a count-0 word of a stackable needs a cell too */
-    b[9] = 0x0c03e0;                                           /* 992 handgun bullets */
-    CHECK(pc_inv_add(b, 8, 0x0c0007, it) && b[9] == 0x0c03e7); /* onto the stack, no cell needed */
-    CHECK(!pc_inv_add(b, 8, 0x0c0001, it) && b[9] == 0x0c03e7);   /* 999: no room for one more */
-    {
-        unsigned int c[12] = { 2, 0, 0x5000f, 0x80000 };
-        CHECK(pc_inv_add(c, 8, 0x210000, it));                 /* Gold Lugers as picked up: two cells, first */
-        CHECK(c[2] == 0x210000 && c[3] == 0x5000f && c[4] == 0x80000 && c[0] == 3);
-        CHECK(pc_inv_room(c, 8, it) == 4);
-    }
-}
-
 int main(void)
 {
     enemies();
@@ -269,7 +240,6 @@ int main(void)
     clipping();
     warp_music();
     unlock();
-    inventory();
     if (fails) { printf("%d failed\n", fails); return 1; }
     printf("rules: all passed\n");
     return 0;

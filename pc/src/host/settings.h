@@ -1,7 +1,7 @@
 /* The port's settings as one table (pc/src/host/settings.c), read by the native OPTION menu's
    ENHANCED SETTINGS pages (pc/glue/options_glue.c, game thread; every row) and by the F1 overlay
-   (overlay.cpp settings_imgui; of the CO-OP and EXTRAS pages only the entries flagged SET_F1).
-   Both edit the same variables (g_config, g_tps, g_coop, g_cheat, ...); recvx.ini keys stay in
+   (overlay.cpp settings_imgui; of the EXTRAS page only the entries flagged SET_F1).
+   Both edit the same variables (g_config, g_tps, g_cheat, ...); recvx.ini keys stay in
    config.c, and ctest "settings" fails for an ini key without a row here.
    docs/ARCHITECTURE.md "Settings" says how to add one. */
 #ifndef RECVX_SETTINGS_H
@@ -10,12 +10,12 @@
 extern "C" {
 #endif
 
-enum { SP_DISPLAY, SP_GAMEPLAY, SP_CONTROLS, SP_TPS, SP_AUDIO, SP_APPEAR, SP_COOP, SP_EXTRAS, SP_COUNT };   /* in menu order */
+enum { SP_DISPLAY, SP_GAMEPLAY, SP_CONTROLS, SP_TPS, SP_AUDIO, SP_APPEAR, SP_EXTRAS, SP_COUNT };   /* in menu order */
 extern const char* const settings_pages[SP_COUNT];
 
 enum {
     SET_RESTART = 1,      /* takes effect at the next start */
-    SET_F1 = 2,           /* CO-OP / EXTRAS entry also shown in F1 (those pages have their own windows, F3 / F2) */
+    SET_F1 = 2,           /* EXTRAS entry also shown in F1 (that page has its own window, F2) */
     SET_ACTION = 4,       /* a command (apply runs it), no value */
     SET_GAME_ONLY = 8,    /* only while a game runs (not at the title) */
     SET_NOW = 16,         /* action: the native menu runs it at once, not when it closes */

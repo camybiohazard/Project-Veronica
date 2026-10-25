@@ -25,7 +25,7 @@ void menu_mouse_event(const void* sdl_event);
 void menu_mouse_update(void* window, int overlay_open);   /* once per presented frame */
 int  menu_mouse_on(void);       /* any thread: the "menu_mouse" option and the input source lets the mouse play */
 int  menu_mouse_cursor(void);   /* the OS cursor belongs to a menu, not play (third person releases the mouse) */
-/* game thread (pc/glue/lobby_glue.c): what the mouse did since this screen last looked - the pointer in
+/* game thread (pc/glue/title_glue.c): what the mouse did since this screen last looked - the pointer in
    game 2D px, moved, button presses and wheel notches (none when the mouse is off); each screen keeps its
    own MouseTake (zeroed) */
 typedef struct MouseTake { float x, y; int moved, left, right, wheel, px, py, seen; } MouseTake;

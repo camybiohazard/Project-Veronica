@@ -27,7 +27,6 @@ typedef struct {
     int  scale;              /* internal resolution multiplier, 0 = auto */
     int  aspect;             /* ASPECT_* */
     int  show_fps;
-    int  show_ping;                 /* co-op: the ping next to the frame rate while connected (ini show_ping) */
     int  music_volume;       /* 0-100 */
     int  sfx_volume;         /* 0-100 */
     int  rumble;             /* gamepad vibration strength 0-100 % (input/pad.c scePadSetActDirect) */
@@ -48,9 +47,9 @@ typedef struct {
     int  head_blowoff;       /* a zombie whose head the game destroyed is drawn without it (pc/glue/variant_glue.c pc_zombie_head) */
     int  model_cull;         /* skip actors/objects whose test points are off-screen (as the PS2) */
     int  skip_intro;         /* boot straight into the title menu */
-    int  battle_unlocked;    /* the title menu offers BATTLE GAME without a cleared game (pc/glue/lobby_glue.c) */
+    int  battle_unlocked;    /* the title menu offers BATTLE GAME without a cleared game (pc/glue/title_glue.c) */
     int  difficulty_select;  /* NEW GAME asks for the difficulty as the PAL/JP versions (adv.c CheckButton) */
-    int  no_ink_ribbon;      /* typewriters save without an ink ribbon and use none (in co-op the host's; pc_no_ink_ribbon) */
+    int  no_ink_ribbon;      /* typewriters save without an ink ribbon and use none (pc_no_ink_ribbon) */
     int  save_system;        /* 0 native save files (<save_dir>/saves, default), 1 the memory card (<save_dir>/card0) */
     int  native_3d;
     int  native_tex;         /* rendering rework: TIM2 textures uploaded once, bound afterwards (pc/glue/texture_glue.c) */          /* rendering rework: chunk models drawn by the GPU (pc/glue/native_glue.c) */         /* room transitions (doors, stairs, ladders) without their animation */
@@ -67,7 +66,6 @@ void config_save(void);
 void overlay_init(void* window, void* gl_context);
 int  overlay_event(const void* sdl_event);   /* 1 if the overlay consumed it */
 void overlay_render(void);
-void overlay_point(int flags, float x, float y);   /* render thread, before overlay_render: the shown frame's stream_point */
 
 /* gs_gl.c */
 float gs_wanted_scale(void);

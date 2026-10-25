@@ -111,10 +111,6 @@ void render_loop(void)
                 pace_until = pace_until && pace_until + tick > now ? pace_until + tick : now + tick;
                 continue;
             }
-            {   /* the name tag moves with the 3D */
-                float x, y;
-                int fl = stream_point_at(interp ? prev : NULL, cur, t, &x, &y);
-                overlay_point(fl, x, y);            }
             swap = gs_present(cur, t);
             shown++;
             if (trace) fprintf(trace, "%llu %.3f %llu %llu\n", (unsigned long long)gs_frame_count(), t, (unsigned long long)(now / 1000),

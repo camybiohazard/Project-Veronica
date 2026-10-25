@@ -90,8 +90,8 @@ static int is_font(const void* tim2)
     return 0;
 }
 
-/* TIM2s the port cuts its own menu entries from (MULTIPLAYER, ENHANCED SETTINGS, RETURN TO
-   TITLE: letters of the title and option textures): HD texture packs keep them original even with
+/* TIM2s the port cuts its own menu entries from (ENHANCED SETTINGS, RETURN TO TITLE:
+   letters of the option textures): HD texture packs keep them original even with
    hd_textures_ui, so the port's entries match the letters around them. Forgotten with a disc
    read over them (pc_tex_invalidate). */
 #define NKEEP 8

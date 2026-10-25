@@ -73,7 +73,7 @@ int pc_save_file(const char* path, const char* mode, int (*fill)(FILE*, void*), 
     char tmp[4096];
     FILE* f;
     int ok;
-    /* per process: two instances sharing a save directory (co-op on one PC) never share one */
+    /* per process: two instances sharing a save directory never share one */
 #ifdef _WIN32
     snprintf(tmp, sizeof(tmp), "%s.%d.tmp", path, _getpid());
 #else

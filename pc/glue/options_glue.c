@@ -1,6 +1,6 @@
 /* ENHANCED SETTINGS in the game's OPTION menu (docs/ARCHITECTURE.md "Settings"): an eighth item on
  * the option screen, right of EXIT, set in the screen's own lettering, opens pages of the port's settings drawn
- * like the co-op lobby (the game's font, the option screen's background and title, its cursor
+ * with the game's means (the game's font, the option screen's background and title, its cursor
  * sounds). Game thread, from adv.c (Adv_GameOptionScreen and DisplayOptionPlate*): option
  * level 4 is ours. Values come from the shared settings table (pc/src/host/settings.c) and the
  * control bindings (pc/src/input/bindings.c), the same ones the F1 overlay edits. In a game a
@@ -23,7 +23,6 @@ extern ADV_WORK AdvWork;
 extern QUAD Qtex[16];
 extern unsigned int* pad_type[4];
 extern OPTION OptionDef[];
-extern int coop_on;                    /* pc/src/host/coop.h */
 void host_log(const char* fmt, ...);
 void pc_ui_text(float x, float y, const char* s, float sc, unsigned int argb);
 float pc_ui_text_w(const char* s, float sc);
@@ -122,7 +121,7 @@ static float row9_x(void) { return ROW_RIGHT - word_w(w_title, N_OF(w_title)); }
 /* RETURN TO TITLE's question, over the option screen in the game's window: NO preselected; left/right
    (or hover) choose, confirm or a click answers, cancel or a right click is NO. YES leaves the option
    screen as EXIT does (system data saved if changed); system.c bhSysCallOption then returns to the
-   title as the soft reset does, and co-op ends the session there (coop_glue.c, "back at the title"). */
+   title as the soft reset does. */
 static struct { int open, yes, go; } quit;
 #define Q_X0 112.0f
 #define Q_X1 528.0f
@@ -157,8 +156,8 @@ static void quit_draw(void)
 {
     NJS_POINT3 tl = { Q_X0, Q_Y0, 0.2f }, br = { Q_X1, Q_Y1, 0.2f };
     const char* l1 = "Return to the title screen?";
-    const char* l2 = coop_on ? "Unsaved progress will be lost. The co-op session ends." : "Unsaved progress will be lost.";
-    float sc2 = coop_on ? 0.5f : 0.6f;
+    const char* l2 = "Unsaved progress will be lost.";
+    float sc2 = 0.6f;
     pc_ui_rect(Q_X0, Q_Y0, Q_X1, Q_Y1, 0xE0000000, 0.19f);
     AdvEasyDrawWindow(&tl, &br, 0xFFAFAFAF, 0x3F5F5F5F);
     word(w_yes, 3, q_x(1), Q_YN_Y, quit.yes ? pulse() : 0x7FAFAFAF, 0.3f);

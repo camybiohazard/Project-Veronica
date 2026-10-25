@@ -2,7 +2,6 @@
    Needs the decomp's types (types.h) before it. */
 #pragma once
 #include "../src/gs/native.h"
-#include "../../decomp/include/ps2/veronica/prog/item.h"
 #include <math.h>
 
 /* ---------------------------------------------------------------- added enemies (decomp eneset.c) */
@@ -194,80 +193,4 @@ static inline int pc_margin_inside(const float* c, float r, const float* box)
     for (int k = 0; k < 3; k++)
         if (c[k] - r < box[k] || c[k] + r > box[3 + k]) return 0;
     return 1;
-}
-
-/* ---------------------------------------------------------------- inventory blocks (coop_glue.c: trades, item box) */
-/* An inventory block as the game keeps it (sys->itm[ply_id * 16]): word 0 the equipped word's index (0 none,
-   1 the lighter), word 1 the lighter's slot, words 2.. the grid (max 8 cells, 10 with the side pack). A word is
-   id << 16 | count; the count can be 0 (the Combat Knife, an empty gun, Claire's Gold Lugers / sub machine guns
-   as picked up): the item is there all the same. items: itemdata (type 0x100 two cells, 0x200 stackable). A
-   two-slot item is one word over two cells; the game keeps them first (sub1.c ItemSort), one per row. */
-static inline int pc_inv_two(const ITEM_WORK* items, unsigned int w) { return (items[(w >> 16) & 0xFF].type & 0x100) != 0; }
-
-static inline int pc_inv_room(const unsigned int* b, int max, const ITEM_WORK* items)   /* free cells */
-{
-    int i, room = max;
-    for (i = 2; i < 2 + max; i++) room -= (b[i] >> 16) & 0xFF ? (pc_inv_two(items, b[i]) ? 2 : 1) : 0;
-    return room;
-}
-
-/* sub1.c ItemSort: two-slot items first, the rest in order; the equipped index follows its word */
-static inline void pc_inv_sort(unsigned int* b, const ITEM_WORK* items)
-{
-    unsigned int out[10];
-    int n = 0, eq = -1, i, pass;
-    for (pass = 0; pass < 2; pass++)
-        for (i = 2; i < 12; i++)
-            if ((b[i] >> 16) & 0xFF && pc_inv_two(items, b[i]) == !pass) {
-                if ((int)b[0] == i) eq = 2 + n;
-                out[n++] = b[i];
-            }
-    for (i = 0; i < 10; i++) b[2 + i] = i < n ? out[i] : 0;
-    if (b[0] >= 2) b[0] = eq >= 0 ? eq : 0;
-}
-
-/* an inventory word (id << 16 | count, flags kept) in as a pickup puts it: onto stacks of the same
-   stackable item (up to 999), the rest into the first free word (a two-slot item needs two free
-   cells, as GetItem asks, and goes to the front as ItemSort puts it); all or none. A word that does not
-   go onto stacks whole - also one with count 0 - takes a free word of its own (else nothing changes, 0). */
-static inline int pc_inv_add(unsigned int* b, int max, unsigned int entry, const ITEM_WORK* items)
-{
-    int id = (entry >> 16) & 0xFF, left = entry & 0xFFFF, fr = -1, space = 0, own, i;
-    if (id <= 0 || id >= 156) return 0;
-    for (i = 2; i < 2 + max; i++) {
-        if (!((b[i] >> 16) & 0xFF) && fr < 0) fr = i;
-        if ((items[id].type & 0x200) && b[i] >> 16 == entry >> 16) space += 999 - (int)(b[i] & 0xFFFF);
-    }
-    own = !left || left > space;
-    if (own && (pc_inv_room(b, max, items) < (pc_inv_two(items, entry) ? 2 : 1) || fr < 0)) return 0;
-    for (i = 2; i < 2 + max && left && (items[id].type & 0x200); i++)
-        if (b[i] >> 16 == entry >> 16) {
-            int c = b[i] & 0xFFFF, put = 999 - c < left ? 999 - c : left;
-            b[i] += put;
-            left -= put;
-        }
-    if (own) b[fr] = (entry & 0xFFFF0000) | left;
-    if (own && pc_inv_two(items, entry)) pc_inv_sort(b, items);
-    return 1;
-}
-
-/* `count` (0: all) of the item in word s out; returns its word, 0 if not allowed (empty, equipped,
-   a two-slot item unless `two`) */
-static inline unsigned int pc_inv_take(unsigned int* b, int max, int s, int count, int two, const ITEM_WORK* items)
-{
-    unsigned int e;
-    int id, have, i;
-    if (s < 2 || s >= 2 + max) return 0;
-    e = b[s];
-    id = (e >> 16) & 0xFF;
-    have = e & 0xFFFF;
-    if (!id || id >= 156 || s == (int)b[0] || (pc_inv_two(items, e) && !two)) return 0;
-    if ((items[id].type & 0x200) && count > 0 && count < have) {
-        b[s] = (e & 0xFFFF0000) | (have - count);
-        return (e & 0xFFFF0000) | count;
-    }
-    for (i = s; i < 1 + max; i++) b[i] = b[i + 1];   /* the words stay packed, as bhPlItemLost leaves them */
-    b[1 + max] = 0;
-    if (b[0] > (unsigned int)s) b[0]--;
-    return e;
 }

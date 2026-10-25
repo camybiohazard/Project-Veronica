@@ -44,7 +44,6 @@ struct Frame {
     uint64_t scene;                          /* pc_frame_view: stage, room, cut */
     float view[6];                           /* ... and the camera's eye and view direction */
     float cam[STREAM_CAM];                   /* ... and its matrix and projection (unmatched meshes move with it) */
-    float pt[3]; int pt_flags;               /* stream_point */
     int fade;                                /* pc_frame_fade: the picture shows through a screen fade */
     /* filled by the render thread when executed */
     Group* g; size_t ng, cg;
@@ -312,23 +311,12 @@ static void submit(int partial)
     prof_pop();
 }
 
-static float point[3];
-static int point_flags;
-void stream_point(float x, float y, float w, int flags)
-{
-    point[0] = x; point[1] = y; point[2] = w;
-    point_flags = flags;
-}
-
 void stream_submit(void)
 {
     extern int gs_take_view_change(void);
     extern void pc_view_changed(void);
     extern uint64_t pc_frame_view(float view[6], float cam[STREAM_CAM]);
     recording()->scene = pc_frame_view(rec->view, rec->cam);
-    memcpy(rec->pt, point, sizeof(point));
-    rec->pt_flags = point_flags;
-    point_flags = 0;
     ndef = ndefv = ndefr = 0;   /* deferred native strips are drawn within their frame */
     submit(0);
     SDL_AddAtomicInt(&game_frames, 1);
@@ -630,19 +618,6 @@ static long inst_pair(const Frame* p, const Inst* a, const Frame* c, const Inst*
     if (!native) return n * 2 >= total && near * 2 >= total && n ? (long)(sum / n) : -1;   /* GS path: half of all */
     if (!n) return 2 * JUMP;   /* no vertex in front of both cameras to judge it by: paired by its tags alone, last choice */
     return near * 2 >= n ? (long)(sum / n) : -1;
-}
-
-int stream_point_at(const Frame* prev, const Frame* cur, float t, float* x, float* y)
-{
-    const float *a = prev ? prev->pt : NULL, *b = cur->pt;
-    *x = b[0];
-    *y = b[1];
-    if (a && t < 1.0f && prev->pt_flags == STREAM_PT_FRONT && cur->pt_flags == STREAM_PT_FRONT && a[2] * b[2] > 0) {
-        float w = a[2] + (b[2] - a[2]) * t;   /* as the vertices: x*w, y*w and w blended */
-        *x = (a[0] * a[2] + (b[0] * b[2] - a[0] * a[2]) * t) / w;
-        *y = (a[1] * a[2] + (b[1] * b[2] - a[1] * a[2]) * t) / w;
-    }
-    return cur->pt_flags;
 }
 
 static int interp_stats(void)

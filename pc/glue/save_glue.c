@@ -18,8 +18,7 @@
 #include "../../decomp/include/ps2/veronica/prog/ps2_SystemSaveScreen.h"
 #include "../src/host/savestore.h"
 #include "../src/host/fileio.h"
-#include "../src/host/lobby.h"
-#include "../src/host/coop.h"
+#include "../src/host/saves.h"
 #include "../src/host/menu_mouse.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -125,7 +124,6 @@ int pc_save_card(MEMORYCARDSTATE* mc)
         if (num) {
             mc->ulState = 10;
             rows[i].FileNumber = num;
-            coop_save_written(num - 1);   /* the host's partner inventories go with the save (lobby.h slots) */
             host_log("saves: wrote save %03d%s\n", num, old ? " (overwritten)" : "");
         } else {
             mc->ulState = 0;

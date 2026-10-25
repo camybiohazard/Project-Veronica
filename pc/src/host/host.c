@@ -5,10 +5,8 @@
 #include "ps2_platform.h"
 #include "../gs/stream.h"
 #include "prof.h"
-#include "coop.h"
 #include "tps.h"
 #include "menu_mouse.h"
-#include "lobby.h"
 #include "bindings.h"
 #include "settings.h"
 void render_loop(void);
@@ -51,7 +49,8 @@ int pc_intro_pressed(int start)
 int pc_quick_knife_on(void) { return g_config.quick_knife; }
 int pc_head_blowoff_on(void) { return g_config.head_blowoff; }
 int pc_auto_stairs_on(void) { return g_config.auto_stairs; }
-int pc_cfg_no_ink_ribbon(void) { return g_config.no_ink_ribbon; }   /* in co-op the host's counts (coop_glue.c pc_no_ink_ribbon) */
+/* event.c bhPlItemCheck: typewriters save without an ink ribbon and use none */
+int pc_no_ink_ribbon(void) { return g_config.no_ink_ribbon; }
 /* the game tests a few joints of a model against the screen; with a wide or moving free
    camera that drops models that are partly visible, so third person never culls */
 extern int tps_cam_active;
@@ -98,7 +97,7 @@ float pc_overlay_x(float x)
     return overlay_stretch ? 320.0f + (x - 320.0f) * pc_hor_scale() : x;
 }
 
-HostConfig g_config = { .window_w = 1280, .window_h = 960, .borderless_extra = 1,.vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .frame_blend = 0, .aspect = 2, .show_fps = 1, .show_ping = 1,
+HostConfig g_config = { .window_w = 1280, .window_h = 960, .borderless_extra = 1,.vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .frame_blend = 0, .aspect = 2, .show_fps = 1,
                        .screen_filter = 1, .cinema_bars = 1, .screen_effects = 1, .native_3d = 1, .model_cull = 1, .native_tex = 1, .hd_textures = 1, .hd_textures_ui = 1, .quick_knife = 1, .head_blowoff = 1,
                        .skip_doors = 1, .fast_loading = 1, .auto_stairs = 1, .skip_intro = 1, .battle_unlocked = 1, .difficulty_select = 1, .contrast = 100, .gamma = 10, .fog_intensity = 100 };   /* first-start defaults; recvx.ini overrides */
 SDL_Window* g_window;
@@ -137,7 +136,6 @@ void host_pump_events(void)
             SDL_AddAtomicInt(&presses, 1);
         tps_input_event(&ev);
         menu_mouse_event(&ev);
-        lobby_io_event(&ev);
         switch (ev.type) {
         case SDL_EVENT_QUIT:
             exit(0);
@@ -151,7 +149,7 @@ void host_pump_events(void)
                 settings_apply_display();
                 settings_save_later();
             }
-            if (bind_hotkey(&ev, B_TPS_TOGGLE) && !g_lobby_io.text_on) {
+            if (bind_hotkey(&ev, B_TPS_TOGGLE)) {
                 g_tps.on = !g_tps.on;
                 settings_save_later();
             }
@@ -159,7 +157,6 @@ void host_pump_events(void)
         }
     }
     settings_poll();
-    lobby_io_frame(g_window);
 }
 
 #ifndef _WIN32
@@ -193,9 +190,6 @@ static void usage(void)
         "  --skip-intro       boot straight into the title menu (default on)\n"
         "  --hd-textures DIR  PCSX2 HD texture pack folder (default mods/textures)\n"
         "  --third-person     over-the-shoulder camera, mouse/keyboard controls (toggle: F5)\n"
-        "  --coop-host PORT   online co-op: wait for a partner on this UDP port (F3: co-op window)\n"
-        "  --coop-join HOST:PORT#CODE | ROOM  online co-op: join a host, or a room through the co-op server\n"
-        "  --coop-server ADDR   co-op server (host or host:port, UDP 7141)  --coop-conn auto|direct|server  --coop-pw PASSWORD\n"
         "  --quiet\n"
         "  --version          print the version and exit\n"
         "  --log[=file]       copy all output to a log file (default recvx.log), crash backtraces included\n"
@@ -252,11 +246,6 @@ static void parse_args(int argc, char** argv)
         else if (!strcmp(argv[i], "--hd-textures") && i + 1 < argc) { SDL_strlcpy(g_config.hd_textures_dir, argv[++i], sizeof(g_config.hd_textures_dir)); }
         else if (!strcmp(argv[i], "--third-person")) g_tps.on = 1;
         else if (!strcmp(argv[i], "--quiet")) g_config.log_level = 0;
-        else if (!strcmp(argv[i], "--coop-host") && i + 1 < argc) { g_coop.port = atoi(argv[++i]); g_coop.request = COOP_REQ_HOST; }
-        else if (!strcmp(argv[i], "--coop-join") && i + 1 < argc) { SDL_strlcpy(g_coop.join, argv[++i], sizeof(g_coop.join)); g_coop.request = COOP_REQ_JOIN; }
-        else if (!strcmp(argv[i], "--coop-server") && i + 1 < argc) SDL_strlcpy(g_coop.server, argv[++i], sizeof(g_coop.server));
-        else if (!strcmp(argv[i], "--coop-pw") && i + 1 < argc) SDL_strlcpy(g_coop.password, argv[++i], sizeof(g_coop.password));
-        else if (!strcmp(argv[i], "--coop-conn") && i + 1 < argc) { i++; g_coop.conn = !strcmp(argv[i], "direct") ? COOP_CONN_DIRECT : !strcmp(argv[i], "server") ? COOP_CONN_SERVER : COOP_CONN_AUTO; }
         else if (!strncmp(argv[i], "--log", 5) && (argv[i][5] == 0 || argv[i][5] == '='))
             SDL_strlcpy(log_path, argv[i][5] ? argv[i] + 6 : "recvx.log", sizeof(log_path));
         else if (!strncmp(argv[i], "--profile-samples=", 18)) SDL_setenv_unsafe("RECVX_PROFILE", argv[i] + 18, 1);

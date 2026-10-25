@@ -4,7 +4,6 @@
  */
 #include "../ps2_platform.h"
 #include "../host/tps.h"
-#include "../host/lobby.h"
 #include "../host/bindings.h"
 #include <SDL3/SDL.h>
 #include <string.h>
@@ -142,15 +141,12 @@ static void build_report(unsigned char* r)
 
     ensure_gamepad();
     k = bind_keys();
-    bind_combo_frame(input_enabled && !g_lobby_io.text_on, k, tps_mouse_buttons());   /* the reload combination first: it takes its presses from the rows */
+    bind_combo_frame(input_enabled, k, tps_mouse_buttons());   /* the reload combination first: it takes its presses from the rows */
     if (input_enabled) {
         int mouse = tps_mouse_buttons(), qt;
         /* keyboard and gamepad through the bindings (bindings.c; by default arrows = d-pad,
            Enter = Start, Backspace = Select, Z/X/A/S = Cross/Circle/Square/Triangle, Q/W = L1/R1,
-           1/2 = L2/R2, the gamepad as a DS2); the keyboard is none while the co-op lobby has a
-           text field open (it types there) */
-        static const bool none[SDL_SCANCODE_COUNT];
-        if (g_lobby_io.text_on) k = none;
+           1/2 = L2/R2, the gamepad as a DS2) */
         for (int i = 0; i < 16; i++)
             if (bind_held(i, BIND_KB, k, mouse) || (gamepad && bind_held(i, BIND_PAD, k, 0))) b |= 1u << i;
         qt = bind_quickturn(0, bind_held(B_QUICKTURN, BIND_KB, k, mouse) || (gamepad && bind_held(B_QUICKTURN, BIND_PAD, k, 0)));
@@ -193,7 +189,7 @@ static void build_report(unsigned char* r)
 int pad_quick_knife(void)
 {
     const bool* k = bind_keys();
-    if (!input_enabled || g_lobby_io.text_on) return 0;
+    if (!input_enabled) return 0;
     return bind_held(B_QUICKKNIFE, BIND_KB, k, tps_mouse_buttons()) ||
            (gamepad && (bind_held(B_QUICKKNIFE, BIND_PAD, k, 0) || bind_held(B_TPS_KNIFE, BIND_PAD, k, 0)));
 }
@@ -205,17 +201,9 @@ int pad_reload(void)
 {
     const bool* k = bind_keys();
     int m = tps_mouse_buttons();
-    if (!input_enabled || g_lobby_io.text_on) return 0;
+    if (!input_enabled) return 0;
     return bind_held(B_RELOAD, BIND_KB, k, m) || (g_tps.on && bind_held(B_TPS_RELOAD, BIND_KB, k, m)) ||
            (gamepad && (bind_held(B_RELOAD, BIND_PAD, k, 0) || bind_held(B_TPS_RELOAD, BIND_PAD, k, 0)));
-}
-
-/* co-op trade request (pc/glue/coop_glue.c), game thread: its row is held on the keyboard/mouse or the gamepad */
-int pad_trade_held(void)
-{
-    const bool* k = bind_keys();
-    if (!input_enabled || g_lobby_io.text_on) return 0;
-    return bind_held(B_TRADE, BIND_KB, k, tps_mouse_buttons()) || (gamepad && bind_held(B_TRADE, BIND_PAD, k, 0));
 }
 
 /* noclip cheat with free height (pc/glue/cheat_glue.c), game thread: +1 up, -1 down. Up: the

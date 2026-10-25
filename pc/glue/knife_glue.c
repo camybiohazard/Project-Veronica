@@ -2,8 +2,8 @@
    readied as if chosen in the inventory and aimed, so the fire button slashes; on release the
    weapon equipped before comes back once the knife is lowered again. Everything goes through
    the inventory's own WeaponSet (equipped slot sys->itm[ply*16], weapon number, the weapon
-   file load, motions), so ammo, aiming, firing, the third-person pose and the co-op pose of
-   the knife are the game's. Game thread: knife_pad from bhSetPad (pad.c), after tps_pad. */
+   file load, motions), so ammo, aiming, firing, and the third-person pose of the knife
+   are the game's. Game thread: knife_pad from bhSetPad (pad.c), after tps_pad. */
 #include "../../decomp/include/ps2/veronica/prog/types.h"
 #include "../../decomp/include/ps2/veronica/prog/main.h"
 #include "../../decomp/include/ps2/veronica/prog/sub1.h"

@@ -10,6 +10,7 @@
 int g_appear_anim = 1;
 int g_appear_face = 0;
 int g_appear_cutscene = 1;
+int g_appear_chr;
 
 const ActorModel actor_models[] = {
     /* the story cast, moved by the player's motions (a man's or a woman's, section 8) */
@@ -98,9 +99,9 @@ int appear_part_anim(int file) { return file == 0 || file == 4 ? ANIM_FEMALE : A
    creatures that play their own idle motion keep the played character's (docs/ACTORS.md "Voices"). */
 int appear_voice(int chr)
 {
-    static const signed char files[COOP_CHR_ACTOR] = { -1, 0, 1, 2, 3, 0 };
-    int m = chr - COOP_CHR_ACTOR;
-    if (chr < 0 || chr > COOP_CHR_MAX) return -1;
+    static const signed char files[APPEAR_CHR_ACTOR] = { -1, 0, 1, 2, 3, 0 };
+    int m = chr - APPEAR_CHR_ACTOR;
+    if (chr < 0 || chr > APPEAR_CHR_MAX) return -1;
     if (m < 0) return files[chr];
     if (m >= 3 && m <= 4) return 2;   /* Steve's doubles */
     if (m >= 5 && m <= 7) return 3;   /* Wesker's */
@@ -136,7 +137,7 @@ int appear_grab_motion(int id, int mtn, int from, int to)
 /* ---------------------------------------------------------------- "You appear as" list
    Left out of the menus (docs/ACTORS.md "The list"): event doubles that look like an entry
    that stays. Their chr values keep working; each maps to the one kept. */
-#define M(n) (COOP_CHR_ACTOR + (n))   /* chr of catalogue entry n */
+#define M(n) (APPEAR_CHR_ACTOR + (n))   /* chr of catalogue entry n */
 static const struct { short hidden, kept; } twins[] = {
     { M(2), 2 }, { M(4), 3 },            /* Chris's and Steve's event models */
     { M(6), 4 }, { M(7), 4 },            /* Wesker's (the doubles wear the glasses as a separate prop) */
@@ -151,7 +152,7 @@ static const short tail[] = { M(0), M(1), M(3), M(5) };
 
 int appear_canon(int chr)
 {
-    if (chr < 0 || chr > COOP_CHR_MAX) return 0;
+    if (chr < 0 || chr > APPEAR_CHR_MAX) return 0;
     for (int i = 0; i < (int)(sizeof(twins) / sizeof(twins[0])); i++)
         if (chr == twins[i].hidden) return twins[i].kept;
     return chr;
@@ -168,13 +169,13 @@ static int head(int c) { return appear_canon(c) == c && tail_at(c) < 0; }   /* l
 int appear_count(void)
 {
     int n = 0;
-    for (int c = 0; c <= COOP_CHR_MAX; c++) n += appear_canon(c) == c;
+    for (int c = 0; c <= APPEAR_CHR_MAX; c++) n += appear_canon(c) == c;
     return n;
 }
 
 int appear_at(int i)
 {
-    for (int c = 0; c <= COOP_CHR_MAX; c++)
+    for (int c = 0; c <= APPEAR_CHR_MAX; c++)
         if (head(c) && i-- == 0) return c;
     return i >= 0 && i < TAILS ? tail[i] : 0;
 }
@@ -182,7 +183,7 @@ int appear_at(int i)
 int appear_pos(int chr)
 {
     int n = 0, t = tail_at(chr = appear_canon(chr));
-    for (int c = 0; c < (t >= 0 ? COOP_CHR_MAX + 1 : chr); c++) n += head(c);
+    for (int c = 0; c < (t >= 0 ? APPEAR_CHR_MAX + 1 : chr); c++) n += head(c);
     return n + (t >= 0 ? t : 0);
 }
 
@@ -194,6 +195,6 @@ int appear_step(int chr, int dir)
 
 const char* appear_name(int chr)
 {
-    static const char* files[COOP_CHR_ACTOR] = { "As played", "Claire", "Chris", "Steve", "Wesker", "Claire (2nd costume)" };
-    return chr >= 0 && chr < COOP_CHR_ACTOR ? files[chr] : chr <= COOP_CHR_MAX ? actor_models[chr - COOP_CHR_ACTOR].name : "?";
+    static const char* files[APPEAR_CHR_ACTOR] = { "As played", "Claire", "Chris", "Steve", "Wesker", "Claire (2nd costume)" };
+    return chr >= 0 && chr < APPEAR_CHR_ACTOR ? files[chr] : chr <= APPEAR_CHR_MAX ? actor_models[chr - APPEAR_CHR_ACTOR].name : "?";
 }

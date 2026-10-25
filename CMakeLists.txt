@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(recvx_pc VERSION 0.6.8 LANGUAGES C CXX)   # the release version (pc/server reads it from here too)
+project(recvx_pc VERSION 0.6.8 LANGUAGES C CXX)   # the release version
 include(cmake/version.cmake)
 
 # The decomp's data files and code assume the EE's 32-bit pointers. Phase 1

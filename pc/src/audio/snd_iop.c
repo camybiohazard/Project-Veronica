@@ -212,7 +212,7 @@ int iop_rpc_dispatch(u_int server, u_int fno, void* send, int ssize, void* recei
    name the bank in the port byte. On the PS2 the room's banks fill the SPU2's 2 MB; here banks are
    heap blobs, so the limit is the 5 bits of the port byte: 31 banks, released with the room.
    A key 0xFFF0 + n is the player voice bank CORE_00n.SPQ (bank 4, RequestPlayerVoiceSoundBank's
-   key): the voice of a character the player appears as (coop_glue.c pc_player_voice). */
+   key): the voice of a character the player appears as (appear_glue.c pc_player_voice). */
 static int xb_key[31], xb_n;
 
 static uint8_t* disc_part(const char* name, uint32_t ofs, uint32_t size, uint32_t* fsize)

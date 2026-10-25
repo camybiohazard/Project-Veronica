@@ -1,4 +1,4 @@
-# Builds Linux (i686), Windows (i686, mingw-w64 cross build) and the co-op server, runs the tests,
+# Builds Linux (i686) and Windows (i686, mingw-w64 cross build), runs the tests,
 # packages the release archives (pc/tools/package.sh) and, for a v* tag, publishes a GitHub release.
 name: build
 
@@ -41,7 +41,7 @@ jobs:
           # the headers and sonames of the backends (X11, Wayland, ALSA, PipeWire, ...); libpulse-dev:i386
           # is left out: it pulls libglib2.0-dev:i386, which conflicts with the runner's amd64 GLib tools
           # (PulseAudio systems still play through ALSA's pulse plugin)
-          sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib ninja-build ccache nftables \
+          sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib ninja-build ccache \
             libx11-dev:i386 libxext-dev:i386 libxcursor-dev:i386 libxi-dev:i386 libxfixes-dev:i386 \
             libxrandr-dev:i386 libxss-dev:i386 libxtst-dev:i386 libxkbcommon-dev:i386 \
             libwayland-dev:i386 libdecor-0-dev:i386 libgl-dev:i386 libegl-dev:i386 \
@@ -66,8 +66,8 @@ jobs:
           echo "newest glibc symbol: $max"
           [ "$(printf '%s\n' "$max" GLIBC_2.34 | sort -V | tail -n 1)" = GLIBC_2.34 ]
       - name: Test
-        # tests needing the disc image skip themselves; rdv_paths/rdv_nat run in the server job
-        run: ctest --test-dir build --output-on-failure -j4 -E 'rdv_paths|rdv_nat'
+        # tests needing the disc image skip themselves
+        run: ctest --test-dir build --output-on-failure -j4
       - name: Package
         run: pc/tools/package.sh dist --linux build
       - uses: actions/upload-artifact@v7
@@ -115,32 +115,9 @@ jobs:
           path: dist/*.zip
           if-no-files-found: error
 
-  server:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7   # pc/server builds without the decomp
-      - name: Install dependencies
-        timeout-minutes: 10   # a hung apt mirror fails the job instead of blocking it for hours
-        run: sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update && sudo apt-get install -y --no-install-recommends nftables
-      - name: Build
-        run: |
-          cmake -S pc/server -B build-server -DCMAKE_BUILD_TYPE=Release
-          cmake --build build-server
-          build-server/recvx-server --version
-      - name: Test
-        # rdv_paths: a local server and two clients; rdv_nat: NAT types in user namespaces (skips itself where not allowed)
-        run: ctest --test-dir build-server --output-on-failure
-      - name: Package
-        run: pc/tools/package.sh dist --server build-server
-      - uses: actions/upload-artifact@v7
-        with:
-          name: server
-          path: dist/*.tar.gz
-          if-no-files-found: error
-
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux-i686, windows-x86, server]
+    needs: [linux-i686, windows-x86]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

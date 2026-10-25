@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import rdx  # noqa: E402
 
 OP = {n: i for i, n in enumerate(rdx.OP_NAMES) if n != 'dm0'}
-# tests: they continue or skip the block (as coop_glue.c is_cond)
+# tests: they continue or skip the block (as pc/src/host/script.c script_op_cond)
 COND = {4, 6, 7, 16, 17, 27, 30, 33, 38, 56, 77, 93, 96, 98, 114, 129, 138, 140, 142, 155, 172, 177, 190}
 # ops whose byte 1 is an enemy record (event.c handlers: rom->enep[b1])
 REC_B1 = {'DieCk', 'EneSetCk', 'InitMotionPause', 'InitMotionPauseEx', 'ObjLinkSetEneItem', 'MotionPosSetEnePly',
