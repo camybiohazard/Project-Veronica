@@ -4,7 +4,7 @@ How players and enemies are loaded, spawned, animated and drawn, and how the por
 model as the player ("You appear as"). Paths are relative to `decomp/src/ps2/veronica/prog/`
 unless noted; types are in `decomp/include/ps2/veronica/prog/types.h`. Related:
 [ENEMIES.md](ENEMIES.md) (room enemies, budgets, F2 spawner, enemy options),
-[COOP.md](COOP.md), [THIRDPERSON.md](THIRDPERSON.md),
+[THIRDPERSON.md](THIRDPERSON.md),
 [modding/ROOM_FORMAT.md](modding/ROOM_FORMAT.md).
 
 ## Summary
@@ -66,8 +66,8 @@ expanded room file is 8.9 MB.
 
 * `ps2_texture.c bhSetMemPvpTexture(texlist, data, offset)` walks `PLI`/`TIM2` chunks and calls
   `njLoadTexture` per texture. Entries are keyed by the TIM2 global index (`Gindex`) + CLUT bank:
-  the same `Gindex` loaded twice is shared and refcounted, which is why two instances of a type,
-  or Claire and Chris in co-op, coexist.
+  the same `Gindex` loaded twice is shared and refcounted, which is why two instances of a type
+  coexist.
 * `Ps2TextureMalloc` copies the TIM2 into the texture heap (`Ps2_tex_buff`), so source buffers may
   be freed after upload. Table `main.c tbuf`. A full table or heap calls `exit(0)`. PS2: 10 MB,
   256 entries; PC: 64 MB, 1024 entries (`PC_TEX_HEAP_SIZE`, `PC_TEX_ENTRIES`).
@@ -243,7 +243,7 @@ parent's set.
 
 | Option | Result |
 |---|---|
-| A. Another character's part file as mesh, own motions kept | works for any combination of the five player files; what co-op and "You appear as" use for player files (`coop_glue.c self_load`) |
+| A. Another character's part file as mesh, own motions kept | works for any combination of the five player files; what "You appear as" uses for player files (`appear_glue.c self_load`) |
 | B. Load another character's file while `ply_id` stays | that character's mesh **and** motions, the played character's logic and weapon files |
 | C. Change `sys->ply_id` | full character switch (as `bhPlayerChangeSet`); Wesker (3) overruns 3-row enemy grab tables (`en02/en07/en13/en23 mtn[3][..]`) |
 | D. Enemy/NPC mesh as player | "You appear as" (display actor, below) |
@@ -251,12 +251,11 @@ parent's set.
 
 ### Option A
 
-`coop_glue.c self_load` (our player with a player file as "You appear as"; `p2_other_mesh` for the
-co-op partner):
+`appear_glue.c self_load` (our player with a player file as "You appear as"):
 
 1. Save the original's `mdl[]`, `skp[]`, `mbp[]`, `txp[]`; clear `plp->skp[]` (the loader would
    apply stale skin pointers).
-2. Read the part file and run the game's loader (`read_player` -> `player_model_read`, the
+2. Read the part file and run the game's loader (`player_model_read`, the
    `bhReadPlayerData` layout) with the model going into a buffer of its own (`self_mdl`, 128 KB)
    and the motions into a sink; restore `plp->mnwP`/`mnwPb`, so the original motions (incl. 100+)
    stay. The original model data in `sys->plmdlp` and its textures stay loaded.
@@ -266,9 +265,9 @@ co-op partner):
 
 * When the game reloads the player (game start, load, continue, story switch) the mesh is applied
   again at the next frame in control. The original is put back before the game lets go of the
-  player: when a game ends (`coop_textures_released`) and before a character switch (the story's,
+  player: when a game ends (`appear_textures_released`) and before a character switch (the story's,
   each Battle Game room) releases the player's textures (`system.c bhSysCallMonitor`,
-  `coop_player_unload`). The game then releases the original's textures and we the mesh's; the
+  `appear_player_unload`). The game then releases the original's textures and we the mesh's; the
   original's texture lists are gone after that (the new load overwrites them).
 * Keeping `sys->ply_id` keeps everything else: `PlyInfo` size, weapons (they sit in the new hand
   node 9), inventory, enemy grab motions, room event motions. The voice follows the model shown
@@ -276,7 +275,7 @@ co-op partner):
 * The loader never clears `mdl[]` entries beyond the new `mdl_n`; stale entries must not be used.
 * Cutscenes: op 52 `ObjLinkSetPly` re-attaches `sys->obwp[2]` at Claire's ponytail offset for
   every character, and 8 room motions (rooms 9090, 9370) carry position keys below the root.
-  `coop_glue.c self_keep` puts the head part's own link fields and the mesh's own node offsets
+  `appear_glue.c self_keep` puts the head part's own link fields and the mesh's own node offsets
   1..21 back every tick.
 * Changing the mesh in game: `bhFixPosition` (motions that plant a foot) moves the player by the
   difference between last tick's toe matrix and the new pose's; `self_carry_pose` gives the new
@@ -285,7 +284,7 @@ co-op partner):
 
 ## Enemies
 
-Room records, spawning, budgets and co-op: [ENEMIES.md](ENEMIES.md).
+Room records, spawning and budgets: [ENEMIES.md](ENEMIES.md).
 
 ### Data flow
 
@@ -347,10 +346,10 @@ loader ([ENEMIES.md](ENEMIES.md) "Enemy spawner (F2)").
 
 ## You appear as
 
-"You appear as" (F3 window, the lobby's MODEL row, F1 and ENHANCED SETTINGS -> APPEARANCE; ini `coop_char`) shows
+"You appear as" (F1 and ENHANCED SETTINGS -> APPEARANCE; ini `appear_char`) shows
 our player as one of the player files or one of 62 models found in the room files: the story
-cast, the creatures, the zombie variants (`pc/src/host/actors.c`). It applies in single player and
-co-op (the partner sees it too) and in cutscenes to the event double of the character played
+cast, the creatures, the zombie variants (`pc/src/host/actors.c`). It applies in play and
+in cutscenes to the event double of the character played
 (unless "Swapped model in cutscenes" is off, see "Cutscene doubles").
 
 ### The list
@@ -358,8 +357,8 @@ co-op (the partner sees it too) and in cutscenes to the event double of the char
 The menus list one entry per distinct look: "As played", the five player files, 50 catalogue
 models and, last, the player characters' four cutscene models (60 entries instead of 68). They share
 `actors.c` `appear_count`, `appear_at`, `appear_pos`, `appear_step`, `appear_name`, `appear_canon`;
-the list is filtered and ordered for display only, so catalogue indices, `g_coop.chr`, `Pose.chr`
-and the cutscene doubles are unaffected (no protocol change). A hidden value in `recvx.ini` is
+the list is filtered and ordered for display only, so catalogue indices, `g_appear_chr`
+and the cutscene doubles are unaffected. A hidden value in `recvx.ini` is
 mapped to its listed twin when the file is read. Test: ctest `appear` (`pc/tests/test_appear.c`).
 
 Left out of the menus (`twins[]`):
@@ -385,8 +384,8 @@ twins of the player files; their stored values stayed valid.
 ### Head parts
 
 Claire's cutscene model is shown with her ponytail, Wesker's (and his hidden event models) with his
-sunglasses, wherever a display actor shows them: our player, the co-op partner, the
-cutscene double ("Swapped model in cutscenes" on) and the lobby previews (`actor_glue.c load_head`,
+sunglasses, wherever a display actor shows them: our player and the
+cutscene double ("Swapped model in cutscenes" on) (`actor_glue.c load_head`,
 `head_pose`, `head_draw`).
 
 * **Source**: sub-model 4 of the character's part file (`lkmtab`: 1211 the ponytail, 1212 the
@@ -400,7 +399,7 @@ cutscene double ("Swapped model in cutscenes" on) and the lobby previews (`actor
   `O_WRK` of the display slot, linked to the display actor's work (all four cast models have their
   head at node 5, which `bhObjClpn` reads). Per pose its position follows the model's head; the
   ponytail runs the game's own simulation (`bhObjClpn`, `bhCalcHair`: the same joints, from the
-  display actor's retargeted angles) once per tick (our player and the partner: the pose after
+  display actor's retargeted angles) once per tick (our player: the pose after
   control; the double: `actor_double_tick`; of two doubles shown the first steps it, the other
   shows the same swing), in work of its own (`exp0`/`exp3`, 20 KB per slot,
   flag `0x100000`), so it never takes `bhGetFreeMemory` (the earlier crash: memory under a pending
@@ -440,10 +439,10 @@ Models not in the catalogue:
   part files use `bhReadPlayerData`'s layout (one loader: `afs_read`, `player_model_read`,
   `player_hair`). Released when the model changes; refused (the character's own model stays) with
   fewer than 32 texture entries or 2 MB of heap left.
-* **Display actor**: a `BH_PWORK` per slot (our player, the co-op partner, the cutscene double, and
+* **Display actor**: a `BH_PWORK` per slot (our player, the cutscene double, and
   two for enemy variants' models: [ENEMIES.md](ENEMIES.md) "Enemy variants", posed from each such
   enemy's skeleton, or from another enemy's (a donor) playing a borrowed motion, when it is drawn),
-  drawn in place of the source (`game.c actor_put_player`, `coop_draw_remote`,
+  drawn in place of the source (`game.c actor_put_player`,
   `eneset.c actor_put_enemy`). The source stays what the game animates, collides with and links
   weapons and effects to; it is only not drawn. The head part (`sys->obwp[2]`) is disabled while a
   catalogue model is shown.
@@ -464,15 +463,10 @@ Models not in the catalogue:
   to its local rotation (world x parent world^T, decomposed as `njRotateXYZ` builds it).
 * **Other models**: their own idle motion (motion 0) looped, gliding with the player (bat, moth,
   spiders, Cerberus, albinoids, fish, Spotter, ant).
-* **Without co-op**: `game.c` calls `coop_control_remote` while `appear_on` (an appearance other
-  than the character played is chosen or still shown); with "As played" nothing runs.
-* **Lobby preview**: `actor_set`, `actor_pose`, `actor_draw` work outside a room. The
-  hands are the unarmed pieces (weapon file `chr * 30 + 20`, `player_weapon_read`) on nodes 9/13 of
-  the preview's player model, as `sys->obwp[0..1]`; the character is `appear_voice` (the cast its
-  own, other men Chris, women Claire; else the file shown). On a display actor they are drawn only
-  where `actor_hand_free`: the hand is mapped and the model has no mesh there of its own (no geometry
-  and no skinned vertices on that node: the story cast; zombies and creatures have theirs).
-* **Game over**: `njReleaseTextureAll` unloads the display actors; `coop_textures_released`
+* **When it runs**: `game.c` calls `appear_control` (`pc/glue/appear_glue.c`) while `appear_on`
+  (an appearance other than the character played is chosen or still shown); with "As played"
+  nothing runs.
+* **Game over**: `njReleaseTextureAll` unloads the display actors; `appear_textures_released`
   clears the "player in control" state, so the appearance returns only once the player is back.
 
 ### Gender-matched animations
@@ -490,7 +484,7 @@ their file, `appear_part_anim`):
 | `ANIM_FEMALE` | Claire (player files, cutscene model), Alexia Ashford, Alexia's first form |
 | `ANIM_IDLE` (own idle) | Cerberus, albinoids, Black Widows, moth, bat, fish, Spotter, ant |
 
-* **Motion source** (`actor_glue.c`): per display slot (0 our player, 1 the partner) a hidden copy
+* **Motion source** (`actor_glue.c`): for display slot 0 (our player) a hidden copy
   of the source's 22-node skeleton with its own motion set: part file `10 + chr` and weapon file
   `wpn + chr * 30 + 20` (only the weapon file is re-read on a weapon change), 500 KB per slot.
   Every tick after the source's motion the copy plays the same motion number at the source's
@@ -510,13 +504,10 @@ their file, `appear_part_anim`):
   The recorded frame counts only while the motion and set are still the ones recorded
   (`pc_plp_mtn`, `pc_plp_set`): enemy code runs after the player and may start another motion (a
   grab, Alexia's burn), whose own `frm_no` and blend are then taken, never the old motion's frame.
-  Co-op sends the same frame (`Pose.frm_no`), so the partner sees each player's own frames (before,
-  every player's one-shot motions flashed their first frame at the end on the partner's screen).
 * **Display**: a catalogue model is retargeted from the copy; a player-file mesh is drawn with the
   copy's matrices and angles (`actor_put_body`), and the source's nodes 5, 9, 13 get the copy's
-  matrices before the objects follow, so head part and weapons sit where they are drawn. The
-  co-op partner (`ply2`) works the same from its model and motion file (`rx.mfile`).
-* Not covered: the lobby preview and cutscene doubles keep their source's motions; positions stay
+  matrices before the objects follow, so head part and weapons sit where they are drawn.
+* Not covered: cutscene doubles keep their source's motions; positions stay
   the real player's; a switch between the matched set and a fallback does not blend.
 
 ### Retargeting
@@ -585,8 +576,7 @@ weapon of a hand the model lacks floated at the invisible source's hand.
   [THIRDPERSON.md](THIRDPERSON.md) "Free-aim pose".
 * **Lighter**: the game holds the lighter by an arm IK after the motion (`bhArmIkMdk` on node 6
   towards a point in front of chest node 4, nodes 7..9 flagged 2). The same IK runs on the
-  gender-matched copy whenever the source's arm is flagged (our player, and the partner via
-  `lighter_arm`).
+  gender-matched copy whenever the source's arm is flagged.
 * Known: the Tyrant's weapon is lost inside its big claw hand (it sits at the wrist node); in
   Chris's two-handed stance the left palm lies under the gun on every male model (the motion's
   own grip).
@@ -608,7 +598,7 @@ weapon of a hand the model lacks floated at the invisible source's hand.
   linked head part.
 * **Hands are objects**: the cast's cutscene models have no hands; the room script links hand
   pieces (fist, open hand, holding poses) and props to the double's hand nodes and swaps them per
-  gesture. `actor_double_tick` (from `coop_control_remote`, after `bhControlEnemy`, before
+  gesture. `actor_double_tick` (from `appear_control`, after `bhControlEnemy`, before
   `bhControlObjItm`) poses the double's model and moves the double's hand nodes to the model's
   hand positions, so pieces and props sit on the model's wrists. The pieces stay the double's
   (Claire's gloved hands on Steve). Two doubles of the played character are each drawn in their
@@ -633,7 +623,7 @@ weapon of a hand the model lacks floated at the invisible source's hand.
     `actor_double_tick` leave the doubles alone (no hand or face work at all).
   * The head part: the scripts link the player's `sys->obwp[2]` (Claire's ponytail) to the double
     (`ObjLinkSet`), and the appearance had disabled it (catalogue model) or replaced it (player
-    file). `coop_glue.c self_cine_hair`, every tick before the objects follow their links, sets
+    file). `appear_glue.c self_cine_hair`, every tick before the objects follow their links, sets
     up the played character's own head part (from `self_orig` under a player file) when a double
     starts acting and the chosen model's again when none does; the script's link (work, node, x
     offset) is kept. The ponytail's work is the player's (`pletcp`, as `bhObjClpn` takes it when
@@ -641,9 +631,6 @@ weapon of a hand the model lacks floated at the invisible source's hand.
     pending disc read (weapon change). Its swing restarts at the cutscene's start.
   * Voices: `pc_player_voice` keeps the played character's voice while a double acts. Cutscene
     dialogue is streamed and never swapped.
-  * Co-op: each game decides for its own screen (the doubles are local; the partner is not drawn
-    during a cutscene of ours, `local_visible`), so each player chooses what they see; a replayed
-    cutscene follows the replaying player's setting.
 
 ### Voices
 
@@ -674,21 +661,14 @@ Creatures keep a human voice: enemy sounds are motion- and table-driven per type
 collide between types ([ENEMIES.md](ENEMIES.md) "Sounds of added types"), none is labelled hurt or
 death, and they play through the enemy sound slots.
 
-**How.** `CallPlayerVoice` (TARGET_PC) asks `coop_glue.c pc_player_voice(se)`. For the played
+**How.** `CallPlayerVoice` (TARGET_PC) asks `appear_glue.c pc_player_voice(se)`. For the played
 character's voice it returns 0 and the request is the game's own. Otherwise it loads that
 `CORE_00n.SPQ` bank 4 as an extra bank (`snd_iop.c snd_xbank_load(0xFFF0 + n)`, the loader of the
 spawner's enemy banks) and names it in the port byte (`pc_se_xbank`, bits 3..7), so the synth
 plays it on the same port, slot, volume and pan. The game's bank 4 is never touched. The extra
 bank is released with the room (`spawn_room_setup`) and loaded again at the next voice.
 
-**Co-op.** Each side counts its own player's voices into the pose (`Pose.voice_n`, `voice` = the
-program); the partner plays each new one at the partner's position in the voice of the model the
-partner appears as (`Pose.chr`, else its character `Pose.mfile & 3`). Voices after a gap of 10 or
-more frames are skipped. While a host enemy's step targets the partner (`plp` is `ply2`) its voice
-calls play nothing; the partner's game sends the voice it makes.
-
-**Memory.** A voice bank is 0.7 KB header + 38..54 KB samples, at most two at a time (ours and the
-partner's), taken from the same 31 extra-bank numbers as the spawner's enemy banks.
+**Memory.** A voice bank is 0.7 KB header + 38..54 KB samples, one at a time, taken from the same 31 extra-bank numbers as the spawner's enemy banks.
 
 ### Limits
 
@@ -703,8 +683,7 @@ partner's), taken from the same 31 extra-bank numbers as the spawner's enemy ban
 * Lip sync only for cast models and with the option; the double's hand pieces are its own.
 * A room with little texture memory left refuses the model (logged as `actor: ... not enough
   texture memory`). Wrong colours are possible where a model's CLUT bank collides with the room's.
-* Test aids: `RECVX_APPEAR="frame:chr,..."` sets the appearance at a frame;
-  `RECVX_COOP_ECHO` runs the partner path locally.
+* Test aid: `RECVX_APPEAR="frame:chr,..."` sets the appearance at a frame.
 
 ## Limits
 

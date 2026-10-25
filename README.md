@@ -16,7 +16,7 @@ original game code and its PS2 platform layer are compiled for the PC; the PS2 h
 underneath (GS, VU, DMA, sound driver, disc, memory card, pad) is emulated at its boundaries, and
 native paths replace the expensive parts. The game reads your own disc image in place.
 
-[![Resident Evil Code: Veronica X (PS2) | PC recompilation with online co-op and Third-Person](https://img.youtube.com/vi/0sW1BHgIMXs/maxresdefault.jpg)](https://www.youtube.com/watch?v=0sW1BHgIMXs)
+[![Resident Evil Code: Veronica X (PS2) | PC recompilation with Third-Person](https://img.youtube.com/vi/0sW1BHgIMXs/maxresdefault.jpg)](https://www.youtube.com/watch?v=0sW1BHgIMXs)
 
 *Click the image to watch the video on YouTube.*
 
@@ -25,9 +25,6 @@ native paths replace the expensive parts. The game reads your own disc image in 
 - **Enhanced renderer**: native 3D and textures on the GPU, widescreen (hor+, up to ultrawide),
   internal resolution up to 8x, in-between frames up to the display's refresh rate while the game
   logic stays at its original 30 FPS, a frame rate limit, optional PS2 motion trail.
-- **Online co-op for two players**: direct, automatic or server-relayed connections, a lobby in
-  the title menu, join codes and passwords, trading with item requests, shared or individual loot,
-  saved partner inventories, rejoin after a crash. Includes a small C rendezvous/relay server.
 - **Third-person mode** (optional): over-the-shoulder camera with mouse/keyboard controls, free
   aim and two camera styles.
 - **Modern controls** (optional) for the fixed cameras: the stick walks where it points on screen,
@@ -39,8 +36,8 @@ native paths replace the expensive parts. The game reads your own disc image in 
 - **Save files**: every save its own file, as many as you like, in the game's own save screens
   without the memory card screens (the emulated memory card stays available).
 - **Enhanced settings** in the game's own OPTION menu and an F1 overlay; full rebinding of keyboard,
-  mouse and gamepad; per-window input source for local co-op on one PC.
-- **Cheats and debug tools** (F2), co-op window (F3).
+  mouse and gamepad; per-window input source.
+- **Cheats and debug tools** (F2).
 - **HD texture packs**: PCSX2 HD texture packs for the game load as they come, from
   `mods/textures/` (see [HD texture packs](#hd-texture-packs)).
 - **Mods**: replacement room files and archive entries from a `mods/` folder, plus tools to build
@@ -57,7 +54,7 @@ native paths replace the expensive parts. The game reads your own disc image in 
 
 ## Download
 
-Prebuilt Linux and Windows builds and the co-op server are on the
+Prebuilt Linux and Windows builds are on the
 [Releases](https://github.com/aikatore/recvx-enhanced-port/releases) page (no game data
 included). Unpack and run `recvx.exe` (Windows) or `./recvx` (Linux); see
 [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
@@ -104,8 +101,6 @@ with mingw-w64: see [docs/BUILDING.md](docs/BUILDING.md).
 | Document | For |
 |---|---|
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | players: first start, settings, controls, cheats, saves, troubleshooting |
-| [docs/COOP.md](docs/COOP.md) | players and developers: online and local co-op, protocol reference |
-| [docs/SERVER.md](docs/SERVER.md) | running the co-op rendezvous/relay server |
 | [docs/BUILDING.md](docs/BUILDING.md) | building on Linux and for Windows, CMake options, tests |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | developers: how the port works, renderer, determinism, test aids |
 | [docs/THIRDPERSON.md](docs/THIRDPERSON.md) | third-person mode internals |
@@ -121,9 +116,7 @@ with mingw-w64: see [docs/BUILDING.md](docs/BUILDING.md).
 - **[recvx-decomp](https://github.com/AshfordFamily/recvx-decomp)** by AshfordFamily and its
   contributors: the decompilation this port is built on (MIT).
 - Libraries: [SDL 3](https://github.com/libsdl-org/SDL) (zlib),
-  [Dear ImGui](https://github.com/ocornut/imgui) (MIT),
-  [miniupnpc and libnatpmp](https://github.com/miniupnp) (BSD-3-Clause),
-  [Monocypher](https://github.com/LoupVaillant/Monocypher) (BSD-2-Clause or CC0). Versions and
+  [Dear ImGui](https://github.com/ocornut/imgui) (MIT). Versions and
   details: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License

@@ -42,7 +42,7 @@ UVs, so the replacement covers the same 0..1 space at its own resolution.
 A key match only says the pack was made from the same texture data, not that the replacement shows
 the same picture. Packs made on a translated disc or with a redesigned UI replace menu, inventory
 and title textures with other layouts and text, and the port builds its own entries
-(MULTIPLAYER, ENHANCED SETTINGS, RETURN TO TITLE) from sub-rectangles of the original menu
+(ENHANCED SETTINGS, RETURN TO TITLE) from sub-rectangles of the original menu
 textures. So the first time a replacement is loaded it is compared with the original texels
 (taken from GS memory and the CLUT at the lookup) on a grid of at most 32 x 32 of them: each
 against the replacement's texels over its area (box filter, colour weighted by alpha), decoding
@@ -74,7 +74,7 @@ Native texture definitions carry tags set by the game thread when the TIM2 is up
   descriptions), while `sys->ss_flg & 0x40` says they are loaded. Replaced only with
   `hd_textures_font`.
 - **keep**: the textures the port cuts its own menu entries from (`pc_tex_keep_original` in
-  `lobby_glue.c` and `options_glue.c`). Even with `hd_textures_ui` they get only replacements
+  `options_glue.c`). Even with `hd_textures_ui` they get only replacements
   that show the original.
 
 A tag that changes makes a new definition. Textures resolved from GS memory (native textures off)

@@ -274,8 +274,7 @@ Odd types are ignored by actors with `flg & 0x400`. `attr`: 0x1 = only on its ow
   + h`), the surface nearest to the current y: `py + h * s`, `s` = `u/w` (id 0), `1 - v/d` (1),
   `v/d` (2), `1 - u/w` (3), `u = x - px`, `v = z - pz`. y is set to it (no drift) and the floor
   number to `bhCheckFloorNum(y)`. Outside every slope the level rule applies. Entry positions
-  inside a slope land on its surface; the camera tracks `plp->py`; the co-op partner's floor is
-  taken from its y. Authoring rules: [BUILDING_ROOMS.md "Slopes"](BUILDING_ROOMS.md#slopes).
+  inside a slope land on its surface; the camera tracks `plp->py`. Authoring rules: [BUILDING_ROOMS.md "Slopes"](BUILDING_ROOMS.md#slopes).
 
 ### Triggers
 
@@ -443,12 +442,11 @@ in the window.
 
 ### Records
 
-Counts are `int`, but byte-wide indices elsewhere (scripts, record fields, `SYS_WORK`, co-op
-packets) make these file and save limits that the PC does not raise:
+Counts are `int`, but byte-wide indices elsewhere (scripts, record fields, `SYS_WORK`) make these file and save limits that the PC does not raise:
 
 | Records | Limit | Why |
 |---|---|---|
-| Walls | 32767; 0..255 addressable by scripts | `psh_idx` is a short; `WalAtariSet(2)` take a byte; co-op syncs walls/triggers/floors 0..255 |
+| Walls | 32767; 0..255 addressable by scripts | `psh_idx` is a short; `WalAtariSet(2)` take a byte |
 | Triggers, floors | 256 | `etc_idx`/`flr_idx` compared with a byte in scripts |
 | Cameras | 255 (127 if listed in `hide[4]`); 255 areas per cut | byte operands, `ctab_n` u8 |
 | Entry positions | 128 | `sys->pos_no` is a signed char |
@@ -466,7 +464,7 @@ packets) make these file and save limits that the PC does not raise:
 The arena, not the format, limits a room (about 44 MB expanded with 20 MB packed). Nodes are
 culled by bounding sphere and strips against the clip volume; the cost is per drawn vertex and
 strip. Keep nodes spatially compact (cells of ~100-200 units) with hideable parts below index
-512, and keep walls that scripts or co-op change below 256. A 130k-triangle room runs at the
+512, and keep walls that scripts change below 256. A 130k-triangle room runs at the
 30 Hz cap.
 
 ## Coordinates

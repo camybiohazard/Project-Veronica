@@ -9,7 +9,7 @@ thread), `pc/src/host/tps.h`, `pc/src/input/tps_input.c` and the F1 overlay (set
 
 Toggle with **F5**, the `--third-person` command-line flag, or `tps = 1` in
 `<save dir>/recvx.ini`. It can be switched at any time; it only takes over in normal play.
-While it is on the mouse is captured whenever you have control (F1/F2/F3, a menu, a question or
+While it is on the mouse is captured whenever you have control (F1/F2, a menu, a question or
 a puzzle with mouse support free it until you are back in control).
 
 | Key | Action |
@@ -278,7 +278,7 @@ unit (the character is about 17 units tall).
   auto-aim turn cancelled); its `bhCalcModel(plp)` replaced by `tps_calc_model` (free-aim pose).
 * Camera A (`g_tps.free_cam`): `tps_pad` turns W/A/S/D into "forward" in move mode; `tps_player`
   turns `ay` towards camera yaw minus the keys' angle (not in the game's own turns or special
-  moves, `mode2 > 13`); `tps_camera` adds the mouse X to the camera yaw. Pose, aim and co-op read
+  moves, `mode2 > 13`); `tps_camera` adds the mouse X to the camera yaw. Pose and aim read
   `ay`/`wax`, never the camera.
 * **Stairs and ledges** (the game's own moves, `mode2` 14..22: `bhCPM2_act_kdu`/`kdd` stairs,
   `dnu`/`dnd` climbing on or off a ledge; pushing, `psh`, moves the position every frame and the
@@ -298,7 +298,7 @@ unit (the character is about 17 units tall).
 * Mouse: SDL relative mode while third person is on, the window has focus and no overlay window
   is open, unless a screen with mouse support has it ("Mouse in menus", `menu_mouse.c`
   `menu_mouse_cursor`). That screen flag never outlasts play: the game thread publishes each frame
-  whether the player has control (`g_menu_mouse.play`: `pc_in_play`, not the co-op trade screen),
+  whether the player has control (`g_menu_mouse.play`: `pc_in_play`),
   and in play the mouse is the camera's whatever a screen left behind. A message's choices count
   as a screen only while the message shows (`st_flg` 0x200): puzzles that end their choice with
   `bhMesDispEndSet` on cancel (the Gold Luger room's switch panel, the office dial, the bio-lab
@@ -500,9 +500,6 @@ Free aim now sets them every tick (`dual_aim`, after `aim_at_crosshair`; not whi
   pitch, never; beyond 45 degrees, never. Off: as before Precise hits (pose and health traces
   identical to that build). The fixed cameras run none of this: dual-weapon runs with one and two
   zombies are frame- and health-identical to v0.6.0.
-* Co-op: each arm's hits reach the partner as any hit (`EV_ENE_HIT` per enemy hit, with the aim
-  height). The partner draws our motions and our aim pitch (the bend, [COOP.md](COOP.md#pose-and-the-partners-model)),
-  without the arms' turn.
 
 ## Precise hits
 
@@ -570,11 +567,6 @@ times the damage (`en15.c`, `cpcl_no` 0) and kills it as with the game's test. T
 (5/81) still falls to the linear launcher (a projectile, unchanged). The Gulp Worm (5/83) is hit
 where it shows.
 
-**Co-op**: the shooter decides as now and sends its damage per joint with `EV_ENE_HIT`; the flag
-`COOP_HIT_PRECISE` (protocol 21) says its hit was precise, so the side running the zombie bursts its
-head by the same rule (checked: the guest's magnum on the head bursts it on both sides, on the hips
-it does not, with the guest's option off it does as before).
-
 ## Limits
 
 * **Room geometry**: some corners have no wall, ceiling or back side; looking there shows the
@@ -584,8 +576,6 @@ it does not, with the guest's option off it does as before).
 * The crosshair goes down to 60 degrees: from the shoulder (16.5 units up) it meets the floor
   about 9.5 units ahead, so a crawling zombie nearer than that cannot be put under it (the shot
   goes at the floor behind it; with "Precise hits" off the game's wide hit test may still reach it).
-* Co-op: enemies judge a hit with the aim height of the player they are after; the partner's
-  stand-in carries none, so every hit counts on an enemy after the partner.
 * Near walls: a wall closer than 40 units on the crosshair ray counts as 40 units away for the
   character's yaw/pitch (else the shoulder offset would turn it by tens of degrees); the shot
   then hits a little beside the crosshair. Enemies, and walls farther away, are hit exactly.

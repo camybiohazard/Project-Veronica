@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- **Online co-op and multiplayer**: the title menu's MULTIPLAYER entry and lobby, the co-op
+  window (F3), the CO-OP settings page, the trade screen and its key, name tags, the ping display,
+  the `--coop-*` command line options and the co-op server (`recvx-server`). The single-player
+  game is unchanged.
+- The co-op rules "Quick start" and "Metal detector: Skipped" are gone with it. "No ink ribbons
+  needed" stays a GAMEPLAY setting.
+
+### Changes
+
+- "You appear as" is saved as `appear_char` in `recvx.ini` (it was `coop_char`): choose your model
+  again once after updating.
+- The gamepad's left stick click is L3 again by default (it was the trade request).
+
 ## 0.6.8 (2026-10-23)
 
 ### Gameplay

@@ -21,9 +21,6 @@ or CRI Middleware.
 |---|---|---|---|
 | SDL 3 (static; skipped with `-DRECVX_VENDORED_SDL=OFF`, which uses the system SDL3) | release-3.4.16 | https://github.com/libsdl-org/SDL | zlib |
 | Dear ImGui | v1.92.9b | https://github.com/ocornut/imgui | MIT |
-| miniupnpc | miniupnpc_2_3_3 | https://github.com/miniupnp/miniupnp | BSD-3-Clause |
-| libnatpmp | 134fc89e | https://github.com/miniupnp/libnatpmp | BSD-3-Clause |
-| Monocypher | 4.0.2 | https://github.com/LoupVaillant/Monocypher | BSD-2-Clause or CC0-1.0 (dual) |
 | xxHash (header only: XXH3, the hash PCSX2 names texture replacements by) | v0.8.3 | https://github.com/Cyan4973/xxHash | BSD-2-Clause |
 | bcdec (header only: BC1-BC7 decoding for HD texture packs) | 80859ed3 | https://github.com/iOrange/bcdec | MIT or Unlicense (dual) |
 
