@@ -444,7 +444,7 @@ static void teleport(int stg, int rom, int pos)
    slots; after a ';' another "frame:item:count" equips again later: a weapon switch).
    RECVX_WARP="stage:room:frame:x:z:angle,..." puts the player at x/z facing `angle` once it has
    been `frame` game frames in that room (independent of how the room was reached).
-   RECVX_INF_AMMO=1 turns the infinite ammo cheat on, RECVX_UNLOCK=1 "Unlock all" (RECVX_UNLOCK="frame:0/1,..." switches
+   RECVX_INF_AMMO=1 / RECVX_INF_HEALTH=1 turn the infinite ammo / health cheats on, RECVX_UNLOCK=1 "Unlock all" (RECVX_UNLOCK="frame:0/1,..." switches
    it at those game frames); RECVX_NOCLIP="frame:mode,..." sets the
    noclip mode (0/1/2) at that game frame; it also logs the position every 15 game frames and any jump
    of more than 2 units in one tick ("test: JUMP").
@@ -468,6 +468,7 @@ static void scripted(unsigned int* inv)
     if (tp == (const char*)-1) {
         tp = getenv("RECVX_TELEPORT"); eq = getenv("RECVX_EQUIP"); wp = getenv("RECVX_WARP"); ef = getenv("RECVX_EFFECT");
         if (getenv("RECVX_INF_AMMO")) g_cheat.inf_ammo = 1;
+        if (getenv("RECVX_INF_HEALTH")) g_cheat.inf_health = 1;
         ul = getenv("RECVX_UNLOCK");
         if (ul && !strchr(ul, ':')) { g_cheat.unlock = atoi(ul) != 0; ul = NULL; }
         nc = getenv("RECVX_NOCLIP");
