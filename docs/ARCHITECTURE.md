@@ -1,8 +1,7 @@
 # Architecture
 
 How the PC port is put together. For building see [BUILDING.md](BUILDING.md); for the
-feature-specific internals see [COOP.md](COOP.md), [SERVER.md](SERVER.md),
-[ACTORS.md](ACTORS.md), [ENEMIES.md](ENEMIES.md), [THIRDPERSON.md](THIRDPERSON.md) and
+feature-specific internals see [ACTORS.md](ACTORS.md), [ENEMIES.md](ENEMIES.md), [THIRDPERSON.md](THIRDPERSON.md) and
 [modding/](modding/README.md).
 
 ## Overview
@@ -25,7 +24,7 @@ game logic (decomp)  ->  Ninja/Shinobi on PS2 (decomp ps2_*.c)
 ```
 
 On top of that, native paths replace the hottest parts of the emulated pipeline (see
-[Renderer](#renderer)), and the PC features (co-op, third person, model swaps, enemy options,
+[Renderer](#renderer)), and the PC features (third person, model swaps, enemy options,
 settings menus) hook into the game through small glue functions.
 
 ### Source layout
@@ -34,15 +33,13 @@ settings menus) hook into the game through small glue functions.
 |---|---|
 | `decomp/` | the decomp as a submodule (fork, branch `pc-port`). PC changes are inside `#ifdef TARGET_PC` blocks: asm replacements, PS2-address idioms, hooks into the glue, and fixes of undefined behaviour, with the PS2 original kept under `#else` |
 | `pc/include/` | `pc_prelude.h` (force-included into every decomp file: host headers, `long` as 64-bit, declarations of all PC hooks), `pc_rules.h` (pure decisions of the hooks, checked by the ctest `rules`) and replacement SDK headers (`sdk/`) |
-| `pc/glue/` | PC code that needs the decomp's types: co-op, lobby, trade screen, third person, model swaps, cheats, enemy options and spawner, native renderer hooks, ENHANCED SETTINGS menu, mouse in menus, quick knife, reload button, native saves |
+| `pc/glue/` | PC code that needs the decomp's types: title menu, third person, model swaps, cheats, enemy options and spawner, native renderer hooks, ENHANCED SETTINGS menu, mouse in menus, quick knife, reload button, native saves |
 | `pc/src/ps2/` | EE/IOP layer: kernel, DMA, VIF1, VU0/VU1 (static microcode and interpreter), libcdvd, libpad, libmc, SIF, the address window |
 | `pc/src/gs/` | GS emulation (GIF parser, register file, local memory), the OpenGL rasterizer, the frame stream, native textures, in-between frames |
 | `pc/src/audio/` | CRI ADX (ADXF/ADXT), SDL audio output, the TSNDDRV sound driver (high-level emulation) and its synthesizer |
 | `pc/src/movie/` | PSS demuxer, MPEG-2 decoder, movie player |
 | `pc/src/input/` | DualShock 2 emulation (`pad.c`), bindings, third-person input, mouse in menus |
-| `pc/src/host/` | entry point (`host.c`), render loop, settings table and `recvx.ini`, native save files (`savestore.c`), F1/F2/F3 overlay (Dear ImGui), logging, profilers, model catalogue |
-| `pc/src/net/` | co-op UDP, packet formats, port mapping, rendezvous client and protocol |
-| `pc/server/` | `recvx-server` and the `recvx-client` test tool |
+| `pc/src/host/` | entry point (`host.c`), render loop, settings table and `recvx.ini`, native save files (`savestore.c`), F1/F2 overlay (Dear ImGui), logging, profilers, model catalogue |
 | `pc/tests/` | ctest programs |
 | `pc/tools/` | code generators (`asm2c.py`, `vsm2inc.py`), room and map tools, test and comparison scripts |
 
@@ -79,11 +76,9 @@ Windows `-mno-ms-bitfields`.
 
 | Thread | Owns |
 |---|---|
-| main (`main()`, `render_loop`) | SDL window and events, OpenGL, GS emulation and presentation, the F1/F2/F3 overlay, binding capture, lobby text input and clipboard, the setting appliers (window, vsync, volumes) and **every `recvx.ini` write** |
-| game (`game_thread`) | the decomp and `pc/glue` (ENHANCED SETTINGS menu, lobby, co-op incl. its UDP socket polled once per frame, cheats applied at the frame hand-off), disc reads, memory card, creating and destroying audio streams |
+| main (`main()`, `render_loop`) | SDL window and events, OpenGL, GS emulation and presentation, the F1/F2 overlay, binding capture, the setting appliers (window, vsync, volumes) and **every `recvx.ini` write** |
+| game (`game_thread`) | the decomp and `pc/glue` (ENHANCED SETTINGS menu, cheats applied at the frame hand-off), disc reads, memory card, creating and destroying audio streams |
 | SDL audio | ADX decoding in the stream callbacks (own file handle per voice), the sound driver's 240 Hz tick, its queued commands and the synth mix |
-| portmap | UPnP/NAT-PMP while hosting (`net/portmap.c`) |
-| co-op arrival times (Windows) | waits on the co-op socket and notes when data arrived (`net_rx_us`) |
 | log (Linux, `--log`) | copies stdout/stderr into the log file |
 
 The game runs single-threaded as on the PS2: interrupts are delivered synchronously at platform
@@ -91,19 +86,16 @@ entry points (vblank waits, sync calls), and timing follows NTSC rates.
 
 How state crosses threads:
 
-- **Settings** (`g_config`, `g_tps`, `g_coop` options, cheat toggles, bindings) are aligned
+- **Settings** (`g_config`, `g_tps`, appearance options, cheat toggles, bindings) are aligned
   ints written by both menus; a reader sees the old or the new value. A change is handed over
   with `settings_set`/`settings_save_later` (release store of a dirty flag); `settings_poll` on
   the main thread takes it with acquire, runs the applier and writes `recvx.ini` 500 ms after
   the last change and at exit. Nobody else calls `config_save`.
-- **Commands** from the overlay to the game are request words (`g_cheat.request`,
-  `g_coop.request`, `g_coop.trade_req`), taken by the game thread at its frame.
+- **Commands** from the overlay to the game are request words (`g_cheat.request`), taken by
+  the game thread at its frame.
 - **Audio**: one lock in `audio.c` covers a stream's publication, gain and removal. The sound
   driver (`snd_iop.c`, `snd_synth.c`) has its own lock over the driver state, the banks and the
   command queue the game thread fills and the mixer empties.
-- **Co-op status** strings are written by the game thread and read by the overlay without a
-  lock; every string keeps a terminating 0, so a read may show a half-updated line but stays
-  bounded.
 
 ## Renderer
 
@@ -469,15 +461,13 @@ village, collision. The render thread (GS emulation, replays: `r_exec`, `r_inter
   so a stalled or closed game stops by itself; zero without window focus (unless Gamepad only) and at
   exit. Game logic that reads it back: the OPTION row, the saved option, and the room load's wait for
   a running rumble to end (`system.c`, `Pad_act`), as on the PS2 with a DualShock. Without a gamepad
-  with rumble (headless runs) nothing changes. Co-op: an enemy's step on the partner (host) undoes
-  the rumbles it started (`coop_glue.c`, `vib_save`), and a hit from the host's enemy starts the
-  enemies' hit rumble in the joiner's game.
+  with rumble (headless runs) nothing changes.
 - **Bindings** (`input/bindings.c`) work at the layer that builds the DS2 pad report: a
   binding row is a **DS2 button**, and the game's own key type (OPTION -> KEY CONFIG) turns
   buttons into actions in `bhSetPad` as before, so nothing in the game is patched per action.
   The menus name each row by what the button does under the current key type. Keyboard/mouse and
   gamepad have one binding set each, two slots per row; extra rows are the quick turn, quick knife,
-  trade request, reload, the third-person keys and the hotkeys. The ini format is in
+  reload, the third-person keys and the hotkeys. The ini format is in
   [USER_GUIDE.md](USER_GUIDE.md#rebinding). Game and third-person rows may share keys (third
   person takes over the keys it uses while `g_tps.kb_play`: in a game, no OPTION screen up; the
   title menus and OPTION read the DS2 buttons, so there Q/W/A/S are L1/R1/Square/Triangle); hotkeys
@@ -494,7 +484,7 @@ village, collision. The render thread (GS emulation, replays: `r_exec`, `r_inter
   number).
 - **Quick knife** (`pc/glue/knife_glue.c`, hooked in `bhSetPad` after the third-person input):
   while its key is held the Combat Knife is equipped through the inventory's own `WeaponSet` and
-  raised (ready bit 0x10), so ammo, hit checks, aiming and the co-op partner's view are the game's
+  raised (ready bit 0x10), so ammo, hit checks and aiming are the game's
   own. It waits until the player is back to a neutral state (not aiming, reloading, grabbed, in a
   menu, event or door; the idle animation after ten seconds of standing counts, as the game's own
   aim breaks it), and on release restores the previous weapon (or the same item in another slot)
@@ -529,13 +519,13 @@ village, collision. The render thread (GS emulation, replays: `r_exec`, `r_inter
   after one (the stairs of 1/0 cut on the frame control returns): then the current camera. Untouched: aiming (`mode1` 1), the quick-turn row (back only), the game's
   own turns (`flg 0x100000`), third person, menus, events and doors; special moves (`mode2` 12 and
   above 13: stairs, steps, pushing) only get forward, when the direction is within 90 degrees of
-  the facing. Only `plp == &ply`, so in co-op only the local player; nothing is sent.
+  the facing. Only `plp == &ply`.
 - **Mouse in menus** (`pc/glue/menu_glue.c`, hook at the end of `bhSetPad`;
   `input/menu_mouse.c` on the main thread): the mouse drives the screens' own cursor state, so
   keyboard and gamepad work unchanged. Window positions map to the game's 640x480 2D space through
   the display rectangle (pillarbox, stretch and hor+ margins included). Covered: inventory, item
-  commands, combine, examine (drag rotates, wheel zooms), item box, files, map, title menu, co-op
-  lobby, OPTION and ENHANCED SETTINGS, the trade screen, a message's choices (`mes_sel`, e.g. the
+  commands, combine, examine (drag rotates, wheel zooms), item box, files, map, title menu,
+  OPTION and ENHANCED SETTINGS, a message's choices (`mes_sel`, e.g. the
   typewriter's ink ribbon question), the save and load screens (`pc_save_mouse` in
   `pc/glue/save_glue.c`, called by `ExecuteSaveScreen` / `ExecuteLoadScreen` before their state
   runs, for both save systems: hover sets the list's rows, YES / NO or the card, clicks, the wheel
@@ -553,7 +543,7 @@ in-game ENHANCED SETTINGS pages. Each entry has a page, label, variable (or get/
 step, value names or a printf format, flags, help text, an applier, a `locked()` reason, an
 optional `shown()` (the row is left out of both menus while it returns 0, e.g. Fullscreen
 resolution outside exclusive fullscreen) and an optional `.group` heading. Rows are in menu order; the pages (`SP_*`, `settings_pages[]`) are
-DISPLAY, GAMEPLAY, CONTROLS, THIRD PERSON, AUDIO, APPEARANCE, CO-OP, EXTRAS. `recvx.ini` keys live in `keys[]`
+DISPLAY, GAMEPLAY, CONTROLS, THIRD PERSON, AUDIO, APPEARANCE, EXTRAS. `recvx.ini` keys live in `keys[]`
 in `pc/src/host/config.c`.
 
 ENHANCED SETTINGS is option level 4 of the game's OPTION screen (`pc/glue/options_glue.c`; hooks in
@@ -565,7 +555,7 @@ sits right of DEFAULT above it, lettered the same way. Confirming it opens a YES
 over the screen (`pc_options_quit`, NO preselected, cancel = NO); YES leaves the option screen as
 EXIT does (system data saved if changed), then `system.c bhSysCallOption` resumes the game as
 usual and returns to the title as the soft reset does (`PlayStopMovieEx`, `RequestAllStopSoundEx`,
-`bhReturnTitle`, the path of game over "No"). Co-op ends the session there ("back at the title"). The pages use the game's font, cursor sounds and highlight;
+`bhReturnTitle`, the path of game over "No"). The pages use the game's font, cursor sounds and highlight;
 labels and value names must be plain ASCII the font has (no `&`, `*`, `#`, `@`).
 
 **Adding a setting**: add the variable's ini key to `keys[]` in `config.c` and one entry to
@@ -573,18 +563,17 @@ labels and value names must be plain ASCII the font has (no `&`, `*`, `#`, `@`).
 
 ```c
 { SP_GAMEPLAY, "Enemy difficulty", V(g_config.enemy_level), 0, 2, 1, levels,
-  .help = "...", .locked = in_session },
+  .help = "..." },
 ```
 
-ENHANCED SETTINGS shows every shown row of its page; F1 shows the same rows, except on the CO-OP and
-EXTRAS pages (their own windows are F3 and F2), where only `SET_F1` rows appear. ctest `settings`
+ENHANCED SETTINGS shows every shown row of its page; F1 shows the same rows, except on the
+EXTRAS page (its own window is F2), where only `SET_F1` rows appear. ctest `settings`
 (`pc/tests/check_settings.cmake`) fails when an ini key in `config.c` has no row (by its variable),
-unless the key is listed there with where it is set instead (the lobby's per-session choices, the
-third-person key binding).
+unless the key is listed there with where it is set instead (the third-person key binding).
 
 | Flag | Meaning |
 |---|---|
-| `SET_F1` | a CO-OP or EXTRAS entry that F1 shows too (those pages otherwise live in F3/F2) |
+| `SET_F1` | an EXTRAS entry that F1 shows too (that page otherwise lives in F2) |
 | `SET_RESTART` | takes effect at the next start; both menus add "(next start)" |
 | `SET_GAME_ONLY` | only while a game runs |
 | `SET_ACTION` (+ `.apply`) | a command, not a value; the native menu runs it when it closes |
@@ -643,16 +632,11 @@ last. An empty row looks like the card's empty slot ("NO_DATA"); loading with no
 
 **Migration.** The first time native files are used (`save_native_dir()` finds no `saves` folder)
 the card's saves are copied in (`savestore_import_card`): slot nn becomes save number nn + 1 when
-free, with `coop-partners-nn.bin` as `saves/NNN.coop-partners.bin`, and the card's system file as
+free, and the card's system file as
 `system.dat`; the card is never changed. "Import memory card saves" does the same later (saves
 whose bytes are already there are skipped).
 
-**Other readers** go through `pc/src/host/lobby.h`, which follows the active system: save "slots"
-are the card's 0..14 or the native number - 1 (so a migrated slot keeps its meaning in `coop_start`
-and `coop_items`), `lobby_save_slots()` is their count. The co-op lobby's START list, the joiner's
-ITEMS choice, `RECVX_TEST_SAVE`, the host's partner records (`coop-partners-nn.bin` /
-`saves/NNN.coop-partners.bin`, written after each save by `coop_save_written`) use it. Game over
-"continue" and the retry points live in memory and never touch a save.
+Game over "continue" and the retry points live in memory and never touch a save.
 
 ## Fidelity notes
 
@@ -763,9 +747,7 @@ called by the game thread.
 ## Environment variables
 
 Test aids and diagnostics, read at start. Frame numbers are presented frames for input scripts
-and game frames for game-state aids, as noted. Co-op test aids (`RECVX_COOP_*`,
-`RECVX_LOBBY_KEYS`, `RECVX_TEST_*`, `RECVX_TRADE_TRACE`) are listed in
-[COOP.md](COOP.md#test-aids).
+and game frames for game-state aids, as noted.
 
 ### General
 
@@ -774,7 +756,7 @@ and game frames for game-state aids, as noted. Co-op test aids (`RECVX_COOP_*`,
 | `RECVX_ISO=path` | the disc image (as on the command line) |
 | `RECVX_MODS=dir` | mods folder (default `./mods`) |
 | `SDL_VIDEO_DRIVER=offscreen` | headless run |
-| `RECVX_SHOW_OVERLAY=1` / `=2` / `=3` | open the F1 overlay / the cheats window (F2) / the co-op window at start |
+| `RECVX_SHOW_OVERLAY=1` / `=2` | open the F1 overlay / the cheats window (F2) at start |
 | `RECVX_EXIT_FRAME=n` | exit at presented frame n |
 | `RECVX_WATCHDOG=sec` | Linux: print a backtrace after sec seconds and exit |
 | `RECVX_FAST_DEMO=1` | start the attract demo right away |
@@ -808,7 +790,7 @@ and game frames for game-state aids, as noted. Co-op test aids (`RECVX_COOP_*`,
 | `RECVX_FLAGS="set:bit,..."` | set story flags at the first game frame (1 `ev_flg`, 2 `ky_flg`, 3 `ed_flg`, 7 `it_flg`, 8 `mp_flg`) |
 | `RECVX_INF_AMMO=1`, `RECVX_INF_HEALTH=1`, `RECVX_UNLOCK=1` | infinite ammo / health / unlock all cheats on (unlock all logs each key it uses: `unlock: item N used in S/R, taken` or `nothing reacts`). `RECVX_UNLOCK="f:0/1,..."` switches unlock all at game frame f; a switch in a room logs each lock the entry script set up by the key: `unlock: S/R entry script block X now takes its then/else part` |
 | `RECVX_NOCLIP="f:mode,..."` | noclip mode 0/1/2 from game frame f, logs position every 15 frames |
-| `RECVX_APPEAR="f:chr,..."` | set "You appear as" (`coop_char` value) at game frame f |
+| `RECVX_APPEAR="f:chr,..."` | set "You appear as" (`appear_char` value) at game frame f |
 | `RECVX_EFFECT="f:effno:type:mode1"` | spawn effect effno at the player (e.g. `60:110:0:1`: full-screen distortion) |
 | `RECVX_EFF_MODE1="f:id:type:mode1,..."` | set mode1 of every live effect of that id and type at game frame f (`40:263:0:1` in 5/82: the fires laid out in Alexia's hall burn, as in her fight) |
 | `RECVX_SPAWN="f:id[.mdlver][@dist],..."` | the F2 enemy spawner at game frame f, with traces ([ENEMIES.md](ENEMIES.md)) |
@@ -818,7 +800,7 @@ and game frames for game-state aids, as noted. Co-op test aids (`RECVX_COOP_*`,
 | `RECVX_HEADSHOT=n` | n game frames into each room, every walking zombie takes one head hit that bursts its head; logs its head state ([ENEMIES.md](ENEMIES.md#head-blow-offs)) |
 | `RECVX_ENEMY_TRACE=dist` | one line per step of every enemy within dist units of a player |
 | `RECVX_KNIFE_TRACE=1`, `RECVX_KNIFE_DROP=1` | quick knife: log its state; drawing the knife empties the previous weapon's slot |
-| `RECVX_POSE_TRACE=file` | one line per game frame: the player's state (modes, weapon, motion, frame, `at_flg`, `ay`, `wax`) and every node of the body as drawn ("You appear as" included) in its base matrix's frame; twitches show as nodes moving back and forth; the co-op partner's body as drawn goes to `file.partner` (`pc/glue/pose_trace.c`) |
+| `RECVX_POSE_TRACE=file` | one line per game frame: the player's state (modes, weapon, motion, frame, `at_flg`, `ay`, `wax`) and every node of the body as drawn ("You appear as" included) in its base matrix's frame; twitches show as nodes moving back and forth (`pc/glue/pose_trace.c`) |
 | `RECVX_STRESS_SETTINGS=1` | volumes change every frame (settings/audio thread test) |
 
 ### Rendering

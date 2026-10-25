@@ -20,7 +20,7 @@ git submodule update --init --recursive
 submodules. The decomp's large Metrowerks compiler submodule (`recvx-decomp-mwcc`) is marked
 `update = none` and is skipped; the PC build does not need it.
 
-CMake downloads SDL 3, Dear ImGui, miniupnpc, libnatpmp and Monocypher at configure time
+CMake downloads SDL 3, Dear ImGui, xxHash and bcdec at configure time
 (FetchContent), so the first configure needs network access. Versions and licenses:
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
@@ -49,8 +49,7 @@ cmake --build build
 ./build/pc/recvx            # first start asks for the disc image
 ```
 
-`CMAKE_BUILD_TYPE` defaults to `RelWithDebInfo`. The executable is `build/pc/recvx`; the
-co-op server and its test client are built alongside it (`build/pc/server/`).
+`CMAKE_BUILD_TYPE` defaults to `RelWithDebInfo`. The executable is `build/pc/recvx`.
 
 ### Running on older distributions (glibc)
 
@@ -85,9 +84,9 @@ cmake --build build-win --target recvx
 compiler is on `PATH`. Tested with Arch's `mingw-w64-gcc` (i686, UCRT). The packages do not need to be installed system-wide: unpacking
 `mingw-w64-{gcc,binutils,crt,headers,winpthreads}` into a directory is enough.
 
-**What to ship:** `build-win/pc/recvx.exe` alone. SDL3, miniupnpc, libnatpmp, libstdc++, libgcc
-and winpthreads are linked statically; only Windows system DLLs remain (UCRT, kernel32, ws2_32,
-opengl32 loaded at run time, ...). `i686-w64-mingw32-strip recvx.exe` removes the debug info.
+**What to ship:** `build-win/pc/recvx.exe` alone. SDL3, libstdc++, libgcc and winpthreads are
+linked statically; only Windows system DLLs remain (UCRT, kernel32, opengl32 loaded at run time,
+...). `i686-w64-mingw32-strip recvx.exe` removes the debug info.
 The executable needs Windows 10 or later (or the Universal C Runtime update on 7/8.1) and an
 OpenGL 3.3 driver.
 
@@ -103,23 +102,9 @@ The Windows build is tested under Wine; reports from real Windows machines are w
 Not tested. A native MSYS2 MINGW32 GCC toolchain may work with the same CMake files; MSVC and
 clang-cl are not supported.
 
-## Co-op server only
-
-`recvx-server` (see [SERVER.md](SERVER.md)) has no game, SDL or disc dependencies and can be
-built on its own, for example on a server machine:
-
-```sh
-cmake -S pc/server -B build-server -DCMAKE_BUILD_TYPE=Release
-cmake --build build-server
-./build-server/recvx-server --help
-```
-
-On Linux it is linked statically by default (`RECVX_SERVER_STATIC=ON`). A container build is
-in `pc/server/Dockerfile`, a systemd unit in `pc/server/recvx-server.service`.
-
 ## Release packages
 
-`pc/tools/package.sh OUT_DIR [--linux build] [--windows build-win] [--server build-server]`
+`pc/tools/package.sh OUT_DIR [--linux build] [--windows build-win]`
 packs finished builds into the release archives, named after the version in the top-level
 `CMakeLists.txt` (`project(recvx_pc VERSION ...)`):
 
@@ -127,20 +112,18 @@ packs finished builds into the release archives, named after the version in the 
 |---|---|
 | `recvx-enhanced-port-VER-linux-i686.tar.gz` | `recvx` (stripped), README, LICENSE, THIRD_PARTY_NOTICES, CHANGELOG, `docs/USER_GUIDE.md` |
 | `recvx-enhanced-port-VER-windows-x86.zip` | `recvx.exe` (stripped), the same docs |
-| `recvx-server-VER-linux-x86_64.tar.gz` | `recvx-server` (static), `recvx-client`, example config, systemd unit, `docs/SERVER.md` |
 | `...-linux-i686-debug.tar.gz`, `...-windows-x86-debug.zip` | the unstripped binaries, for `addr2line` on crash-log addresses |
 
 It also writes `RELEASE_NOTES.md` (this version's CHANGELOG section, requirements and first start,
 the README's AI note) and `SHA256SUMS`. No disc image or game data goes into any archive.
-`recvx --version` and `recvx-server --version` print the version plus `git describe` as of the
+`recvx --version` prints the version plus `git describe` as of the
 last CMake configure.
 
 ## Continuous integration
 
 `.github/workflows/build.yml` runs on pushes to `main`, pull requests, `v*` tags and by hand:
 `linux-i686` (Ubuntu 24.04, GCC 13 multilib and the `:i386` SDL backend libraries; build, tests,
-package), `windows-x86` (cross build with Ubuntu's `mingw-w64` POSIX-thread GCC; package) and
-`server` (standalone build, `rdv_paths`/`rdv_nat`, package). A `v*` tag whose version matches
+package) and `windows-x86` (cross build with Ubuntu's `mingw-w64` POSIX-thread GCC; package). A `v*` tag whose version matches
 `CMakeLists.txt` (`v0.1.0`, or `v0.1.0-rc1`) also creates a GitHub release with the archives,
 `SHA256SUMS` and the generated notes; `-rc` tags and 0.x versions are marked as pre-releases.
 
@@ -164,7 +147,6 @@ imported. The game is tested with the UCRT build: report problems that only the 
 | `RECVX_DECOMP_DIR` | `decomp` | path of the recvx-decomp checkout |
 | `RECVX_VENDORED_SDL` | `ON` | build SDL 3 from source and link it statically; `OFF` uses a system SDL3 (32-bit) package |
 | `RECVX_GLIBC_COMPAT` | `ON` (Linux) | run on glibc 2.34 and newer (see above) |
-| `RECVX_SERVER_STATIC` | `ON` (Linux) | link `recvx-server` statically |
 | `RECVX_LAYOUT_PAD` | `0` | test aid: bytes of padding before all code and data, for `pc/tools/layout_check.sh` (see [ARCHITECTURE.md](ARCHITECTURE.md#determinism)) |
 | `MINGW_PREFIX` | `$MINGW_PREFIX` | mingw toolchain only: prefix of the cross compiler |
 
@@ -180,13 +162,7 @@ ctest --test-dir build --output-on-failure
 | `movies` | decodes every movie of the disc; skipped unless `RECVX_ISO=<image>` is set |
 | `bindings` | control bindings: defaults, rebinding, ini format, a virtual SDL gamepad |
 | `appear` | the "You appear as" model list |
-| `net` | co-op UDP socket and port mapping start/stop |
-| `coop` | co-op packet parser: malformed events of every type, join code, fuzz loop |
 | `fileio` | UTF-8 paths and replace-on-rename saving |
-| `rdv`, `rdv_client` | co-op server protocol, server core and client state machine |
-| `rdv_fuzz` | parser and state machines under AddressSanitizer/UBSan (Linux) |
-| `rdv_paths` | a local server and two test clients: punched, relayed, passwords, loss (~45 s, Linux) |
-| `rdv_nat` | NAT types, delay and loss in rootless network namespaces (~45 s; skipped where user namespaces are not allowed) |
 
 The map tools have their own Python tests (no disc needed; run from the repository root):
 

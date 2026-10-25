@@ -173,7 +173,7 @@ overruns the arena silently). `rdxbuild.py` holds them in `BUDGETS`; `RECORD_LIM
 | Triangles per mesh group | 666 | 2,729 | vertex work buffer 5120 / 8192, <= 8189 vertices per chunk |
 | Mesh groups | 512 | 65,535 | u16 node count; hide masks cover nodes 0..511 |
 | Cameras / areas per camera | 255 / 255 | same | byte operands |
-| Walls | 32,767 | same | scripts and co-op reach 0..255 |
+| Walls | 32,767 | same | scripts reach 0..255 |
 | Triggers, floors | 256 | same | byte compares in scripts |
 | Entry positions / routes | 128 / 255 | same | |
 | Lights / event lights / effects | 256 / 128 / 256 | same | |
@@ -421,6 +421,6 @@ retail room with the disc's under identical input (`RECVX_BIN`, frame dumps).
   editing, a symbolic script assembler, transparent or 4-bit authored textures, smooth normals,
   new animated creatures, a Blender exporter.
 * Untested: save/reload of new pickup/kill flags, audible sound in new rooms (bank uploads are
-  traced only), alternative characters, co-op in new rooms, enemies on slopes.
+  traced only), alternative characters, enemies on slopes.
 * Room IDs of the examples overlap (`RM_1150` corridor, `RM_1280`/`RM_1290` test rooms vs. the
   RE4 rooms): install one set at a time.

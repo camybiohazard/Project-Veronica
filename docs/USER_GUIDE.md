@@ -1,7 +1,6 @@
 # User guide
 
 How to start the game, configure it and play. Building: [BUILDING.md](BUILDING.md).
-Online co-op: [COOP.md](COOP.md).
 
 ## First start
 
@@ -32,7 +31,6 @@ nothing is extracted or copied.
 | `--skip-doors` | room transitions without door, stairs and ladder animations |
 | `--skip-intro` | boot straight into the title menu |
 | `--third-person` | start with the over-the-shoulder camera ([THIRDPERSON.md](THIRDPERSON.md)) |
-| `--coop-host PORT`, `--coop-join HOST:PORT#CODE` or `ROOM`, `--coop-server ADDR`, `--coop-conn auto\|direct\|server`, `--coop-pw PASSWORD` | online co-op ([COOP.md](COOP.md)) |
 | `--log[=FILE]` | copy all output to a log file (default `recvx.log`), with a backtrace on a crash |
 | `--profile[=FILE]`, `--profile-samples=FILE` | performance measurements ([ARCHITECTURE.md](ARCHITECTURE.md#profiling-and-logging)) |
 | `--quiet` | less console output |
@@ -50,11 +48,10 @@ or `--save-dir`):
 | `save/saves/` | your saves as files (the default save system, see below) |
 | `save/saves/system.dat` | the game's system data: OPTION settings, unlocked extras, best times |
 | `save/card0/` | memory card slot 1 (the game's own save files, used by the Memory card save system); slot 2 is empty |
-| `save/recvx.ini` | all settings, key bindings, the disc image path and your co-op identity |
+| `save/recvx.ini` | all settings, key bindings and the disc image path |
 
 `recvx.ini` and the saves are written atomically (a crash never leaves a half-written file). Two
-copies of the game with different save directories keep separate settings and saves; this is how
-local co-op on one PC works ([COOP.md](COOP.md)).
+copies of the game with different save directories keep separate settings and saves.
 
 ### Saves
 
@@ -76,8 +73,7 @@ heading reads "Load Game" or "Save Game" instead of "MEMORY CARD slot 1":
   character, room), so a save can be turned back into a card save by dropping the first 64 bytes
   ([ARCHITECTURE.md](ARCHITECTURE.md#save-system)).
 - **First start with native files**: your memory card saves are copied into `save/saves` (slot n
-  becomes save number n) together with the system data and co-op partner files; the log says how
-  many. The memory card files are kept as they are.
+  becomes save number n) together with the system data; the log says how many. The memory card files are kept as they are.
 - **Save system: Memory card (original)** (`save_system = 1`) brings back the emulated memory card
   with its screens and 15 slots, using `save/card0` exactly as before. The setting applies from the
   next save or load screen. Saves made in one system are not seen by the other; **Import memory
@@ -90,8 +86,8 @@ During a game, the OPTION screen (Select) has **RETURN TO TITLE** on DEFAULT's r
 SETTINGS: select DEFAULT and press right, or click it. It asks "Return to the title screen?" with
 NO selected, so a stray press does nothing; choose YES (left/right, then confirm) to go back to the
 title menu, as after a game over. Anything not saved is lost; changed options are kept. Cancel or a
-right click answers NO. It works in the Battle Game too. In co-op, leaving ends the session: the
-partner plays on alone. The OPTION screen of the title menu does not have it.
+right click answers NO. It works in the Battle Game too. The OPTION screen of the title menu does
+not have it.
 
 ### Skipping the ending
 
@@ -108,15 +104,15 @@ All PC settings are available in two places that edit the same values:
 
 - **OPTION -> ENHANCED SETTINGS**: in the game's own OPTION screen (title menu, or Select in
   game) next to EXIT: select EXIT and press right (or click it). Drawn in the game's style, with
-  the pages DISPLAY, GAMEPLAY, CONTROLS, THIRD PERSON, AUDIO, APPEARANCE, CO-OP and EXTRAS. L1/R1
+  the pages DISPLAY, GAMEPLAY, CONTROLS, THIRD PERSON, AUDIO, APPEARANCE and EXTRAS. L1/R1
   (LB/RB, keyboard Q/W, as the page row names them) switch pages from anywhere, both ways round
-  the eight, as do left/right on the page row; up/down (or the mouse wheel) choose a setting, left/right
+  the seven, as do left/right on the page row; up/down (or the mouse wheel) choose a setting, left/right
   change it, cancel or a right click goes back. Long pages scroll; the bottom lines explain the
   selected setting, or why it cannot change right now. "(next start)" marks a setting that takes
   effect when the game starts again.
 - **F1**: the settings overlay, in the same order (sections Display, Gameplay, Controls, Third
-  person, Audio, Appearance, Co-op, Performance). The co-op and cheat settings live in their own
-  windows (F3, F2); F1 shows a few of them.
+  person, Audio, Appearance, Performance). The cheat settings live in their own window (F2); F1
+  shows a few of them.
 
 Every setting of the table below is in both. Changes apply at once and are saved shortly after.
 The defaults of a first start are the PC-friendly ones: enhanced mode, widescreen, native
@@ -167,22 +163,22 @@ visible, and Contrast until the right square on the white strip is barely visibl
 | Setting | ini key | Effect |
 |---|---|---|
 | Skip intro | `skip_intro` | on: boot straight into the title menu (next start). Off: the warning screen, the logos and the intro movie play, and any key, mouse button or gamepad button skips the one on screen (a press during the Capcom logo's fade-out skips the movie, as Start does on the PS2); holding a button does not skip the next one. On the title's PRESS START any key, click or gamepad button opens the menu |
-| Skip door animations | `skip_doors` | the door, stairs, ladder and lift animations between rooms. Off (0): always played, as the original; **Instant** (1): the game's load screen instead (no animation, so no door sounds); Skippable (2): the animation plays, and any key, mouse button or gamepad button pressed while it runs ends it and the next room follows at once. The press that opened the door does not count; a press made while the next room is still loading ends the animation as soon as the room is ready. In co-op each player's own choice counts for its own doors; following the host always uses the load screen |
-| Fast loading | `fast_loading` | **on**: a room change, a new game or a loaded save no longer waits for what the PS2's disc and sound chip needed: the next room's sounds and textures are set up at once, so the load screen ends almost as soon as the screen is black (without the "Now Loading..." text), and with Skippable doors a press ends the animation that much sooner. The room's rain, smoke and sparks still get their usual head start before it appears. Off: the original loading times. In co-op each player's own choice counts; it does not need to match the partner's |
+| Skip door animations | `skip_doors` | the door, stairs, ladder and lift animations between rooms. Off (0): always played, as the original; **Instant** (1): the game's load screen instead (no animation, so no door sounds); Skippable (2): the animation plays, and any key, mouse button or gamepad button pressed while it runs ends it and the next room follows at once. The press that opened the door does not count; a press made while the next room is still loading ends the animation as soon as the room is ready. |
+| Fast loading | `fast_loading` | **on**: a room change, a new game or a loaded save no longer waits for what the PS2's disc and sound chip needed: the next room's sounds and textures are set up at once, so the load screen ends almost as soon as the screen is black (without the "Now Loading..." text), and with Skippable doors a press ends the animation that much sooner. The room's rain, smoke and sparks still get their usual head start before it appears. Off: the original loading times. |
 | Battle Game unlocked | `battle_unlocked` | **on**: the title menu offers BATTLE GAME without a finished playthrough, and its character select offers all five characters at once (Claire, Claire in her other costume, Chris, Steve, Wesker). Saves and system data are not changed: characters and records you earn are still saved as in the original, and the Linear Launcher still needs an A rank with all five. Off: as the original, BATTLE GAME only after a cleared game and the characters you have earned |
-| Difficulty select | `difficulty_select` | **on**: NEW GAME opens the difficulty menu of the European and Japanese versions (MODE SELECT: NORMAL, EASY, VERY EASY; its pictures are on the US disc too). NORMAL is preselected, so confirming twice starts the original game; Cancel goes back to the title menu. **Easy**: the item box starts with handgun bullets, bow gun arrows and powder, first aid sprays and ink ribbons, and ammo pickups hold more (handgun bullets 30 instead of 15, for example); your health and most enemies as on Normal. **Very Easy**: twice the health, healing items heal twice as much, enemies with fewer hit points (zombies about half), ammo pickups as Easy, an ink ribbon in your bag that is never used up, and an item box with the bow gun, grenade launcher, shotgun, magnum and assault rifle, their ammo and first aid sprays. Only Normal has the ranking at the end and its A-rank reward. A save keeps its difficulty. In co-op the lobby's START chooses it (New game, normal / easy / very easy). Off: as the US original, NEW GAME always starts on Normal |
+| Difficulty select | `difficulty_select` | **on**: NEW GAME opens the difficulty menu of the European and Japanese versions (MODE SELECT: NORMAL, EASY, VERY EASY; its pictures are on the US disc too). NORMAL is preselected, so confirming twice starts the original game; Cancel goes back to the title menu. **Easy**: the item box starts with handgun bullets, bow gun arrows and powder, first aid sprays and ink ribbons, and ammo pickups hold more (handgun bullets 30 instead of 15, for example); your health and most enemies as on Normal. **Very Easy**: twice the health, healing items heal twice as much, enemies with fewer hit points (zombies about half), ammo pickups as Easy, an ink ribbon in your bag that is never used up, and an item box with the bow gun, grenade launcher, shotgun, magnum and assault rifle, their ammo and first aid sprays. Only Normal has the ranking at the end and its A-rank reward. A save keeps its difficulty. Off: as the US original, NEW GAME always starts on Normal |
 | Quick knife | `quick_knife` | on: hold the quick-knife key to draw the combat knife without opening the inventory; release to get the previous weapon back |
 | **Saves** | | |
 | Save system | `save_system` | **Native files** (0): every save a file in `save/saves`, no limit, no memory card screens; Memory card (original) (1): see [Saves](#saves) |
 | Import memory card saves | (action) | copies the memory card's saves into the save files |
-| No ink ribbons needed | `no_ink_ribbon` | **off** (original); on: typewriters save without an ink ribbon and use none up. In co-op the host's setting counts for both ([COOP.md](COOP.md#saving-without-ink-ribbons)) |
+| No ink ribbons needed | `no_ink_ribbon` | **off** (original); on: typewriters save without an ink ribbon and use none up |
 | **Enemies** | | |
-| Extra enemies | `enemy_extra` | **Off**, up to 1-3 more per room, of the types the room already has; in co-op the host's |
+| Extra enemies | `enemy_extra` | **Off**, up to 1-3 more per room, of the types the room already has |
 | Rearranged enemies, Enemy randomizer, Enemy seed | `enemy_place`, `enemy_random`, `enemy_seed` | optional enemy changes; bosses stay as they are ([ENEMIES.md](ENEMIES.md#enemy-options)) |
 | Randomizer variety | `enemy_variety` | **Wild** (1): any enemy kind that fits the spot, a different one for each enemy of a room where possible, Tyrants, Giant Black Widows and bats included; Mild (0): two common kinds per room |
 | Randomize event enemies | `enemy_random_events` | **on**: enemies a room shows later become other kinds too, and the ones a scene animates get another look of their own kind (the scene still plays); off: only free-roaming enemies change |
-| Auto-climb stairs | `auto_stairs` | **on**: walking or running into a staircase climbs it, up or down, as the action button would, with every control scheme, in third person and for your co-op character. It starts only while you walk towards the stairs (facing the way they go, within 45 degrees), not while you stand in front of them or walk past along their edge. Where a press would answer a door, item or examine spot first, that spot still needs the button; so do the steps onto or off a ledge, so you never drop off one by accident. Some stairs with an event (such as one in the Palace) need the button the first time; off: the button as in the original |
-| Head blow-offs | `head_blowoff` | **on**: a zombie whose head the game bursts (the magnum, or the shotgun aimed up close) falls without it, on every zombie look and for the co-op partner too; off: as the original, which shows the burst and the blood but leaves the head on ([ENEMIES.md](ENEMIES.md#head-blow-offs)) |
+| Auto-climb stairs | `auto_stairs` | **on**: walking or running into a staircase climbs it, up or down, as the action button would, with every control scheme and in third person. It starts only while you walk towards the stairs (facing the way they go, within 45 degrees), not while you stand in front of them or walk past along their edge. Where a press would answer a door, item or examine spot first, that spot still needs the button; so do the steps onto or off a ledge, so you never drop off one by accident. Some stairs with an event (such as one in the Palace) need the button the first time; off: the button as in the original |
+| Head blow-offs | `head_blowoff` | **on**: a zombie whose head the game bursts (the magnum, or the shotgun aimed up close) falls without it, on every zombie look; off: as the original, which shows the burst and the blood but leaves the head on ([ENEMIES.md](ENEMIES.md#head-blow-offs)) |
 
 ### Controls
 
@@ -229,29 +225,14 @@ Music and voice (`music_volume`) and Sound effects (`sfx_volume`), 0-100%.
 
 ### Appearance
 
-Your model, in single player and co-op (see [ACTORS.md](ACTORS.md)):
+Your model (see [ACTORS.md](ACTORS.md)):
 
 | Setting | ini key | Effect |
 |---|---|---|
-| You appear as | `coop_char` | **As played**, or another player file, story cast member, creature or zombie; at the end of the list the cutscene models of Claire, Chris, Steve and Wesker (Claire with her swinging ponytail, Wesker with his sunglasses); in co-op your partner sees it too (also in F3 and the lobby's MODEL row) |
+| You appear as | `appear_char` | **As played**, or another player file, story cast member, creature or zombie; at the end of the list the cutscene models of Claire, Chris, Steve and Wesker (Claire with her swinging ponytail, Wesker with his sunglasses) |
 | Use gender-matched animations | `appear_gender_anim` | **on**: a man shown while you play Claire moves with Chris's motions, a woman shown while you play a man with Claire's |
-| Swapped model in cutscenes | `appear_in_cutscenes` | **on**; off keeps the real Claire or Chris in cutscenes, with their own hands, faces and voice, and shows the swapped model only while you play. In co-op each player chooses for their own screen |
+| Swapped model in cutscenes | `appear_in_cutscenes` | **on**; off keeps the real Claire or Chris in cutscenes, with their own hands, faces and voice, and shows the swapped model only while you play |
 | Talking faces in cutscenes (experimental) | `appear_cutscene_face` | **off**; on: the swapped model moves its mouth with the lines in cutscenes |
-
-### Co-op
-
-The CO-OP page (also in F3) holds your own choices: name tags, the ping display, Hide IP addresses (for
-streams and screenshots: addresses on screen as `xxx.xxx.xxx.xxx`, address fields as stars;
-[COOP.md](COOP.md#hiding-ip-addresses-streaming)), follow host; the host's game rules: loot
-mode (Shared: each item lies there once and whoever takes it has it, so you split the supplies; key
-items go to both. Individual: each player takes their own copy), "Important items for both" (with
-shared loot, on by default: weapons and ink ribbons lie there for each player), "Synchronized cutscene skip" (a cutscene both watch is skipped once both pressed skip),
-"Game over" (Each player, or Both: one game over is both players' and the host's Retry answers for
-both; [COOP.md](COOP.md#game-over)), "Metal detector" (Skipped, the default: the prison's metal
-detector lets you through with weapons; [COOP.md](COOP.md#metal-detector)), "Quick start" (off by default:
-a new game starts with the manual read and the knife in the bag; [COOP.md](COOP.md#quick-start)), freezing enemies while trading, remembering partner inventories; and the connection: mode, host
-port and UPnP. See [COOP.md](COOP.md#settings). The address, room code, server, name, password
-and the save to start from or join with are chosen in the lobby (MULTIPLAYER) or F3.
 
 ## Controls
 
@@ -265,12 +246,11 @@ Keyboard defaults (all rebindable):
 | 1 / 2 | L2 / R2 |
 | Enter / Backspace | Start / Select |
 | Space (hold) | Quick knife |
-| T | Co-op trade request (next to the partner) |
 | R | Reload ([Reload](#reload)) |
 
 Any gamepad SDL supports works as a DualShock 2 (south/east/west/north = Cross/Circle/Square/
 Triangle, shoulders L1/R1, left trigger L2, right stick click R3). The right trigger is the
-quick knife and the left stick click the trade request, since those buttons have no game action.
+quick knife, since that button has no game action; the left stick click is L3.
 Aim (R1 / RB) + Triangle (Y) reloads ([Reload](#reload)).
 The game's own key types (OPTION -> KEY CONFIG) still decide what each PS2 button does.
 
@@ -283,7 +263,7 @@ gamepad connected at the first start it is on. Without one (keyboard and mouse o
 without motors) VIBRATION is greyed out and set to off, as on a PS2 pad without motors: connect the
 gamepad and turn it on again there. **Vibration strength** (CONTROLS) scales it. The rumble stops
 while the window has no focus (unless the input source is Gamepad only), and each window rumbles
-only its own gamepad. In co-op only your own character's hits and shots rumble your pad.
+only its own gamepad.
 
 Third person (keyboard and mouse): W/S/A/D move and turn, Shift run, E action, Q cancel,
 Tab inventory, M map, right mouse aim, left mouse fire, R reload ([Reload](#reload)). The sniper
@@ -319,7 +299,7 @@ Menus, messages, the inventory's screens and events use the game's buttons with 
 (confirm A / Cross (Z), cancel B / Circle (X), L1 / R1 (Q / W) for the map's zoom and the pages of
 ENHANCED SETTINGS); with the keyboard in third person the third-person keys (W/A/S/D, E, Q, Tab,
 M) also work in the inventory, map, item box and messages, while the title menus and OPTION take
-the game's keys only. The co-op guest plays with the same controls as in single player.
+the game's keys only.
 
 ### Third person with a gamepad
 
@@ -417,8 +397,7 @@ and the inventory the button always does its own action. CONTROLS shows such a b
 with the weapon lowered. Bound to the aim button itself it reloads on every aim.
 
 A `recvx.ini` from before this (no `bindings_version` line) whose reload rows are still `none`,
-their default then, gets these defaults. In co-op it is your own action: the partner sees the
-reload and the ammo stays in your inventory.
+their default then, gets these defaults.
 
 ### Modern controls (fixed cameras)
 
@@ -444,8 +423,7 @@ alternate controls of the Resident Evil HD remasters:
   it is held the stick does not walk.
 - Stairs, steps and ladders still start with the action button; while climbing or pushing a box
   the direction only counts as "forward" when it points roughly where the character faces.
-- Third person keeps its own controls; this option only applies to the fixed cameras. In co-op
-  it changes only your own player.
+- Third person keeps its own controls; this option only applies to the fixed cameras.
 
 Hotkeys:
 
@@ -453,7 +431,6 @@ Hotkeys:
 |---|---|
 | F1 | settings overlay |
 | F2 | cheat menu |
-| F3 | co-op window |
 | F5 | third-person camera on/off |
 | F11 | windowed / fullscreen (borderless or exclusive, as chosen in Display mode) |
 | Page Up, F / Page Down | noclip fly up / down (when flying is on; R reloads now) |
@@ -498,8 +475,7 @@ F1 -> Controls or ENHANCED SETTINGS -> CONTROLS:
 | Gamepad | `input_pad` | **Any** (the first connected pad) or **1-4**: the pad the system numbers so (Xbox: its slot light; PlayStation and Switch pads: their player lights) |
 
 With Gamepad only, the hotkeys and the overlay windows still respond to keyboard and mouse, so
-F1 always gets you back. Use this to run two copies side by side for local co-op
-([COOP.md](COOP.md#local-co-op-on-one-pc)). If the game runs through Steam with Steam Input
+F1 always gets you back. If the game runs through Steam with Steam Input
 enabled, Steam may send its virtual pad only to the focused window: turn Steam Input off for it.
 
 ## Cheats and debug tools (F2)
@@ -537,7 +513,7 @@ The F2 window (also the EXTRAS page of ENHANCED SETTINGS) is meant for testing a
   A room may not work in every story state (wrong case, missing scripts); an unlisted number may
   crash.
 
-In co-op, enemy spawning is host-only; the other cheats, unlock all among them, work for whoever turns them on, and a lock opened so opens for the partner as usual. Actions chosen in ENHANCED SETTINGS run when the menu closes.
+Actions chosen in ENHANCED SETTINGS run when the menu closes.
 
 ## HD texture packs
 
@@ -563,7 +539,7 @@ and **HD textures: UI** (on).
   change text and layouts there. With **HD textures: UI** on (the default) those replacements are
   used too; off, only replacements that show the same picture as the original are (the log names
   each one skipped). Broken replacements (transparent where the original shows something) are
-  never used. The port's own menu entries (MULTIPLAYER, ENHANCED SETTINGS, RETURN TO TITLE) always
+  never used. The port's own menu entries (ENHANCED SETTINGS, RETURN TO TITLE) always
   keep the original letters.
 - The game's font is kept unless **HD textures: font** is on.
 - Packs usually come without mipmaps, as PCSX2 uses them: very large textures shimmer a little in

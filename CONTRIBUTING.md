@@ -17,7 +17,7 @@ their Python tests.
 
 ## Where changes go
 
-- **This repository**: everything under `pc/` (platform layer, glue, server, tools, tests),
+- **This repository**: everything under `pc/` (platform layer, glue, tools, tests),
   `cmake/` and the docs.
 - **The decompilation** (`decomp/`) is a submodule pointing at the `pc-port` branch of
   [camybiohazard/recvx-decomp](https://github.com/camybiohazard/recvx-decomp), a fork of

@@ -4,8 +4,7 @@ How a room spawns and runs its enemies, what the PC port changed, and the featur
 it: the F2 enemy spawner and the enemy options (extra enemies, rearranged placements,
 randomizer). Related: [ACTORS.md](ACTORS.md) (models, skeletons, motions, the actor
 catalogue), [modding/ROOM_FORMAT.md](modding/ROOM_FORMAT.md) (room file layout, records,
-scripts and opcodes), [COOP.md](COOP.md) (host-authoritative enemies),
-[USER_GUIDE.md](USER_GUIDE.md) (cheats).
+scripts and opcodes), [USER_GUIDE.md](USER_GUIDE.md) (cheats).
 
 Paths are relative to `decomp/src/ps2/veronica/prog/` unless noted. Room counts come from
 `pc/tools/enemies.py` over all 205 room files.
@@ -108,7 +107,7 @@ a room effect texture ("Effect textures of added types").
 
 | Resource | PS2 | PC | Notes |
 |---|---|---|---|
-| Enemy slots | 128 (`ene[]`) | unchanged | retail uses up to 76 records (RM_9170, ants); a zombie takes 8. Slots are byte-sized in the decomp and in the co-op packets, so raising them is a protocol change |
+| Enemy slots | 128 (`ene[]`) | unchanged | retail uses up to 76 records (RM_9170, ants); a zombie takes 8. Slots are byte-sized in the decomp |
 | Room arena | 12.25 MB incl. ~1.8 MB player data | **+64 MB** (`PC_ARENA_EXTRA`) | allocators never check `sys->endp`; the map/file/option screens copy the room's textures above `sys->memp` (2.2..6.1 MB), which must stay free |
 | Texture heap | 10 MB (`Ps2_tex_buff`) | **64 MB** (`PC_TEX_HEAP_SIZE`, `pc_prelude.h`) | full = `exit(0)`; retail rooms use up to 7.6 MB |
 | Texture entries | 256 (`tbuf`) | **1024** (`PC_TEX_ENTRIES`) | first-free and bump allocation, so vanilla rooms use the same entries as on the PS2 |
@@ -127,12 +126,12 @@ With these budgets 25..30 foreign types fit in one room before the slots run out
   bhCPM0_damage`).
 * **One enemy takes a player at a time** (`eneset.c pc_call_enemy`): the enemy whose code set the
   player's busy flag (`flg & 4`) owns the player until it clears; other enemies' changes to that
-  player work meanwhile are undone (parts count as their parent; the co-op partner too). A zombie
-  refused this way lets go (`coop_glue.c pc_enemy_unhold`). The moth's and the Black Widow's
+  player work meanwhile are undone (parts count as their parent). A zombie
+  refused this way lets go (`watchdog_glue.c pc_enemy_unhold`). The moth's and the Black Widow's
   leader counts as the holding body's family (`pc_family`): the body starts the grab, the type's
   one leader (an unlinked enemy of the same id that the first body's Init makes) plays it and
   lets go (`bhEne06_PlayerControl`, `bhEne03_PlayerControl`); refused, the player stayed grabbed.
-* Watchdog (`coop_glue.c pc_enemy_watch`): an alive enemy unchanged for 150 steps is logged; a
+* Watchdog (`watchdog_glue.c pc_enemy_watch`): an alive enemy unchanged for 150 steps is logged; a
   zombie stuck in a grab state is released.
 
 * A Tyrant added to a room (a corridor) that turned beside a player lying next to it pushed the
@@ -158,53 +157,23 @@ Mixing types the PS2 never mixed can still show odd behaviour (a Hunter may leap
 
 * `ene[128]` (`BH_PWORK`, 0x580 bytes); `sys->ewk_n` = highest used slot + 1; free =
   `!(flg & 1)`. `eneset.c bhControlEnemy` runs `bhJumpEnemy[id](ep)` then `bhEne_InitDamage` for
-  every used slot not hidden/frozen (`stflg & 0x41000000`) or linked to a hidden parent; co-op
-  hooks wrap the call. `bhDrawEnemy` draws the same set.
+  every used slot not hidden/frozen (`stflg & 0x41000000`) or linked to a hidden parent; the PC
+  hooks (enemy variants, the watchdog) wrap the call. `bhDrawEnemy` draws the same set.
 * `bhJumpEnemy[id]` -> `bhEneNN` (`enNN.c`) -> `bhEneNN_Mode0[mode0]`: 0 `Init` (work, HP from
   the difficulty table, collision), 1 `Move` (the brain picks `mode1`/`mode2`), 2 `Nage`
   (grabs/throws, the player animated from the enemy's motion set), 3 `Damage`, 4 `Die` (sets
   `flg & 2`), 5 `bhEne_Event` (script acting). Types with their own code: 0, 1..27, 29, 30, 53,
   54, 55, 71; 56 is a scripted object; other ids up to 99 run `subpl.c bhSubpl` (NPCs, no AI). The
-  AI targets `plp` (co-op swaps it per enemy).
+  AI targets `plp`.
 * **Death and kill flags**: the body stays in its slot until the room is left. `scd1` runs `DieCk`
   every frame; `ed_flg` is in the save, so kills persist. `scd0` runs `EneSetCk` on the next visit
   and hides dead records; records without a `DieCk` respawn. Kill bits above 511 would not hide
   (retail uses up to 357). "All dead" checks (`DieEventCk`): rooms 3210, 4012, 5550..5710.
 * **Difficulty** (`sys->gm_mode`: 0 normal, 1 easy, 2 very easy, 3 Battle Game; set by the title's
-  difficulty menu, setting "Difficulty select", or the co-op lobby's START): very easy doubles the
+  difficulty menu, or setting "Difficulty select"): very easy doubles the
   player's HP (320) and takes enemy HP from the second row of the type's table; easy and very easy
   change ammo pickups (`item.c getbulletmax`); easy keeps the enemies' normal HP (type 21 aside).
   Counts, placement and speed do not depend on it.
-
-## Co-op
-
-Details in [COOP.md](COOP.md); what matters for enemies:
-
-* The host runs the AI; the guest's enemies are puppets updated from per-slot snapshots (no type
-  or model), so both sides must hold the same enemy in the same slot. A packet carries at most 48
-  snapshots (`COOP_SNAP_FRAME`); with more active slots each packet sends the next 48.
-* **Added enemies** (F2 spawner, extra enemies) are announced with one reliable `EV_SPAWN`
-  {slot; source room file and record; type, model version, variant; position, angle, floor}. The
-  guest realizes it with the spawner's code into the same slot (`spawn_glue.c spawn_note_apply`
-  -> `spawn_at`, skipping lower free slots if needed); its Init creates the same children, and
-  from then on it is an ordinary puppet. Notes arriving during a door, event or menu wait in
-  `spawn_pending` (at most 900 frames). The host resends them when the guest (re)enters the room
-  (`spawn_replay`); a door clears them on both sides. Randomizer records the host had to keep go
-  along as notes marked `SPAWN_NOTE_KEPT`.
-* **The host's enemy options** go to the guest as `EV_EOPTS` (session start, before the game
-  state, on change) and replace the guest's. Placements and the randomizer depend only on the room
-  file and the seed, so both sides make the same records in the same slots. The guest never spawns
-  (F2 refuses there).
-* **Targets** (host, `coop_proto.c coop_pick_target`): each enemy goes for one player at a time:
-  kept through its grab or bite, never a busy one, the one right in front, else the nearer by a
-  margin (another floor counts as twice as far); a busy target is left for a free player within
-  4 m. A loop guard makes an enemy that attacks the same player three times within 90 frames
-  leave it alone for 60 (COOP.md). The partner's stand-in carries what the AI reads of a player (position, angles, modes, hp,
-  `stflg`, hit capsule `watr`, floor, busy bits); attacks on it reach the guest as `EV_PLY_HIT` or
-  `EV_GRAB`. A zombie grab on the guest makes the slot the guest's until handed back (~10 s
-  timeout).
-* **Kills while the guest runs the room** (`EV_GONE`): at the take-over the guest names its dead
-  enemies; the host hides its matching copies for that visit.
 
 ## Head blow-offs
 
@@ -236,18 +205,13 @@ base drawn as another model ("Enemy variants") hides that model's head role (`ac
 the rig's head and the nodes below it). Off: as the original (frames identical to the previous
 build). Caps the game links to the head (lab coat, base staff, civilian looks) fly off as before.
 
-**Co-op**: the host decides the burst; a zombie's `exp0` is not in the snapshots, but effect 356 goes
-to the guest as an `EV_FX` linked to the zombie's slot, and `coop_glue.c apply_fx` sets the
-guest's flag from it, so the partner sees the head go too. A guest that enters the room later sees
-the body with its head.
-
 **Third person, "Precise hits"** ([THIRDPERSON.md](THIRDPERSON.md#precise-hits)): a shot tested
 against the zombie's body bursts the head only when that hit is on the head (joint 11); earlier head
 damage, the magnum's near hit on joints 1 and 8..10 and the shotgun aimed up no longer do.
 
 ## Requirements for randomizers and difficulty options
 
-1. **Record count and order** stay (scripts, `wrk_no`, model/motion/texture tables, co-op slots).
+1. **Record count and order** stay (scripts, `wrk_no`, model/motion/texture tables).
 2. **Kill bits**: a replaced record keeps its bit; extra enemies get none. New bits < 512.
 3. **Leave alone**: the *type* of event-driven records (another look of the same type keeps the
    scene's motions and AI states; the randomizer does that), NPCs (ids >= 31), ids 0, 25, 28, 53, 56.
@@ -260,8 +224,6 @@ damage, the magnum's near hit on joints 1 and 8..10 and the shotgun aimed up no 
    room's floor areas.
 8. **Grab motions** come with the type's motion set; Wesker (`ply_id` 3) overruns some 3-row
    tables.
-9. **Co-op**: decide everything from the room file, the flags and a shared seed, at the same
-   point of the load on both sides.
 
 Softlock risks: "all dead" rooms, events that `LoadWork` a record expecting its motion numbers,
 items given after a scripted kill, enemies on the entry position or in a door's trigger box.
@@ -277,7 +239,7 @@ prop), then the custom enemies, marked "[C] " ("Enemy variants": the built-in on
 
 Steps, as the room loader does it for a record:
 
-1. Checks: in a room, no door/event, not the co-op guest; slots for the type and its children
+1. Checks: in a room, no door/event; slots for the type and its children
    (`spawn_slots_needed`: zombie 10, Gulp Worm 19, Black Widow 25, moth 16, Alexia 2 12, others
    1..3) plus 6 kept free; arena, spawn pool, texture entries (16 spare) and heap (1 MB spare).
 2. `actor_find` (`pc/glue/actor_glue.c`, shared with the appearance loader) reads the source room
@@ -317,7 +279,7 @@ with enemies, bank 3 with the room's own types' sounds. List numbers are per typ
 between types, so an added type would play another type's sounds.
 
 On the PC, when `spawn_at` realizes a type the room file has no record of (F2 spawner,
-randomizer, co-op guest), `spawn_glue.c sound_load` reads bank 3 of its source room
+randomizer), `spawn_glue.c sound_load` reads bank 3 of its source room
 (`snd_iop.c snd_xbank_load`; else another catalogue room of the type) into an extra synth bank
 (one per source room, at most 31) and records type -> bank. Each request is attributed when made
 (`sdfunc.c RequestEnemySeBasic` -> `eneset.c pc_enemy_sound_type`): the enemy whose code runs, a
@@ -356,7 +318,7 @@ A variant is a spawnable enemy made of parts the game already has: a **base** ty
 hit capsules, collision, motions; the spawner's entry of that type and model version), optionally
 **another model** drawn in its place, factors on its stats, motion and sound mappings, and
 randomizer metadata. Each has a **stable id** (1..99 built in, 100..999 from the mods file), which
-the F2 spawner, the randomizer and co-op spawn notes carry. Code: `pc/src/host/variants.c` (the
+the F2 spawner and the randomizer carry. Code: `pc/src/host/variants.c` (the
 table and the file reader, no game state; ctest `variants`), `pc/glue/variant_glue.c` (in the
 game).
 
@@ -408,7 +370,7 @@ arms, motions, attacks and sounds, spawned as an ordinary enemy, with the Tyrant
 | speed | steps per frame (0.5..2: AI, motions and movement together; below 1 a step is skipped, never one with a hit) | `pc_variant_pre` |
 | scale | drawn size (node matrices scaled about its position); hits and collision stay the base's | `pc_variant_draw` |
 | motions | its own copy of the base's motion set with entries swapped (`a:b`: it plays b where the base asks for a); 4 such sets per room | `variant_spawned` |
-| motions `a:T:b`, death | another enemy's motions (the donor T, one per variant): its first sub-model's skeleton and its motion set read from its room file as the spawner reads enemies (`actor_find`, no textures, 2 MB buffer, one donor at a time); while the base plays `a`, and once it is dead (`flg & 2`: the death motions in turn, timed by the steps since, the last one's end held), the donor is posed in that motion at the enemy's place and the base's own catalogue model (or `model`) is drawn retargeted from it, the base's linked parts hidden | `pc_variant_post` (the death's steps, a co-op puppet's too), `pc_variant_draw` |
+| motions `a:T:b`, death | another enemy's motions (the donor T, one per variant): its first sub-model's skeleton and its motion set read from its room file as the spawner reads enemies (`actor_find`, no textures, 2 MB buffer, one donor at a time); while the base plays `a`, and once it is dead (`flg & 2`: the death motions in turn, timed by the steps since, the last one's end held), the donor is posed in that motion at the enemy's place and the base's own catalogue model (or `model`) is drawn retargeted from it, the base's linked parts hidden | `pc_variant_post` (the death's steps), `pc_variant_draw` |
 | sounds, sound_map, hurt_sound | that room's bank 3 as an extra bank ("Sounds of added types"); a request of a mapped base program plays the other program from it; the hurt sound is requested on a hit, on the voice channel (whose bank is kept apart from the other channel's, `sdfunc.c`) | `sdfunc.c RequestEnemySeBasic` -> `pc_variant_sound` |
 
 Its parts and children (linked to it) count as the variant. With no variant in the room
@@ -422,7 +384,7 @@ name is shown as "[C] Name" in F2 and logged by the randomizer); `;` and `#` sta
 
 ```ini
 [Brute zombie]
-id = 100                 ; required, 100..999, unique: co-op and the randomizer use it
+id = 100                 ; required, 100..999, unique: the randomizer uses it
 base = Zombie: soldier   ; required: an F2 entry's name, or type[.model version] (1.2)
 model = Nosferatu        ; a "You appear as" model drawn instead (humanoids; none = the base's)
 attach = 3:9, 4:13       ; sub-model:node of that model drawn on its nodes (up to 4)
@@ -449,7 +411,7 @@ Keys are case-insensitive; a key that is not understood is reported and ignored;
 an id or a base, or with a taken id, is left out. To find sound programs, `RECVX_TRACE_SND=1` logs
 every sound a variant requests with its motion and frame.
 
-### Randomizer and co-op
+### Randomizer
 
 * The randomizer ("Randomizer" below) adds every variant with a weight as a kind of its own after
   the built-in kinds: its rules are its base kind's (another base type's: not in kill-count rooms,
@@ -460,13 +422,6 @@ every sound a variant requests with its motion and frame.
   seeds, Wild) he took one record in 0..1 rooms per seed (3060, 3170, 7130), none in the 12 boss
   rooms reached. Extra enemies copy a randomized
   record's variant too. Its grab family is its base type's (the hold rule keys on the type).
-* **Co-op**: the spawn note's `variant` field (formerly padding; the protocol is unchanged) carries
-  the id; the guest realizes the base into the same slot and applies the same variant (model,
-  motions, donor, sounds), after which the enemy is an ordinary puppet (its death plays from the
-  dead flag the host sends); its hits on the guest come from
-  the host's step (damage already scaled). The randomizer draws the same variants on both sides
-  **only if both have the same variants**: partners need the same `mods/enemies.ini`. An unknown
-  id plays as its base type (logged).
 * Test aid: `RECVX_SPAWN="frame:v<id>[@dist]"` spawns a variant.
 
 ### Limits
@@ -484,8 +439,7 @@ every sound a variant requests with its motion and frame.
 ## Enemy options
 
 Extra enemies, placements and the randomizer are off by default; off, the code returns before touching
-anything (the variety and event settings only matter with the randomizer on). In co-op the host's options
-count for both. Code: `pc/glue/enemyopt_glue.c`, one decomp hook at the end of
+anything (the variety and event settings only matter with the randomizer on). Code: `pc/glue/enemyopt_glue.c`, one decomp hook at the end of
 `room.c bhFinishRoom` (`enemy_room_finished`).
 
 | Setting (page) | ini key | Values | Test aid |
@@ -506,10 +460,10 @@ from the game's `rand()`.
 
 ### Extra enemies
 
-* "Up to N per room": at the first frame a room runs, the host (or single player) picks up to N
+* "Up to N per room": at the first frame a room runs, the game picks up to N
   of the room's unmarked, visible, living records of the roaming types zombie, Black Widow,
   Cerberus, Hunter, Bandersnatch, albinoid adult, anatomist, and spawns a copy of each from the
-  current room file (`spawn_add`, so it reaches the guest as an added enemy): same type and model
+  current room file (`spawn_add`): same type and model
   version (no upload), variant 0, placed 15..35 units from the source where a line test against
   the walls (`hitchkl.c bhCollisionCheckLine2`) is clear, at least 40 units from every entry
   position and from the player.
@@ -580,10 +534,9 @@ weight, then one of its looks (the spawner's entries of that type, from any stag
   (6 stay free), so a room never exceeds the larger of that and its own count.
 * **Determinism**: each record's draws come from xorshift seeded with (seed, room file, record),
   plus what earlier records of the room drew; nothing depends on the player, the game's `rand()`
-  or what was loaded before. Both co-op sides compute the same.
+  or what was loaded before.
 * **Fallback**: any refusal (data not found, memory, textures) puts the original record back
-  exactly as it was, logged as `record N stays`; the host sends it to the guest as a
-  `SPAWN_NOTE_KEPT` note.
+  exactly as it was, logged as `record N stays`.
 * Log: one line per change (`room R record N: type T model V -> name (type T' model V')`, event
   records marked `event enemy: same type`) and per room `now k:type.model ...`.
 * Offline alternative: `pc/tools/rdxbuild.py` builds rooms with several `enemy_assets` donors
@@ -709,11 +662,8 @@ types). *Another kind*: the script only shows or hides them. *Another look*: an 
 
 ### Limits
 
-* Extra enemies come only from the host: in a room only the guest is in, there are none until the
-  host comes in.
 * Two looks of one type share the first one's sound bank.
-* A refusal by `spawn_at` keeps the original record; both co-op sides decide the same unless one
-  side's memory is fuller.
+* A refusal by `spawn_at` keeps the original record.
 
 ## Tools
 
@@ -735,5 +685,5 @@ Test aids:
 | `RECVX_ENEMY_EXTRA`, `_PLACE`, `_RANDOM`, `_SEED`, `_VARIETY`, `_EVENTS` | override the enemy options |
 | `RECVX_ENEMY_KILL=n` | from n game frames into each room, every 20 frames each living, shown enemy of the room's records (ids 1..30, in its AI) takes a heavy hit as from the player's weapon; logs each death (`flg & 2`, what `DieCk` turns into the kill bit) and per room how many died (Black Widows take damage through their body parts and do not die from it) |
 | `RECVX_HEADSHOT=n` | n game frames into each room, every living zombie in its AI (records and added ones) takes one head hit as from the magnum (weapon 6 on joint 11, the game's burst path); its head state (`exp0 + 0x78`), hp and modes are logged every 15 frames for 90 frames |
-| `RECVX_ENEMY_TRACE=dist` | traces enemy steps (co-op targets) |
+| `RECVX_ENEMY_TRACE=dist` | traces enemy steps near the player |
 | `RECVX_TRACE_SND=1` | logs sound requests and extra banks |
