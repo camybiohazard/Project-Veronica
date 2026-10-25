@@ -49,7 +49,7 @@ int pc_intro_pressed(int start)
 int pc_quick_knife_on(void) { return g_config.quick_knife; }
 int pc_head_blowoff_on(void) { return g_config.head_blowoff; }
 int pc_auto_stairs_on(void) { return g_config.auto_stairs; }
-/* event.c bhPlItemCheck: typewriters save without an ink ribbon and use none */
+/* event.c bhPlItemCheck, ps2_McSaveFile.c mcWriteStartSaveFile: typewriters save without an ink ribbon and use none */
 int pc_no_ink_ribbon(void) { return g_config.no_ink_ribbon; }
 /* the game tests a few joints of a model against the screen; with a wide or moving free
    camera that drops models that are partly visible, so third person never culls */
