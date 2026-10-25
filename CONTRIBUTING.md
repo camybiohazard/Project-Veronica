@@ -20,7 +20,7 @@ their Python tests.
 - **This repository**: everything under `pc/` (platform layer, glue, server, tools, tests),
   `cmake/` and the docs.
 - **The decompilation** (`decomp/`) is a submodule pointing at the `pc-port` branch of
-  [aikatore/recvx-decomp](https://github.com/aikatore/recvx-decomp), a fork of
+  [camybiohazard/recvx-decomp](https://github.com/camybiohazard/recvx-decomp), a fork of
   [AshfordFamily/recvx-decomp](https://github.com/AshfordFamily/recvx-decomp). Changes to game
   code go there as pull requests against `pc-port`, and every change must be guarded by
   `#ifdef TARGET_PC` with the PS2 original kept under `#else`, for example (`en23.c`):

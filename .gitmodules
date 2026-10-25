@@ -1,4 +1,4 @@
 [submodule "decomp"]
 	path = decomp
-	url = https://github.com/aikatore/recvx-decomp.git
+	url = https://github.com/camybiohazard/recvx-decomp.git
 	branch = pc-port

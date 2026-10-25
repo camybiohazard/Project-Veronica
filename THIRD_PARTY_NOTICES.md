@@ -10,7 +10,7 @@ or CRI Middleware.
 
 | Component | Path | Source | License |
 |---|---|---|---|
-| recvx-decomp (decompilation of the game), `pc-port` branch of a fork | `decomp/` | https://github.com/aikatore/recvx-decomp (upstream https://github.com/AshfordFamily/recvx-decomp) | MIT, Copyright (c) 2024-2026 AshfordFamily; see `decomp/LICENSE` |
+| recvx-decomp (decompilation of the game), `pc-port` branch of a fork | `decomp/` | https://github.com/camybiohazard/recvx-decomp (upstream https://github.com/AshfordFamily/recvx-decomp) | MIT, Copyright (c) 2024-2026 AshfordFamily; see `decomp/LICENSE` |
 | Sega Katana (Dreamcast) SDK headers | `decomp/include/recvx-decomp-katana` | https://github.com/SkeletonPicture/recvx-decomp-katana, a submodule of the decomp | third-party, proprietary (Sega); not redistributed here |
 | CRI Middleware (ADX/Sofdec) headers and PS2 libraries | `decomp/include/recvx-decomp-cri` | https://github.com/SkeletonPicture/recvx-decomp-cri, a submodule of the decomp | third-party, proprietary (CRI Middleware); not redistributed here. The PC build uses only the headers, not the `.a` libraries |
 | Metrowerks CodeWarrior compiler (`recvx-decomp-mwcc`) | `decomp/include/recvx-decomp-mwcc` | submodule of the decomp | not fetched by default (`update = none`) and not used by the PC build |
