@@ -19,6 +19,7 @@ extern "C" {
 #include "bindings.h"
 #include "settings.h"
 #include "lobby.h"
+#include "../import/import.h"
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
@@ -32,7 +33,7 @@ extern "C" {
 extern "C" void pad_set_game_input_enabled(int on);
 
 static SDL_Window* win;
-static bool ready, visible, cheats_visible, coop_visible;
+static bool ready, visible, cheats_visible, coop_visible, import_visible;
 static bool tps_key_wait;   /* the next key pressed becomes the third-person toggle key */
 
 void overlay_init(void* window, void* gl_context)
@@ -45,8 +46,9 @@ void overlay_init(void* window, void* gl_context)
     ImGui_ImplSDL3_InitForOpenGL(win, (SDL_GLContext)gl_context);
     ImGui_ImplOpenGL3_Init("#version 330 core");
     ready = true;
-    const char* show = SDL_getenv("RECVX_SHOW_OVERLAY");   /* debugging aid (screenshots): 1 F1, 2 the cheats (F2), 3 the co-op window */
-    visible = show && strcmp(show, "3") && strcmp(show, "2");
+    const char* show = SDL_getenv("RECVX_SHOW_OVERLAY");   /* debugging aid (screenshots): 1 F1, 2 the cheats (F2), 3 the co-op window, 4 import (F9) */
+    visible = show && strcmp(show, "3") && strcmp(show, "2") && strcmp(show, "4");
+    import_visible = show && !strcmp(show, "4");
     cheats_visible = show && !strcmp(show, "2");
     coop_visible = show && !strcmp(show, "3");
 }
@@ -72,8 +74,12 @@ int overlay_event(const void* e)
         coop_visible = !coop_visible;
         return 1;
     }
+    if (g_dev_mode && bind_hotkey(ev, B_IMPORT)) {
+        import_visible = !import_visible;
+        return 1;
+    }
     ImGui_ImplSDL3_ProcessEvent(ev);
-    if (!visible && !cheats_visible && !coop_visible) return 0;
+    if (!visible && !cheats_visible && !coop_visible && !import_visible) return 0;
     return (ev->type == SDL_EVENT_KEY_DOWN || ev->type == SDL_EVENT_KEY_UP || ev->type == SDL_EVENT_TEXT_INPUT ||
             ev->type == SDL_EVENT_MOUSE_BUTTON_DOWN || ev->type == SDL_EVENT_MOUSE_BUTTON_UP || ev->type == SDL_EVENT_MOUSE_WHEEL);
 }
@@ -180,8 +186,9 @@ static void controls_section(void)
         if (ImGui::BeginTabItem("Gamepad")) { if (dev != BIND_PAD) cap_row = -1; dev = BIND_PAD; ImGui::EndTabItem(); }
         ImGui::EndTabBar();
     }
+    char pad_name[96];
     if (dev == BIND_PAD) ImGui::TextDisabled("%s; the left stick also moves, as on the DS2. The third-person rows play in third\n"
-                                             "person with Modern gamepad controls, instead of the game rows of the same buttons.", bind_pad_desc());
+                                             "person with Modern gamepad controls, instead of the game rows of the same buttons.", bind_pad_desc(pad_name, sizeof pad_name));
     ImGui::TextDisabled("Click a binding, then press the key/button (Esc cancels, Delete clears); right click clears.\n"
                         "Reload can share a button: then Aim + button reloads.");
     if (dev == BIND_KB) ImGui::TextDisabled("Mouse buttons work on any row, also with the fixed cameras.");
@@ -550,8 +557,12 @@ static void coop_window(void)
         };
         label(v, cur, sizeof(cur));
         ImGui::BeginDisabled(cs.state != COOP_OFF && cs.host);
+        static LobbySave* saves;   /* listed when the list opens */
+        static int saves_n;
         if (ImGui::BeginCombo("Items when joining", cur)) {
-            for (int i = COOP_ITEMS_CURRENT, slots = lobby_save_slots(); i < slots; i++) {
+            if (ImGui::IsWindowAppearing()) { free(saves); saves_n = lobby_save_list(&saves); }
+            for (int k = 0; k < 3 + saves_n; k++) {
+                int i = k < 3 ? COOP_ITEMS_CURRENT + k : saves[k - 3].slot;
                 label(i, lab, sizeof(lab));
                 if (ImGui::Selectable(lab, i == v)) { c->items = i; changed = true; }
             }
@@ -707,11 +718,136 @@ static const char* lobby_hint(void)
     }
 }
 
+/* F9: imports from other games' discs (pc/src/import, docs/IMPORT_OUTBREAK.md). A section per
+   source: its disc image, what to extract, the extraction's progress and what was extracted
+   (from the source's manifest, so it shows after a restart too). */
+static char picked[1024];
+static SDL_AtomicInt picked_src = { -1 };
+static void SDLCALL import_picked(void* ud, const char* const* files, int filter)
+{
+    (void)filter;
+    if (files && files[0]) { SDL_strlcpy(picked, files[0], sizeof(picked)); SDL_SetAtomicInt(&picked_src, (int)(intptr_t)ud); }
+}
+
+static void import_window(void)
+{
+    static ImportItem items[IMPORT_SOURCES][1024];
+    static int n[IMPORT_SOURCES], loaded, was_running, what[IMPORT_SOURCES] = { IMPORT_PLAYERS };
+    static char when[IMPORT_SOURCES][64];
+    ImportProgress* pg = &g_import_progress;
+    int running = __atomic_load_n(&pg->running, __ATOMIC_ACQUIRE);
+    if (!loaded || (was_running && !running)) {   /* the manifests: at the first opening and after an extraction */
+        for (int s = 0; s < IMPORT_SOURCES; s++) n[s] = import_results(s, items[s], 1024, when[s], sizeof(when[s]));
+        if (loaded) import_registry_load();   /* new player models for "You appear as" */
+        loaded = 1;
+    }
+    was_running = running;
+    int ps = SDL_GetAtomicInt(&picked_src);
+    if (ps >= 0) {   /* a disc image chosen in the file selector */
+        SDL_strlcpy(g_import.iso[ps], picked, sizeof(g_import.iso[ps]));
+        SDL_SetAtomicInt(&picked_src, -1);
+        settings_save_later();
+    }
+    ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(820, 560), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Import (F9)", &import_visible)) { ImGui::End(); return; }
+    ImGui::TextWrapped("Models from other games' discs, read from your own disc image. What is extracted stays in your mods "
+                       "folder. Player models are then listed in \"You appear as\" (F1 > Appearance, F3, the lobby).");
+    for (int s = 0; s < IMPORT_SOURCES; s++) {
+        const ImportSource* src = &import_sources[s];
+        char label[128], dir[1100];
+        SDL_snprintf(label, sizeof(label), "%s (%s)", src->title, src->serial);
+        if (!ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen)) continue;
+        ImGui::PushID(s);
+        ImGui::TextWrapped("Disc image: %s", g_import.iso[s][0] ? g_import.iso[s] : "(none chosen)");
+        ImGui::BeginDisabled(running != 0);
+        if (ImGui::Button("Choose disc image...")) {
+            static const SDL_DialogFileFilter filters[] = { { "PS2 disc image (*.iso)", "iso" }, { "All files", "*" } };
+            SDL_ShowOpenFileDialog(import_picked, (void*)(intptr_t)s, win, filters, 2, g_import.iso[s][0] ? g_import.iso[s] : NULL, false);
+        }
+        import_source_dir(s, dir, sizeof(dir));
+        ImGui::TextDisabled("Output: %s", dir);
+        {   /* (only the groups offered, IMPORT_OFFERED) */
+            static const struct { const char* label; int bit; } groups[] = {
+                { "Playable characters", IMPORT_PLAYERS }, { "Cutscene / high detail", IMPORT_CUTSCENE }, { "NPCs", IMPORT_NPCS }, { "Enemies", IMPORT_ENEMIES } };
+            int first = 1;
+            what[s] &= IMPORT_OFFERED;
+            for (const auto& g : groups) {
+                if (!(IMPORT_OFFERED & g.bit)) continue;
+                if (!first) ImGui::SameLine();
+                ImGui::CheckboxFlags(g.label, &what[s], g.bit);
+                first = 0;
+            }
+        }
+        ImGui::BeginDisabled(!g_import.iso[s][0] || !what[s]);
+        if (ImGui::Button("Extract characters")) import_start(s, what[s]);
+        ImGui::EndDisabled();
+        ImGui::EndDisabled();
+        if (running || pg->total) {
+            char ov[64];
+            SDL_snprintf(ov, sizeof(ov), "%d / %d", pg->done, pg->total);
+            ImGui::ProgressBar(pg->total ? (float)pg->done / pg->total : 0.0f, ImVec2(-1, 0), ov);
+            ImGui::TextWrapped("%s", pg->phase);
+        }
+        int ok = 0, players = 0, failed = 0;
+        for (int i = 0; i < n[s]; i++) {
+            const ImportItem* x = &items[s][i];
+            if (x->group < 0 || !(IMPORT_OFFERED & (1 << x->group))) continue;
+            ok += x->ok; players += x->player; failed += !x->ok;
+        }
+        if (!n[s]) ImGui::TextDisabled("Nothing extracted yet.");
+        else {
+            ImGui::Text("Extracted %s: %d models, %d usable as player models, %d failed", when[s], ok, players, failed);
+            static const char* const gname[IMPORT_GROUPS] = { "Playable characters", "Cutscene and high-detail versions", "NPCs", "Enemies" };
+            for (int g = 0; g < IMPORT_GROUPS; g++) {
+                if (!(IMPORT_OFFERED & (1 << g))) continue;   /* (an older run's other groups: not listed) */
+                int gn = 0, gp = 0;
+                for (int i = 0; i < n[s]; i++) if (items[s][i].group == g) { gn++; gp += items[s][i].player != 0; }
+                if (!gn) continue;
+                char gl[96];
+                SDL_snprintf(gl, sizeof(gl), "%s: %d, %d player models###g%d", gname[g], gn, gp, g);
+                if (!ImGui::TreeNodeEx(gl, g == IMPORT_GROUP_PLAYERS ? ImGuiTreeNodeFlags_DefaultOpen : 0)) continue;
+                if (ImGui::BeginTable("##items", 9, ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV,
+                                      ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 15))) {
+                    ImGui::TableSetupScrollFreeze(0, 1);
+                    ImGui::TableSetupColumn("Character"); ImGui::TableSetupColumn("Variant"); ImGui::TableSetupColumn("File");
+                    ImGui::TableSetupColumn("Meshes"); ImGui::TableSetupColumn("Vertices"); ImGui::TableSetupColumn("Triangles");
+                    ImGui::TableSetupColumn("Textures"); ImGui::TableSetupColumn("Player model");
+                    ImGui::TableSetupColumn("Notes", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableHeadersRow();
+                    for (int i = 0; i < n[s]; i++) {
+                        const ImportItem* x = &items[s][i];
+                        if (x->group != g) continue;
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn(); ImGui::TextUnformatted(x->name);
+                        ImGui::TableNextColumn(); ImGui::TextUnformatted(x->variant);
+                        ImGui::TableNextColumn(); ImGui::TextUnformatted(x->id);
+                        ImGui::TableNextColumn(); ImGui::Text("%d", x->meshes);
+                        ImGui::TableNextColumn(); ImGui::Text("%d", x->verts);
+                        ImGui::TableNextColumn(); ImGui::Text("%d", x->tris);
+                        ImGui::TableNextColumn(); ImGui::Text("%d", x->textures);
+                        ImGui::TableNextColumn();
+                        if (!x->ok) ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f), "failed");
+                        else if (x->player) ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "yes");
+                        else ImGui::TextDisabled(x->female < 0 ? "glTF only" : "no");
+                        ImGui::TableNextColumn(); ImGui::TextUnformatted(x->note[0] ? x->note : x->ok ? "glTF + PNG" : "");
+                        if (x->note[0] && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", x->note);
+                    }
+                    ImGui::EndTable();
+                }
+                ImGui::TreePop();
+            }
+        }
+        ImGui::PopID();
+    }
+    ImGui::End();
+}
+
 void overlay_render(void)
 {
     if (!ready) return;
     coop_status_get(&cs);
-    bool windows = visible || cheats_visible || coop_visible;
+    bool windows = visible || cheats_visible || coop_visible || import_visible;
     pad_set_game_input_enabled(!windows);
     tps_update_mouse_mode(win, windows);
     menu_mouse_update(win, windows);
@@ -722,7 +858,7 @@ void overlay_render(void)
     const char* hint = lobby_hint();
     bool tag = coop_on && tag_flags && !cs.trade_open && (g_coop.nametag || cs.busy_kind || cs.trade_hint[0]);   /* co-op: the partner is drawn in the frame shown */
     bool ping = g_config.show_ping && coop_on && cs.state == COOP_CONNECTED;   /* co-op: next to the frame rate */
-    if (!visible && !cheats_visible && !coop_visible && !g_config.show_fps && !ping && !crosshair && !hint && !tag) return;
+    if (!visible && !cheats_visible && !coop_visible && !import_visible && !g_config.show_fps && !ping && !crosshair && !hint && !tag) return;
     {   /* readable on large displays: scale text with the window height (1080p = 1x) */
         int ww, wh;
         SDL_GetWindowSizeInPixels(win, &ww, &wh);
@@ -734,6 +870,7 @@ void overlay_render(void)
     if (visible) settings_window();
     if (cheats_visible) cheat_window();
     if (coop_visible) coop_window();
+    if (import_visible) import_window();
     if (crosshair) {   /* third person: the screen centre is where the shot goes (tps_glue.c) */
         ImDrawList* dl = ImGui::GetForegroundDrawList();
         ImVec2 c(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);

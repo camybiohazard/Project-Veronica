@@ -319,8 +319,23 @@ static void set_reverb(int core, int mode, int depth)
 }
 
 /* n samples of every voice into acc (dry) and fx[core] (reverb send), interleaved stereo */
+/* how loud the player's voice (SE port 4, sdfunc.c CallPlayerVoice) has been since it was last asked:
+   the mean |sample| of its voices, 0..1 (an imported model's jaw follows it, actor_glue.c imp_face) */
+static float voice_sum;
+static int voice_n;
+float snd_synth_voice_level(void)
+{
+    float l;
+    snd_synth_lock();
+    l = voice_n ? voice_sum / voice_n / 32768.0f : 0.0f;
+    voice_sum = 0; voice_n = 0;
+    snd_synth_unlock();
+    return l;
+}
+
 static void render(float* acc, float* fx0, float* fx1, int n)
 {
+    voice_n += n;
     for (int i = 0; i < VOICES; i++) {
         Voice* v = &voice[i];
         MidiCh* m;
@@ -348,6 +363,7 @@ static void render(float* acc, float* fx0, float* fx1, int n)
             env = v->level / 32768.0f;
             if (v->dry) { acc[k * 2] += smp * env * gl; acc[k * 2 + 1] += smp * env * gr; }
             if (v->wet) { fx[k * 2] += smp * env * gl; fx[k * 2 + 1] += smp * env * gr; }
+            if (m >= midi[4] && m < midi[4] + 16) voice_sum += fabsf(smp * env) * v->vol;
             for (v->frac += step; v->frac >= 4096; v->frac -= 4096) {
                 v->s0 = v->s1;
                 if (!next_sample(v, &v->s1)) { v->on = 0; break; }

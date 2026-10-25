@@ -47,10 +47,13 @@ static int find_in_dir(uint32_t dir_lsn, uint32_t dir_size, const char* name, ui
         if (!cdvd_read_sectors(dir_lsn + off / SECTOR, 1, sec)) return 0;
         for (uint32_t p = 0; p < SECTOR && sec[p];) {
             const uint8_t* rec = sec + p;
-            uint8_t len = rec[0], flen = rec[32];
+            uint8_t len = rec[0], flen;
             const char* fid = (const char*)rec + 33;
-            size_t cmp = flen;
-            const char* semi = memchr(fid, ';', flen);
+            size_t cmp;
+            const char* semi;
+            if (len < 34 || len > SECTOR - p || 33 + rec[32] > len) break;   /* (the record and its name in the sector) */
+            cmp = flen = rec[32];
+            semi = memchr(fid, ';', flen);
             if (semi) cmp = (size_t)(semi - fid);
             if (cmp == nlen && SDL_strncasecmp(fid, name, nlen) == 0) {
                 *lsn = le32(rec + 2); *size = le32(rec + 10); *is_dir = (rec[25] & 2) != 0;

@@ -40,8 +40,9 @@ settings menus) hook into the game through small glue functions.
 | `pc/src/audio/` | CRI ADX (ADXF/ADXT), SDL audio output, the TSNDDRV sound driver (high-level emulation) and its synthesizer |
 | `pc/src/movie/` | PSS demuxer, MPEG-2 decoder, movie player |
 | `pc/src/input/` | DualShock 2 emulation (`pad.c`), bindings, third-person input, mouse in menus |
-| `pc/src/host/` | entry point (`host.c`), render loop, settings table and `recvx.ini`, native save files (`savestore.c`), F1/F2/F3 overlay (Dear ImGui), logging, profilers, model catalogue |
+| `pc/src/host/` | entry point (`host.c`), render loop, settings table and `recvx.ini`, native save files (`savestore.c`), F1/F2/F3/F9 overlay (Dear ImGui), logging, profilers, model catalogue |
 | `pc/src/net/` | co-op UDP, packet formats, port mapping, rendezvous client and protocol |
+| `pc/src/import/` | F9 imports from other games' discs (glTF export, `.cvxm` player models): [IMPORT_OUTBREAK.md](IMPORT_OUTBREAK.md) |
 | `pc/server/` | `recvx-server` and the `recvx-client` test tool |
 | `pc/tests/` | ctest programs |
 | `pc/tools/` | code generators (`asm2c.py`, `vsm2inc.py`), room and map tools, test and comparison scripts |
@@ -83,6 +84,7 @@ Windows `-mno-ms-bitfields`.
 | game (`game_thread`) | the decomp and `pc/glue` (ENHANCED SETTINGS menu, lobby, co-op incl. its UDP socket polled once per frame, cheats applied at the frame hand-off), disc reads, memory card, creating and destroying audio streams |
 | SDL audio | ADX decoding in the stream callbacks (own file handle per voice), the sound driver's 240 Hz tick, its queued commands and the synth mix |
 | portmap | UPnP/NAT-PMP while hosting (`net/portmap.c`) |
+| update | the update check: once per start, up to three HTTP requests, detached (`net/update.c`) |
 | co-op arrival times (Windows) | waits on the co-op socket and notes when data arrived (`net_rx_us`) |
 | log (Linux, `--log`) | copies stdout/stderr into the log file |
 
@@ -285,8 +287,10 @@ shows in-between images at the display rate:
   are aligned pointers, effects odd). The matcher pairs it with the least-moved polygon of the
   same look in the previous frame (as instances of one mesh, `NATIVE_JUMP`); sprites, lines and
   points (`EV_RAW`) under such a tag become groups too (`RAW_KEY`) and their positions are blended
-  in the replay. An untextured piece also carries its colour and which way each corner lies from
-  the first (left and right arrows, horizontal and vertical lines differ). A letter of the font
+  in the replay. An untextured piece also carries which way each corner lies from the first (left
+  and right arrows, horizontal and vertical lines differ), not its colour: a cursor recolours a
+  row's arrows, and with the colour in the look the old row's highlighted arrows paired with the
+  new row's and slid across between frames. A letter of the font
   (`sys->ef_tlist`) carries the letters before it on its line and the steps between them, so a
   changed text never slides letters from one string to another. Looks repeat (both OPTION picture
   bands show the same pictures 368 px apart and scroll round; every row of a list says "On"), so
@@ -501,8 +505,8 @@ village, collision. The render thread (GS emulation, replays: `r_exec`, `r_inter
   buttons into actions in `bhSetPad` as before, so nothing in the game is patched per action.
   The menus name each row by what the button does under the current key type. Keyboard/mouse and
   gamepad have one binding set each, two slots per row; extra rows are the quick turn, quick knife,
-  trade request, reload, the third-person keys and the hotkeys. The ini format is in
-  [USER_GUIDE.md](USER_GUIDE.md#rebinding). Game and third-person rows may share keys (third
+  trade request, reload, the third-person keys and the hotkeys. The ini format: [Binding ini format](#binding-ini-format); the
+  menus: [USER_GUIDE.md](USER_GUIDE.md#rebinding). Game and third-person rows may share keys (third
   person takes over the keys it uses while `g_tps.kb_play`: in a game, no OPTION screen up; the
   title menus and OPTION read the DS2 buttons, so there Q/W/A/S are L1/R1/Square/Triangle); hotkeys
   share with neither. The gamepad set has its own
@@ -588,6 +592,81 @@ village, collision. The render thread (GS emulation, replays: `r_exec`, `r_inter
   frames without pad input) only reads the PS2 pad. `pc_input_active` (`tps_glue.c`) also counts
   third-person mouse motion and PC-only input, so it no longer dims during mouse/keyboard play.
 
+### Binding ini format
+
+Bindings are saved in `recvx.ini` as `key_<row>` and `pad_<row>` (second slot `<row>_2`):
+
+```ini
+key_cross = Z
+key_tps_run = Left Shift
+key_tps_run_2 = Right Shift
+key_tps_aim = Mouse Right
+pad_cross = south
+pad_freeaim = +lefttrigger
+pad_quickturn = -lefty
+```
+
+Keys use SDL key names (`Z`, `Return`, `Left Shift`, `PageUp`), mouse buttons
+`Mouse Left/Middle/Right/X1/X2`. Gamepad inputs are positional (`south` = Xbox A = PlayStation
+Cross, `east`, `west`, `north`, `back`, `start`, `guide`, `leftshoulder`, `rightshoulder`,
+`leftstick`, `rightstick`, `dpup`, `dpdown`, `dpleft`, `dpright`, `misc1`, `paddle1`-`paddle4`,
+`touchpad`) or an axis half (`+lefttrigger`, `-leftx`, `+lefty`, ...). `none` unbinds. Rows beyond
+the DS2 buttons: `freeaim` ("Aim (no auto-aim)"), `quickturn` (unbound: back, then run),
+`quickknife`, `trade`, `reload`, the third-person keys (`key_tps_*`,
+[THIRDPERSON.md](THIRDPERSON.md#usage)), the third-person gamepad set (`pad_tps_*`,
+[THIRDPERSON.md](THIRDPERSON.md#gamepad)) and the hotkeys (`tps_toggle`, `settings`, `cheats`,
+`coop`, `import`, `fullscreen`, `noclip_up`, `noclip_down`).
+
+Older files are migrated by `bindings_version`:
+
+- No `bindings_version` line (from before the reload rows) whose reload rows are still `none`,
+  their default then: they get the current defaults (R; Aim + Triangle on the gamepad; RB in third
+  person). A file that still has the third-person quick turn on RB gets the new default (d-pad down).
+- `bindings_version` below 3 (from before free aim): the left trigger sat on the L2 row, the
+  default then. That line is dropped, so the left trigger becomes free aim's; a key such a file gave
+  another game row (E) stays there, leaving free aim's keyboard slot empty.
+
+### Control details
+
+What the player sees, beyond [USER_GUIDE.md](USER_GUIDE.md#controls):
+
+- **Free aim** ("Aim (no auto-aim)", fixed cameras): aims as the aim button, without its turn to the
+  nearest enemy and without Change aim's turn to the next one. The game's hit check follows the
+  facing and the aim height, so an enemy in front is hit as with auto-aim and a shot past it misses.
+  The dual weapons (Gold Lugers, sub machine gun) keep both arms straight ahead; the knife aims
+  without the turn. Holding both aim rows means no auto-aim. Aim + Triangle reloads with it too.
+  While noclip flying the left trigger flies down instead. In third person it does nothing. In
+  co-op the partner sees the turn and shots as usual.
+- **Reload**: the game's own motion, sound and magazine size, taking the first matching ammo in the
+  inventory as combining would (a stack used up leaves it). Nothing happens without matching ammo,
+  with a full magazine or unlimited ammo, during events, menus, doors or when grabbed. The bow gun
+  reloads the kind of arrows it holds; the sub machine gun has no reload motion (the ammo goes in
+  at once); the grenade launcher (rounds combined in the inventory) and the knife are left alone;
+  the sniper rifle and linear launcher reload only through the scope (their reload ends in it). The
+  gamepad has no free button, so its reload shares Triangle, which does nothing while the weapon is
+  raised in any key type (map, or options in type D). CONTROLS shows such a binding as "Aim +
+  Triangle"; aim and the button pressed together count as Aim + button. A reload binding no other
+  row uses works alone, also lowered; bound to the aim button itself it reloads on every aim. In
+  menus, events and the inventory the shared button always does its own action. In co-op the
+  partner sees the reload and the ammo stays in your inventory.
+- **Modern / Combined**: the keyboard and d-pad (no half push) run with the run button. With
+  Combined, while the stick is past its dead zone it wins and the d-pad waits until it is let go;
+  the arrow keys stay Modern. While climbing or pushing a box the direction counts as forward only
+  when it points roughly where the character faces.
+- **Menus**: menus, messages, the inventory's screens and events use the game's buttons with every
+  scheme (L1 / R1, Q / W, also zoom the map). With the keyboard in third person the third-person
+  keys (W/A/S/D, E, Q, Tab, M) also work in the inventory, map, item box and messages; the title
+  menus and OPTION take the game's keys only. In OPTION the keyboard's Start key (Enter) confirms
+  too (every row, ENHANCED SETTINGS, RETURN TO TITLE's question); a rebound Start key takes this
+  over, the gamepad's Start keeps its PS2 roles. In third person with the Modern gamepad, the
+  buttons that open the inventory (Y), map (View) and OPTION (Start) also close them.
+- **Mouse buttons with the fixed cameras**: any keyboard/mouse row takes one (left, right, middle,
+  the two side buttons). A button held when a menu opens, or pressed to close one, does nothing
+  until released; the click that focuses the window is no press. In third person a game row's
+  mouse button counts only if no third-person row uses it.
+- **Rumble** stops while the window has no focus (unless Gamepad only), and each window rumbles only
+  its own gamepad; with a rumble gamepad connected at the first start VIBRATION is on.
+
 ## Settings
 
 One table, `g_settings[]` in `pc/src/host/settings.c`, drives both the F1 overlay and the
@@ -633,11 +712,149 @@ third-person key binding).
 | `SET_NOW` | an action the native menu runs at once |
 | `SET_CALIB` | picture calibration: while the row is chosen, both menus show the grey-step test pattern (`settings_calib`) |
 
+### ini keys
+
+The settings' `recvx.ini` keys (on / off = 1 / 0; choices count from 0 in menu order). Third
+person: [THIRDPERSON.md](THIRDPERSON.md#settings); co-op: [COOP.md](COOP.md#settings); enemy
+options: [ENEMIES.md](ENEMIES.md#enemy-options); bindings: [Binding ini format](#binding-ini-format).
+
+| Setting | ini key |
+|---|---|
+| Display mode | `fullscreen` (0 windowed, 1 fullscreen), `fullscreen_exclusive` (0 borderless, 1 exclusive) |
+| Fullscreen resolution | `fullscreen_w`, `fullscreen_h`, `fullscreen_hz` (all 0: the desktop's) |
+| Window size | `window_w`, `window_h` |
+| (no row) Windows borderless margin | `borderless_extra` (1; see Option details) |
+| VSync, Frame rate limit, Show frame rate | `vsync`, `fps_limit` (0 off, then 30, 60, 90, 120, 144), `show_fps` |
+| Aspect ratio, Internal resolution | `aspect` (0 4:3, 1 stretch, 2 widescreen), `scale` (0 Auto, 1-8) |
+| Display-rate frames, Smooth menus, Frame blend | `interpolate`, `smooth_menus`, `frame_blend` (-1 Auto, 0 Off, 1 On) |
+| Cutscene bars, Camera vignette, Screen effects | `cinema_bars`, `screen_filter`, `screen_effects` (0 Original, 1 Stretch, 2 Off) |
+| Movie zoom, Fog intensity | `movie_zoom`, `fog_intensity` (0-100) |
+| Brightness, Contrast, Gamma | `brightness` (-50-50), `contrast` (50-150), `gamma` (tenths, 5-20) |
+| Native 3D renderer, Native textures, Cull off-screen models | `native_3d`, `native_tex`, `model_cull` |
+| HD textures, font, UI; (no row) pack folder | `hd_textures`, `hd_textures_font`, `hd_textures_ui`, `hd_textures_dir` |
+| (no row) disc image | `iso` |
+| Skip intro, Check for updates, Skip door animations | `skip_intro`, `update_check`, `skip_doors` (0 Off, 1 Instant, 2 Skippable) |
+| Fast loading, Battle Game unlocked, Difficulty select | `fast_loading`, `battle_unlocked`, `difficulty_select` |
+| Quick knife, Auto-climb stairs, Head blow-offs, Rifle ammo stacks | `quick_knife`, `auto_stairs`, `head_blowoff`, `rifle_stack` |
+| BioRand, Save system, No ink ribbons needed | `biorand`, `save_system` (0 Native files, 1 Memory card), `no_ink_ribbon` |
+| Input source, Gamepad | `input_source` (0 Auto, 1 Keyboard/mouse, 2 Gamepad), `input_pad` (0 Any, 1-4) |
+| Vibration strength, Mouse in menus, Fixed camera controls | `rumble_strength`, `menu_mouse`, `fixed_cam_controls` (0 Classic, 1 Modern, 2 Combined) |
+| Music and voice, Sound effects | `music_volume`, `sfx_volume` |
+| APPEARANCE | `coop_char`, `appear_gender_anim`, `appear_in_cutscenes`, `appear_cutscene_face` |
+
+### Option details
+
+What the options do in detail, beyond [USER_GUIDE.md](USER_GUIDE.md#settings):
+
+- **Display mode**: Borderless is a window covering the screen the game is on, at the desktop's
+  resolution; Alt+Tab is instant and popups (volume, notifications, overlays) show over it. Under
+  Windows it is a borderless window `borderless_extra` pixels (default 1) taller or wider than the
+  screen, as drivers switch an exactly screen-sized one to exclusive mode (0: exactly the screen).
+  Exclusive switches the screen to the Fullscreen resolution and minimises on Alt+Tab, giving the
+  desktop its resolution back (under Wayland the screen keeps its mode and the game is scaled to it,
+  without minimising). A mode the screen lacks becomes the closest one. Leaving fullscreen puts the
+  window back where it was, at its size.
+- **Widescreen (hor+)**: with the fixed cameras, room parts the original hides for a camera angle
+  are drawn in the side margins (except walls the camera looks through); the 4:3 middle is exactly
+  the original. The OPTION screen's picture strips reach the window's edges; what the inventory,
+  item box, files and map keep off-screen stays hidden. Screen effects also covers the tint of the
+  sniper rifle's and linear launcher's scope (its reticle stays round in the middle) and the screen
+  of Chris's oil pressure puzzle, which Off shows 4:3 instead of hiding. Movie zoom never cuts the
+  picture: on 16:9 thin bars stay (the movies are wider than 16:9), on ultrawide the movie fills
+  the height; no effect at 4:3.
+- **Smooth menus**: the title menu, inventory (files, map, item box), typewriter and OPTION get
+  display-rate frames (panels slide, windows open, the cursor glides); each picture reaches the
+  screen a game frame sooner after a press, and a key tapped quicker than a game frame is no
+  longer missed ([Input](#input)). The menus' own timing is unchanged.
+- **Fog intensity**: the fog everywhere becomes that of something the value's % as far away; 50%
+  equals the fog density x 2.00 of fmil95's PS2 patch. Lower values also let the unlit cell at the
+  start show more of the room outside. Applies at once.
+- **Picture calibration**: brightness, contrast and gamma change the game's picture (menus and
+  movies included), not the F1 overlay; at the neutral values the picture is exactly the original.
+  F1 shows the test pattern in the setting's tooltip.
+- **Cull off-screen models** does not affect the room itself (walls, floors, props); third person
+  never culls.
+- **Skip intro off**: the warning screen, logos and intro movie play; any key, mouse button or
+  gamepad button skips the one on screen (a press during the Capcom logo's fade-out skips the
+  movie, as Start does on the PS2); a held button does not skip the next one. At PRESS START any
+  key, click or gamepad button opens the menu.
+- **Skip door animations**: doors, stairs, ladders and lifts. Instant shows the game's load screen
+  (no animation, so no door sounds). Skippable: the press that opened the door does not count; a
+  press while the next room still loads ends the animation as soon as the room is ready. In co-op
+  each player's own choice counts for their own doors; following the host always uses the load
+  screen.
+- **Fast loading**: the load screen ends almost as soon as the screen is black (without the "Now
+  Loading..." text); with Skippable doors a press ends the animation that much sooner. The room's
+  rain, smoke and sparks still get their usual head start. In co-op it need not match the
+  partner's. Mechanism: [Fidelity notes](#fidelity-notes).
+- **Battle Game unlocked**: its character select offers Claire, Claire in her other costume,
+  Chris, Steve and Wesker at once. Characters and records you earn are still saved as in the
+  original, and the Linear Launcher still needs an A rank with all five.
+- **Difficulty select** (MODE SELECT of the European and Japanese versions; its pictures are on the
+  US disc too): NORMAL is preselected, so confirming twice starts the original game; Cancel goes
+  back to the title menu. Easy: the item box starts with handgun bullets, bow gun arrows and
+  powder, first aid sprays and ink ribbons, and ammo pickups hold more (handgun bullets 30 instead
+  of 15, for example); health and most enemies as on Normal. Very Easy: twice the health, healing
+  items heal twice as much, enemies with fewer hit points (zombies about half), ammo pickups as
+  Easy, an ink ribbon in the bag that is never used up, and an item box with the bow gun, grenade
+  launcher, shotgun, magnum and assault rifle, their ammo and first aid sprays. Only Normal has the
+  ranking at the end and its A-rank reward. The save list's colours (Easy green, Very Easy red,
+  Normal white) apply with either save system.
+- **Auto-climb stairs**: with every control scheme, in third person and for the co-op character.
+  It starts only while walking towards the stairs (facing the way they go, within 45 degrees), not
+  while standing in front of them or walking past along their edge. Where a press would answer a
+  door, item or examine spot first, that spot still needs the button; so do the steps onto or off
+  a ledge, so you never drop off one by accident. Some stairs with an event (such as one in the
+  Palace) need the button the first time.
+- **Head blow-offs**: on every zombie look and for the co-op partner too
+  ([ENEMIES.md](ENEMIES.md#head-blow-offs)).
+- **Rifle ammo stacks**: rifle and assault rifle bullets; forced on while BioRand is on (its item
+  amounts count on it).
+- **Precise hits** (third person): a head hit does half again the damage (zombies, Cerberus,
+  Bandersnatch, Tyrant, Alexia's first form, Steve), and a zombie's head bursts (magnum, shotgun,
+  sniper rifle) only from a hit on the head. The shotgun keeps a narrow spread; grenades, the bow
+  gun, the rocket and linear launchers and the knife hit as in the game. Not with "Game auto-aim"
+  on the mouse or with the fixed cameras ([THIRDPERSON.md](THIRDPERSON.md#precise-hits)).
+- **Save list** (native files): the heading reads "Load Game" or "Save Game" instead of "MEMORY
+  CARD slot 1"; the list scrolls through all saves. The first native start also copies the system
+  data and co-op partner files from the card; the log says how many saves. A changed save system
+  applies from the next save or load screen.
+- **Return to title**: asks "Return to the title screen?" with NO preselected; works in the Battle
+  Game too; changed options are kept; cancel or a right click answers NO. The title menu's OPTION
+  screen does not have it.
+- **Update check**: up to three tries, a few seconds apart, then not again until the next start;
+  the game never waits for it. The request is a plain HTTP GET with
+  `User-Agent: recvx-enhanced-port/<version>`; no GitHub or other third-party requests; nothing is
+  stored. Test aids: [Environment variables](#environment-variables).
+- **Unlock all** (F2): locks act as if you carried their key, without it entering your inventory;
+  switching it counts at once, also in the current room. Examining a locked door, a card reader or
+  the spot for an emblem, plate or jewel uses the key there as the item screen's Use would (or the
+  game asks "Will you use ...?" as it does when you carry the key); a spot already done is examined
+  as usual. Turned on inside a room, some doors notice it only once you enter the room again. If the
+  game then asks whether to discard the key, nothing is removed. Doors the story keeps shut (locked
+  from the other side, opened by a cutscene) stay shut, and the prison's metal detector room is
+  left out: every other item check (the detector, the typewriters' ink ribbon, weapons and ammo,
+  the item box) uses what you really carry. In co-op it works for whoever turns it on, and a lock
+  opened so opens for the partner as usual.
+- **Teleport** (F2): through the game's door transition. Locations are areas of the game (Claire's
+  and Chris's halves separately, Chris's the last three). Rooms carry the save menu's name where
+  the game has one (read from the disc, e.g. "Prison: front"), every other room a name of ours
+  ("Prison: Graveyard"; rooms that only play a cutscene start with "Cutscene:"); the EXTRAS page
+  leaves out the area where the location already says it. Each entry names the room whose door
+  leads there ("Entry 1: from Prison: Metal detector room"; "+1" when there are more, F2 lists them
+  on hover). Mod rooms show as "Custom room RM_xxxx", or by the name tag in their file header. The
+  list is read from the disc the first time F2 or EXTRAS opens (a few seconds; plain numbers until
+  then). In F2, typing in the open Room list searches every location, and **Raw ids** brings back
+  the stage/room/position numbers. A room may not work in every story state; an unlisted number may
+  crash. The spawner's custom enemies ("[C] ") are Mutated Steve and those of `mods/enemies.ini`
+  ([ENEMIES.md](ENEMIES.md#enemy-variants-custom-enemies)). Actions chosen in ENHANCED SETTINGS run
+  when the menu closes.
+
 ## Save system
 
 Two save systems, chosen by `save_system` (F1 / ENHANCED SETTINGS GAMEPLAY "Save system"):
 
-- **Native files** (0, default): `<save dir>/saves/NNN_<label>.sav`, one file per save, no limit
+- **Native files** (0, default): `<save dir>/saves/NNN_<label>.sav`, one file per save, up to `SAVESTORE_MAX` (10,000) listed
   (`pc/src/host/savestore.c`, tested by `pc/tests/test_savestore.c`).
 - **Memory card** (1): the PS2 card as before, `pc/src/ps2/mc.c` (libmc on a folder,
   `<save dir>/card0`, 15 save slots plus the system file).
@@ -671,6 +888,13 @@ where the rows come from and who does the I/O:
 | `mcDispFileNumber` | numbers past 99 are drawn narrower, ending where two digits end |
 | `ExecuteSysLoadScreen` / `ExecuteSysSaveScreen` | `pc_sysload_native` / `pc_syssave_native`: `system.dat` read at boot, merged (`SysSaveHikaku`) and written by OPTION and the ranking, in one frame without the card screens |
 
+**BioRand** (`pc/glue/biorand_glue.c`): two save-region words no game code uses, `sys->itm[288]`
+(`'B' << 24 | seed`, 0xFFFFF unknown; 0 without BioRand) and `[289]` (the pack's id), set at a new game and
+when a co-op guest starts; older builds keep them and their saves have 0. `ExecuteStateLoadScreenLoad`
+(both save systems, after the read) goes to state 35 when they differ from the current choice: the
+question with the game's YES / NO (`pc_biorand_save_differs`); YES writes the current words into the
+read save (and its checksum) and loads it, NO goes back to the list. The lobby's START asks the same.
+
 **Sounds**: the native screens keep the card screens' own sound calls (cursor, confirm, cancel,
 the typed-in row's keys and bell after a save); the card-only steps they skip (slot choice, card
 check, the system file's "save?" question) have no screen and play nothing, as no button is
@@ -691,7 +915,8 @@ whose bytes are already there are skipped).
 
 **Other readers** go through `pc/src/host/lobby.h`, which follows the active system: save "slots"
 are the card's 0..14 or the native number - 1 (so a migrated slot keeps its meaning in `coop_start`
-and `coop_items`), `lobby_save_slots()` is their count. The co-op lobby's START list, the joiner's
+and `coop_items`); native numbers can be sparse, so lists come from `lobby_save_list()` (the saves
+there are, by slot), never from a count. The co-op lobby's START list, the joiner's
 ITEMS choice, `RECVX_TEST_SAVE`, the host's partner records (`coop-partners-nn.bin` /
 `saves/NNN.coop-partners.bin`, written after each save by `coop_save_written`) use it. Game over
 "continue" and the retry points live in memory and never touch a save.
@@ -793,6 +1018,29 @@ the channel an enemy sound gets and in how many volume/pan updates are sent; the
 Not covered: other stale or out-of-range reads that the scenarios do not reach. `rand()` is only
 called by the game thread.
 
+## Command line
+
+| Option | Effect |
+|---|---|
+| `PATH.iso` (also `RECVX_ISO`, or the ISO dropped onto the exe) | the disc image; wins over `iso` in `recvx.ini` |
+| `--save-dir DIR` | where saves and `recvx.ini` go (default `save/` in the current directory if it exists, else next to the program) |
+| `--size WxH` | window size (default 1280x960) |
+| `--fullscreen` | start in fullscreen, of the kind chosen in Display mode (borderless unless exclusive was chosen) |
+| `--borderless`, `--exclusive`, `--windowed` | start in that display mode |
+| `--enhanced` / `--vanilla` | display-rate frames on / off |
+| `--skip-doors` | room transitions without door, stairs and ladder animations (Instant) |
+| `--skip-intro` | boot straight into the title menu |
+| `--hd-textures DIR` | HD texture pack folder (default `mods/textures`) |
+| `--third-person` | start with the over-the-shoulder camera ([THIRDPERSON.md](THIRDPERSON.md)) |
+| `--dev` | developer tools: the import window (F9, [IMPORT_OUTBREAK.md](IMPORT_OUTBREAK.md)) and its row in the bindings, and BioRand ([modding/README.md](modding/README.md#randomizer-biorand)); without it F9 does nothing, those rows are hidden and `mods/biorand/` is not read |
+| `--coop-host PORT`, `--coop-join HOST:PORT#CODE` or `ROOM`, `--coop-server ADDR`, `--coop-conn auto\|direct\|server`, `--coop-pw PASSWORD` | online co-op ([COOP.md](COOP.md#command-line)) |
+| `--log[=FILE]` | copy all output to a log file (default `recvx.log`), with a backtrace on a crash |
+| `--profile[=FILE]`, `--profile-samples=FILE` | performance measurements ([Profiling and logging](#profiling-and-logging)) |
+| `--quiet` | less console output |
+| `--version` | print the version and exit (also the first line of the log and the F1 window title) |
+
+Command-line options override the saved settings for that run.
+
 ## Profiling and logging
 
 - `--log[=file]` copies all output (the game's own diagnostics and the port's messages) to a log
@@ -803,6 +1051,9 @@ called by the game thread.
   exception with the backtrace or frame chain, and the last 48 `host_log` messages (kept in memory,
   IPv4 addresses masked) - a few KB for bug reports (`host/log.c`). Addresses resolve with
   `addr2line -f -e recvx` (Windows: `i686-w64-mingw32-addr2line -f -e recvx.exe`): the image base is fixed.
+  Linux: the signal, fault address, instruction pointer and thread go out first with `write()` alone,
+  then the backtrace (primed at start) and the messages; the main, game, HD loader, update and movie
+  threads each have an alternate signal stack (`crash_thread_init`), so a stack overflow is reported too.
 - `--profile[=file]` writes one CSV line per game frame: total frame time and exclusive time in
   game logic, VU0, VU1, GS emulation + GL submission, interpolation, presentation and idle wait.
   F1 -> Performance shows the same live. The native `CALCPOINT` (single calls and runs) is not
@@ -830,13 +1081,18 @@ and game frames for game-state aids, as noted. Co-op test aids (`RECVX_COOP_*`,
 | `RECVX_ISO=path` | the disc image (as on the command line) |
 | `RECVX_MODS=dir` | mods folder (default `./mods`) |
 | `SDL_VIDEO_DRIVER=offscreen` | headless run |
-| `RECVX_SHOW_OVERLAY=1` / `=2` / `=3` | open the F1 overlay / the cheats window (F2) / the co-op window at start |
+| `RECVX_SHOW_OVERLAY=1` / `=2` / `=3` / `=4` | open the F1 overlay / the cheats window (F2) / the co-op window / the import window (F9) at start |
+| `RECVX_IMPORT=outbreak2`, `RECVX_IMPORT_ISO`, `RECVX_IMPORT_WHAT` | headless import, then exit ([IMPORT_OUTBREAK.md](IMPORT_OUTBREAK.md)) |
 | `RECVX_EXIT_FRAME=n` | exit at presented frame n |
+| `RECVX_TEST_CRASH=stack\|null[:n]` | crash the game thread at frame hand-off n (default 100) with a stack overflow or a null write (the crash report) |
 | `RECVX_WATCHDOG=sec` | Linux: print a backtrace after sec seconds and exit |
 | `RECVX_FAST_DEMO=1` | start the attract demo right away |
 | `RECVX_SKIP_MOVIES=1` | movies end after 30 game frames without decoding (repeatable test runs) |
 | `RECVX_SKIP_CINE=n` | skip every cutscene after n game frames, as its skip button |
 | `RECVX_MOVIE=n` | play `MV_n.PSS` in place of every movie (e.g. the intro at start-up with `skip_intro = 0`) |
+| `RECVX_UPDATE_CHECK=0` | no update check (no network) and the title's newest version reads "off", as with the setting Off; the headless scripts (`layout_check.sh`, `room_test.sh`, `compare_native.sh`) set it |
+| `RECVX_UPDATE_FAKE=v0.7.0` | the title shows this as the newest version, without asking the server (screenshots) |
+| `RECVX_UPDATE_URL_TEST=http://host[:port]/path` | ask this server instead of the built-in one (`RECVX_UPDATE_URL` in `pc/src/net/update.h`): unreachable servers and junk answers |
 
 ### Scripted input
 
@@ -844,7 +1100,7 @@ and game frames for game-state aids, as noted. Co-op test aids (`RECVX_COOP_*`,
 |---|---|
 | `RECVX_INPUT="frame:buttons,..."` | scripted pad input by presented frame, e.g. `200:start,205:-` |
 | `RECVX_KEYS="f:key+key,f:-,f:@x:y"` | hold keyboard keys (SDL names, `_` for a space; `Mouse_Left` .. `Mouse_X2` a mouse button) from presented frame f, sent as key and button events; `@x:y` left-clicks at a window pixel, `@x:y:r` right-clicks |
-| `RECVX_VPAD="f:input+input,..."`, `RECVX_VPAD_TYPE=xbox\|ps5\|generic` | a virtual SDL gamepad holding inputs (ini spelling) from frame f; `axis=value` holds an axis at -1..1 (`leftx=0.5+lefty=-0.5`: the left stick half up-right) |
+| `RECVX_VPAD="f:input+input,..."`, `RECVX_VPAD_TYPE=xbox\|ps5\|generic` | a virtual SDL gamepad holding inputs (ini spelling) from frame f; `axis=value` holds an axis at -1..1 (`leftx=0.5+lefty=-0.5`: the left stick half up-right); `unplug` / `plug` disconnect and reconnect it (hotplug) |
 | `RECVX_MENU_MOUSE="f:x:y[:act],..."` | scripted mouse in menus (window pixels; act `l`/`r` click, `L`/`U` left down/up, `w`/`s` wheel) |
 | `RECVX_TPS_MOUSE="frame:dx:dy,..."` | scripted third-person mouse motion |
 | `RECVX_UNFOCUS="f:1,f:0"` | hide the window at frame f (focus loss), `0` shows it again |
@@ -872,6 +1128,8 @@ and game frames for game-state aids, as noted. Co-op test aids (`RECVX_COOP_*`,
 | `RECVX_SPAWN="f:id[.mdlver][@dist],..."` | the F2 enemy spawner at game frame f, with traces ([ENEMIES.md](ENEMIES.md)) |
 | `RECVX_SPAWN_SURVEY="stg:rom,..."`, `RECVX_SPAWN_SURVEY_ALL=1` | try every spawner entry in each room, log results and budgets, exit |
 | `RECVX_ENEMY_EXTRA=0..3`, `RECVX_ENEMY_PLACE=0/1`, `RECVX_ENEMY_RANDOM=0/1`, `RECVX_ENEMY_SEED=n`, `RECVX_ENEMY_VARIETY=0/1`, `RECVX_ENEMY_EVENTS=0/1` | enemy options over the settings |
+| `RECVX_CAST=0\|1[:all][:random][:imports]`, `RECVX_CAST_TRACE=1` | the cutscene cast's options over the settings; log the game's state at each room load, each change between cutscene and gameplay, and the cast's faces ([ACTORS.md](ACTORS.md) "Cutscene cast") |
+| `RECVX_TEST_EVENT="f:level:ev,..."` | start the room script's event ev at that task level at game frame f, as its `EvtOn` (a cutscene without walking to its trigger; entries of one frame start together) |
 | `RECVX_ENEMY_KILL=n` | from n game frames into each room, the room's enemies take heavy hits until they die; logs deaths ([ENEMIES.md](ENEMIES.md#tools)) |
 | `RECVX_HEADSHOT=n` | n game frames into each room, every walking zombie takes one head hit that bursts its head; logs its head state ([ENEMIES.md](ENEMIES.md#head-blow-offs)) |
 | `RECVX_ENEMY_TRACE=dist` | one line per step of every enemy within dist units of a player |

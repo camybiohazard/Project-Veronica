@@ -31,9 +31,11 @@
 #include "../src/host/lobby.h"
 #include "../src/host/settings.h"
 #include "../src/host/enemies.h"
+#include "../src/host/biorand.h"
 #include "../src/net/net.h"
 #include "../src/net/rdv_proto.h"
 #include "../src/net/coop_proto.h"   /* REC_*: what the host keeps for us */
+#include "../src/net/update.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,6 +50,9 @@ extern const char PlyFlip[23];
 
 enum { BTN_START = 0x800, BTN_UP = 0x1000, BTN_RIGHT = 0x2000, BTN_DOWN = 0x4000, BTN_LEFT = 0x8000 };   /* Pad[] bits */
 #define TITLE_MP 4                      /* ModeCommandId of the MULTIPLAYER row */
+#define BR_ROW 3                        /* the difficulty screen's BIORAND row: cursor 3 of level 1 (pc_newgame_plates) */
+#define BR_LIFT 28.0f                   /* ... MODE SELECT that much higher */
+#define BR_Y 279.0f                     /* ... the row's text */
 
 /* ---------------------------------------------------------------- text */
 #define PRI_TEXT -1.0f
@@ -174,6 +179,9 @@ void pc_title_menu_init(void)
         ap->CursorMax[0] = 4;
         ap->ModeCommandId[0] = 0; ap->ModeCommandId[1] = 1; ap->ModeCommandId[2] = 3; ap->ModeCommandId[3] = 2;
     }
+    biorand_scan();   /* BioRand's pack: the difficulty screen's BIORAND row (pc_newgame_plates) */
+    ap->CursorMax[1] = biorand_pack() ? BR_ROW + 1 : 3;
+    if (ap->Cursor[1] >= ap->CursorMax[1]) ap->Cursor[1] = 0;
     n = ap->CursorMax[0];
     ap->ModeCommandId[n] = TITLE_MP;
     ap->CursorFlag[0][n] = 1;
@@ -181,6 +189,49 @@ void pc_title_menu_init(void)
 }
 
 void pc_tex_keep_original(int texno);
+
+/* NEW GAME's difficulty screen (DisplayNewGamePlate, CheckButton level 1: "Difficulty select") with a BIORAND row
+   when a pack is there (biorand.h; without one the game draws it, as ever): MODE SELECT 28 higher, the row between
+   it and NORMAL, "BIORAND ON" / "BIORAND OFF" in the game's font (the plates' texture lacks letters). It is
+   cursor 3 (CursorMax[1] 4, pc_title_menu_init): the level's cursor wraps, so up from NORMAL and down from VERY EASY reach it as drawn. Confirm or a click toggles it (pc_title_mouse). */
+static void title_font(void);
+static int br_shown(void) { return AdvWork.CursorMax[1] > BR_ROW; }
+
+int pc_newgame_plates(int cursor, float fade, int flag)
+{
+    static const float v[3] = { 320.0f, 288.0f, 256.0f };   /* NORMAL, EASY, VERY EASY */
+    ADV_WORK* ap = &AdvWork;
+    unsigned int a, col;
+    float w, x, sc = 0.85f;
+    QUAD q;
+    int i, on;
+    if (!br_shown()) return 0;
+    for (i = 0; i < 3; i++) {
+        a = (unsigned int)fade;
+        col = 0x7F7F7F;
+        if (i == cursor) { a += (unsigned int)ap->FlushCount2; col = ap->FontBaseColor; }
+        a <<= 24;
+        if (flag == 0) a = 0xFF000000;
+        SetQuadPos(224.0f, 304.0f + 32.0f * i, 193.0f, 33.0f, &q);
+        SetQuadUv2(0, v[i], 193.0f, 33.0f, 1, &q);
+        AdvEasyDrawTextureS(1, a | col, &q, 0.5f, 1, fade);
+    }
+    SetQuadPos(64.0f, 272.0f - BR_LIFT, 513.0f, 33.0f, &q);   /* MODE SELECT */
+    SetQuadUv2(0, 160.0f, 513.0f, 33.0f, 1, &q);
+    AdvEasyDrawTextureS(1, ((unsigned int)fade << 24) | 0xFFFFFF, &q, 0.5f, 1, fade);
+    FlushPlate();
+    DisplayTitleBg();
+    title_font();
+    a = (unsigned int)(255.0f * (1.0f - ap->FadeRate) * (1.0f - ap->SaverRate));
+    if (a < 8) return 1;
+    col = cursor == BR_ROW ? 0xFFFFFF : 0x808080;   /* as the plates: the cursor bright, the others grey */
+    on = biorand_setting();
+    w = text_w(on ? "BIORAND ON" : "BIORAND OFF", sc);
+    x = 320.0f - w / 2;
+    text(x, BR_Y, on ? "BIORAND ON" : "BIORAND OFF", sc, a << 24 | col);
+    AdvEasySetTextureList(0);   /* the title's texture list again */
+    return 1;
+}
 
 /* DisplayGameModePlate with the MULTIPLAYER row (the game's 3 or 4 rows moved up to make room) */
 void pc_title_plates(int cursor, int n, float fade, int flag)
@@ -210,9 +261,13 @@ void pc_title_plates(int cursor, int n, float fade, int flag)
 /* ---------------------------------------------------------------- mouse */
 static MouseTake mt;                    /* the pointer (game 2D px) and what it did */
 
+static void title_version(void);
+
+/* Adv_BioCvTitle, every frame before its mode's work */
 void pc_title_mouse_active(int on)
 {
     g_menu_mouse.active = on;
+    title_version();
 }
 
 void menu_mouse_take(MouseTake* t)
@@ -239,6 +294,7 @@ void pc_title_mouse(int level, int flag)
     for (i = 0; i < n; i++) {
         float x0, y0, w;
         if (level == 0) { x0 = 140; w = 360; y0 = title_row_y(i, n); }
+        else if (level == 1 && i == BR_ROW) { x0 = 140; w = 360; y0 = BR_Y - 4; }   /* the BIORAND row (pc_newgame_plates) */
         else if (level == 1) { x0 = 224; w = 193; y0 = 304.0f + 32.0f * i; }   /* DisplayNewGamePlate, DisplayExtraGamePlate */
         else { x0 = 64.0f + 256.0f * i; w = 256; y0 = 352; }
         if (mt.x >= x0 && mt.x < x0 + w && mt.y >= y0 && mt.y < y0 + (level == 0 && n >= 5 ? 30 : 32)) hit = i;
@@ -250,6 +306,11 @@ void pc_title_mouse(int level, int flag)
     }
     if (mt.left && hit >= 0) Pad[ap->PortId].press |= BTN_START;
     else if (mt.right) Pad[ap->PortId].press |= AdvGetCancelButton();
+    if (level == 1 && ap->Cursor[1] == BR_ROW && br_shown() && (Pad[ap->PortId].press & (BTN_START | AdvGetOkButton()))) {
+        /* the BIORAND row: toggled, the screen stays (CheckButton would take it for a difficulty) */
+        Pad[ap->PortId].press &= ~(BTN_START | AdvGetOkButton());
+        CallSystemSe(0, biorand_toggle() ? 3 : 1);
+    }
 }
 
 /* ---------------------------------------------------------------- previews */
@@ -356,7 +417,7 @@ static void pv_set(int k, int chr, int played)
     if (actor_set(k, chr >= COOP_CHR_ACTOR ? chr - COOP_CHR_ACTOR : -1)) p->obj[2].flg = 0;   /* no hair on another model */
     else player_hair(p->obj, &p->w, file & 3, pvb[k].hair0, pvb[k].hair3);   /* Claire's hair simulates in work of its own */
     pv_hands(p, k, appear_voice(chr) >= 0 ? appear_voice(chr) : file & 3);
-    host_log("lobby: preview %d shows %s\n", k, chr >= COOP_CHR_ACTOR ? actor_models[chr - COOP_CHR_ACTOR].name : "a player model");
+    host_log("lobby: preview %d shows %s\n", k, chr >= COOP_CHR_ACTOR ? appear_name(chr) : "a player model");
 }
 
 static void pv_pose(int k, float x, int ay)
@@ -493,8 +554,8 @@ void pc_lobby_textures_released(void)
 }
 
 /* ---------------------------------------------------------------- saves */
-typedef struct SaveInfo { int valid, ply_id, stg, rom, gm_mode, count; } SaveInfo;
-static SaveInfo* saves;   /* by slot (lobby.h: the card's 0..14 or native save number - 1) */
+typedef struct SaveInfo { int slot, ply_id, stg, rom, gm_mode, count; } SaveInfo;
+static SaveInfo* saves;   /* the valid ones by slot (lobby.h: the card's 0..14 or native save number - 1) */
 static int n_saves;
 static unsigned char save_buf[LOBBY_SAVE_BYTES];   /* the host's chosen save, read when the game starts */
 
@@ -502,41 +563,53 @@ static unsigned char save_buf[LOBBY_SAVE_BYTES];   /* the host's chosen save, re
 static void scan_saves(void)
 {
     static unsigned char b[LOBBY_SAVE_BYTES];
-    int i;
-    n_saves = lobby_save_slots();
-    saves = realloc(saves, sizeof(SaveInfo) * (n_saves ? n_saves : 1));
-    memset(saves, 0, sizeof(SaveInfo) * (n_saves ? n_saves : 1));
-    for (i = 0; i < n_saves; i++) {
+    LobbySave* l;
+    int i, n = lobby_save_list(&l);
+    free(saves);
+    saves = n ? malloc(sizeof(SaveInfo) * n) : NULL;   /* n <= SAVESTORE_MAX */
+    n_saves = 0;
+    for (i = 0; saves && i < n; i++) {
         const SAVEFILE* sf = (const SAVEFILE*)b;
-        SaveInfo* s = &saves[i];
-        s->valid = lobby_read_save(i, b);
-        if (!s->valid) continue;
-        s->ply_id = sf->ply_id & 3; s->stg = sf->stg_no; s->rom = sf->rom_no; s->gm_mode = sf->gm_mode; s->count = sf->save_ct;
+        SaveInfo* s = &saves[n_saves];
+        if (!lobby_read_listed(&l[i], b)) continue;
+        s->slot = l[i].slot; s->ply_id = sf->ply_id & 3; s->stg = sf->stg_no; s->rom = sf->rom_no; s->gm_mode = sf->gm_mode; s->count = sf->save_ct;
+        n_saves++;
     }
+    free(l);
+}
+
+/* the index in saves of a slot, -1 none */
+static int save_at(int slot)
+{
+    int lo = 0, hi = n_saves - 1;
+    while (lo <= hi) {
+        int m = lo + (hi - lo) / 2;
+        if (saves[m].slot == slot) return m;
+        if (saves[m].slot < slot) lo = m + 1; else hi = m - 1;
+    }
+    return -1;
 }
 
 static const char* chr_names[] = { "Claire", "Chris", "Steve", "Wesker" };
 
 static void save_label(char* out, int n, int slot)
 {
-    const SaveInfo* s = &saves[slot];
-    snprintf(out, n, "Save %02d: %s %d-%02d", slot + 1, chr_names[s->ply_id], s->stg, s->rom);
+    int i = save_at(slot);
+    if (i < 0) { snprintf(out, n, "Save %02d", slot + 1); return; }
+    snprintf(out, n, "Save %02d: %s %d-%02d", slot + 1, chr_names[saves[i].ply_id], saves[i].stg, saves[i].rom);
 }
 
 /* the choices as lists: host START WITH: 0..2 new game, 3 + slot; joining ITEMS FROM: saved with the host, new, slot */
-static int start_valid(int v) { return v >= 0 && (v < 3 || (v - 3 < n_saves && saves[v - 3].valid)); }
-static int items_valid(int v) { return v == COOP_ITEMS_HOST || v == COOP_ITEMS_NEW || (v >= 0 && v < n_saves && saves[v].valid); }
+static int start_valid(int v) { return v >= 0 && (v < 3 || save_at(v - 3) >= 0); }
+static int items_valid(int v) { return v == COOP_ITEMS_HOST || v == COOP_ITEMS_NEW || (v >= 0 && save_at(v) >= 0); }
 
-static int step_choice(int v, int dir, int lo, int hi, int (*valid)(int))
+/* the next choice in that list: the fixed ones first .. first + nfixed - 1, then base + each save's slot */
+static int step_choice(int v, int dir, int first, int nfixed, int base)
 {
-    int i;
-    for (i = 0; i < hi - lo + 1; i++) {
-        v += dir;
-        if (v > hi) v = lo;
-        if (v < lo) v = hi;
-        if (valid(v)) return v;
-    }
-    return v;
+    int n = nfixed + n_saves, k = v - base >= 0 ? save_at(v - base) : -1;
+    int i = v >= first && v < first + nfixed ? v - first : k >= 0 ? nfixed + k : dir > 0 ? -1 : n;
+    i = (i + dir + n) % n;
+    return i < nfixed ? first + i : base + saves[i - nfixed].slot;
 }
 
 static void start_label(char* out, int n, int v)
@@ -589,26 +662,93 @@ static void font_release(void)
     font_state = 0;
 }
 
+/* The installed and the newest version at the bottom right of the title's 4:3 picture, below
+   the copyright, in the game's font (title_version): Adv_BioCvTitle modes 4..17 (PRESS START, the menus and
+   the title's fades; not the lobby, 30). The font as the lobby has it, its file read at once (the
+   game's file reader stays free) and kept; released when the title ends (lobby_close). */
+static void title_font(void)
+{
+    static int have;   /* font_file holds the font: 1; -1 it cannot be read */
+    if (!(sys->ss_flg & 0x40) && !font_state) {
+        if (!have) have = afs_read(sys->sys_partid, 1, font_file, sizeof(font_file)) ? 1 : -1;
+        if (have < 0) return;
+        bhSetFontTexture(font_file);
+        font_state = 2;
+    }
+    font_ok = (sys->ss_flg & 0x40) != 0;
+}
+
+/* a version, its "."s at half advance (the font's "." is as wide as a digit: v0.6.9, not v0. 6. 9);
+   draw 0: only the width */
+static float ver_text(float x, float y, const char* s, float sc, unsigned int argb, int draw)
+{
+    float x0 = x, dot = text_w(".", sc);
+    char c[2] = { 0 };
+    for (; *s; s++) {
+        c[0] = *s;
+        if (draw) text(*s == '.' ? x - dot * 0.25f : x, y, c, sc, argb);
+        x += *s == '.' ? dot * 0.5f : text_w(c, sc);
+    }
+    return x - x0;
+}
+
+/* Installed and newest version (net/update.h) below the copyright, right-aligned in the 4:3
+   picture's corner: labels and versions each in a column. The installed one is red when a newer
+   one is out; the newest "..." (asking), "unknown" (no answer) or "off" in grey. */
+#define VER_SC 0.5f
+static void title_version(void)
+{
+    static const char* const label[2] = { "Installed Version:", "Newest Version:" };
+    ADV_WORK* ap = &AdvWork;
+    unsigned int a = (unsigned int)(255.0f * (1.0f - ap->FadeRate) * (1.0f - ap->SaverRate)) << 24;   /* under the title's fade and screen saver */
+    char newest[32];
+    const char* val[2];
+    unsigned int col[2];
+    int st, i;
+    float lw, w0, w1, x;
+    if (ap->Mode < 4 || ap->Mode > 17 || a < 8u << 24) return;
+    title_font();
+    st = update_newest(newest, sizeof(newest));
+    val[0] = update_installed();
+    val[1] = st == UPD_KNOWN ? newest : st == UPD_OFF ? "off" : st == UPD_CHECKING ? "..." : "unknown";
+    col[0] = st == UPD_KNOWN && upd_newer(newest, val[0]) ? 0xE04040 : 0x60D060;
+    col[1] = st == UPD_KNOWN ? 0x60D060 : 0xA0A0A0;
+    lw = text_w(label[0], VER_SC) + text_w("  ", VER_SC);   /* the longer label, then the versions' column */
+    w0 = ver_text(0, 0, val[0], VER_SC, 0, 0);
+    w1 = ver_text(0, 0, val[1], VER_SC, 0, 0);
+    {   /* the column as wide as the widest it can show ("unknown"), so the block never moves when the answer comes */
+        float wu = ver_text(0, 0, "unknown", VER_SC, 0, 0), wm = w0 > w1 ? w0 : w1;
+        x = 632 - lw - (wm > wu ? wm : wu);
+    }
+    for (i = 0; i < 2; i++) {
+        float y = 445 + i * 14;
+        text(x, y, label[i], VER_SC, a | 0xC8C8C8);
+        ver_text(x + lw, y, val[i], VER_SC, a | col[i], 1);
+    }
+    AdvEasySetTextureList(0);   /* the title's texture list again */
+}
+
 /* ---------------------------------------------------------------- the lobby */
 /* In steps (docs/COOP.md "Lobby"): 1 how to connect (Direct / Via server) and Host or Join,
    2 only that choice's rows plus the player and game rows, 3 the game rules (host: edits them,
-   guest: the host's, read-only), with their pages 4 enemies and 5 extra events, and step 2's page 6
-   the model list. BACK goes one step back (from a page: to its entry); from step 1 it leaves the lobby.
+   guest: the host's, read-only), with their pages 4 enemies and 5 extra events, step 4's page 7 the
+   cutscene cast, and step 2's page 6 the model list. BACK goes one step back (from a page: to its entry); from step 1 it leaves the lobby.
    The rows in display order; a gap where the group changes. */
 enum { R_MODE, R_HOSTSTEP, R_JOINSTEP,
        R_SERVER, R_PORT, R_ADDR, R_PW, R_RELAY,
        R_NAME, R_CHAR,
        R_START, R_ITEMS, R_FOLLOW, R_RULES,
-       R_LOOT, R_IMP, R_TFREEZE, R_SKIPS, R_RIBBON, R_GOVER, R_ENEMYPG, R_EVENTPG,
-       R_RAND, R_VARIETY, R_EVENTS, R_SEED, R_RSEED, R_EXTRA, R_PLACE, R_QUICK, R_DETECTOR,
+       R_BIORAND, R_LOOT, R_IMP, R_TFREEZE, R_SKIPS, R_RIBBON, R_GOVER, R_ENEMYPG, R_EVENTPG,
+       R_RAND, R_VARIETY, R_EVENTS, R_SEED, R_RSEED, R_EXTRA, R_PLACE, R_CASTPG, R_CAST, R_CASTPOOL, R_CASTASSIGN, R_CASTIMP, R_QUICK, R_DETECTOR,
        R_HOST, R_GO, R_COPY, R_RCOPY, R_KICK, R_STOP, R_JOIN,
        R_BACK, R_N };
-static const unsigned char row_group[R_N] = { 0, 1, 1, 0, 0, 0, 0, 0, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 7, 7, 4, 4, 4, 4, 4, 8, 8, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6 };
+static const unsigned char row_group[R_N] = { 0, 1, 1, 0, 0, 0, 0, 0, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 7, 7, 4, 4, 4, 4, 4, 8, 8, 9, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6 };
+_Static_assert(sizeof(row_group) == R_N, "row_group");
 enum { F_NONE, F_NAME, F_ADDR, F_PORT, F_SEED, F_SERVER, F_PW };
 
 static struct {
     int open, row, role;                /* role 0 host, 1 join */
-    int step;                           /* 1 connection and role, 2 its options, 3 game rules, 4 / 5 its pages, 6 the models */
+    int step;                           /* 1 connection and role, 2 its options, 3 game rules, 4 / 5 its pages, 6 the models, 7 the cutscene cast (from 4) */
     int pick, top;                      /* the model page: the cursor's and the first shown list position (appear_at) */
     int mode;                           /* 0 direct (P2P), 1 via a co-op server (g_coop.conn Automatic or Via server) */
     int edit;                           /* F_* being edited */
@@ -635,10 +775,14 @@ static int row_visible(int r)
     if (lb.step == 6) return 0;   /* the model page draws its list itself (draw_models) */
     if (lb.step == 1) return r == R_MODE || r == R_HOSTSTEP || r == R_JOINSTEP;
     if (r == R_VARIETY || r == R_EVENTS) return lb.step == 4 && shown_eo()->rand;   /* only the randomizer has them */
+    if (r == R_BIORAND) return lb.step == 3 && (host ? biorand_pack() : coop_biorand() == 1);   /* the host has a pack; a guest sees it while it is on */
     if (lb.step == 3) return r == R_GOVER || r == R_ENEMYPG || r == R_EVENTPG || ((r == R_LOOT || r == R_TFREEZE || r == R_SKIPS || r == R_RIBBON) && host) ||
                              (r == R_IMP && host && !g_coop.loot);   /* only shared loot has it */
-    if (lb.step == 4) return r >= R_RAND && r <= R_PLACE && (r != R_RSEED || host);
-    if (lb.step == 5) return r == R_QUICK || r == R_DETECTOR;
+    if (lb.step == 4) return (r >= R_RAND && r <= R_PLACE && (r != R_RSEED || host)) || r == R_CASTPG;
+    if (lb.step == 7)   /* the cutscene cast: its model and assignment rows while it is on; the imported models' while we have some */
+        return r == R_CAST || ((r == R_CASTPOOL || r == R_CASTASSIGN || r == R_CASTIMP) && shown_eo()->cast &&
+                               (r != R_CASTIMP || __atomic_load_n(&actor_import_n, __ATOMIC_ACQUIRE) > 0));
+    if (lb.step == 5) return (r == R_QUICK && !biorand_active()) || r == R_DETECTOR;   /* BioRand has its own start inventory */
     switch (r) {
     case R_PORT: return host && !srv;
     case R_SERVER: case R_PW: case R_RELAY: return srv;   /* the co-op server (docs/SERVER.md) */
@@ -662,7 +806,8 @@ static int row_locked(int r)
     case R_MODE: case R_PORT: case R_LOOT: case R_IMP: case R_ADDR: case R_RELAY: case R_SERVER: case R_PW: return session_on();
     case R_HOSTSTEP: return joining();
     case R_JOINSTEP: return hosting();
-    case R_GOVER: case R_QUICK: case R_DETECTOR: case R_EXTRA: case R_PLACE: case R_RAND: case R_VARIETY: case R_EVENTS: case R_SEED: return lb.role != 0;   /* the host's choice */
+    case R_GOVER: case R_QUICK: case R_DETECTOR: case R_EXTRA: case R_PLACE: case R_RAND: case R_VARIETY: case R_EVENTS: case R_SEED: case R_BIORAND:
+    case R_CAST: case R_CASTPOOL: case R_CASTASSIGN: case R_CASTIMP: return lb.role != 0;   /* the host's choice */
     case R_RCOPY: return !g_coop.room[0];
     default: return 0;
     }
@@ -803,16 +948,21 @@ static void change(int r, int dir)
     case R_SKIPS: g_coop.skip_sync ^= 1; break;
     case R_GOVER: g_coop.gameover_both ^= 1; break;
     case R_QUICK: g_coop.quick_start ^= 1; break;
+    case R_BIORAND: if (!biorand_toggle()) { say(biorand_locked()); CallSystemSe(0, 1); return; } break;
     case R_DETECTOR: g_coop.skip_detector ^= 1; break;
     case R_RIBBON: settings_step(lset("No ink ribbons needed"), dir); break;   /* the GAMEPLAY setting (g_config) */
-    case R_START: g_coop.start = step_choice(g_coop.start, dir, 0, n_saves + 2, start_valid); break;
-    case R_ITEMS: g_coop.items = step_choice(g_coop.items, dir, COOP_ITEMS_HOST, n_saves - 1, items_valid); break;
+    case R_START: g_coop.start = step_choice(g_coop.start, dir, 0, 3, 3); break;
+    case R_ITEMS: g_coop.items = step_choice(g_coop.items, dir, COOP_ITEMS_HOST, 2, 0); break;
     case R_FOLLOW: g_coop.follow ^= 1; break;   /* the joining player's own choice, also during a session */
     case R_EXTRA: settings_step(eset(&g_enemy_opts.extra), dir); break;
     case R_PLACE: settings_step(eset(&g_enemy_opts.place), dir); break;
     case R_RAND: settings_step(eset(&g_enemy_opts.rand), dir); break;
     case R_VARIETY: settings_step(eset(&g_enemy_opts.variety), dir); break;
     case R_EVENTS: settings_step(eset(&g_enemy_opts.events), dir); break;
+    case R_CAST: settings_step(eset(&g_enemy_opts.cast), dir); break;
+    case R_CASTPOOL: settings_step(eset(&g_enemy_opts.cast_all), dir); break;
+    case R_CASTASSIGN: settings_step(eset(&g_enemy_opts.cast_assign), dir); break;
+    case R_CASTIMP: settings_step(eset(&g_enemy_opts.cast_imports), dir); break;
     default: return;
     }
     CallSystemSe(0, 2);
@@ -821,8 +971,8 @@ static void change(int r, int dir)
 
 static int has_value(int r)
 {
-    return r == R_MODE || r == R_RELAY || r == R_LOOT || r == R_IMP || r == R_TFREEZE || r == R_SKIPS || r == R_RIBBON || r == R_GOVER || r == R_QUICK || r == R_DETECTOR || r == R_START || r == R_ITEMS || r == R_FOLLOW ||
-           r == R_EXTRA || r == R_PLACE || r == R_RAND || r == R_VARIETY || r == R_EVENTS;
+    return r == R_MODE || r == R_RELAY || r == R_BIORAND || r == R_LOOT || r == R_IMP || r == R_TFREEZE || r == R_SKIPS || r == R_RIBBON || r == R_GOVER || r == R_QUICK || r == R_DETECTOR || r == R_START || r == R_ITEMS || r == R_FOLLOW ||
+           r == R_EXTRA || r == R_PLACE || r == R_RAND || r == R_VARIETY || r == R_EVENTS || r == R_CAST || r == R_CASTPOOL || r == R_CASTASSIGN || r == R_CASTIMP;
 }
 
 /* the joining player's items for coop_glue.c (own inventory on join) */
@@ -858,6 +1008,7 @@ static int back(void)
     CallSystemSe(0, 0);
     if (lb.step <= 1) return 1;
     if (lb.step == 6) { lb.step = 2; lb.row = R_CHAR; }
+    else if (lb.step == 7) { lb.step = 4; lb.row = R_CASTPG; }
     else if (lb.step > 3) { lb.row = lb.step == 4 ? R_ENEMYPG : R_EVENTPG; lb.step = 3; }
     else { lb.step--; lb.row = lb.step == 2 ? R_RULES : lb.role ? R_JOINSTEP : R_HOSTSTEP; }
     if (!row_selectable(lb.row)) lb.row = first_row();
@@ -885,6 +1036,7 @@ static int activate(int r)
     case R_JOINSTEP: lb.role = 1; step_to(2); return 0;
     case R_RULES: step_to(3); return 0;
     case R_ENEMYPG: step_to(4); return 0;
+    case R_CASTPG: step_to(7); return 0;
     case R_EVENTPG: step_to(5); return 0;
     case R_CHAR: pick_open(); return 0;
     case R_NAME: edit_begin(F_NAME); return 0;
@@ -930,7 +1082,20 @@ static int activate(int r)
         return 0;
     case R_GO:
         if (g_coop.start >= 3) {
+            static int asked = -1;   /* the save BioRand's question was shown for: START again loads it */
             if (!lobby_read_save(g_coop.start - 3, save_buf)) { say("that save cannot be read"); CallSystemSe(0, 1); scan_saves(); return 0; }
+            if (pc_biorand_save_differs(save_buf)) {   /* (biorand_glue.c, as the load screen asks) */
+                if (asked != g_coop.start) {
+                    char m[96];
+                    asked = g_coop.start;
+                    snprintf(m, sizeof(m), "%s %s START again to load it.", pc_biorand_ask(0), pc_biorand_ask(1));
+                    say(m);
+                    CallSystemSe(0, 1);
+                    return 0;
+                }
+                pc_biorand_save_accept(save_buf);
+            }
+            asked = -1;
             host_log("lobby: starting from save file %d\n", g_coop.start - 2);
             return 3;
         }
@@ -1005,6 +1170,7 @@ static const char* heading(void)
     if (lb.step == 1) return "HOW DO YOU WANT TO PLAY?";
     if (lb.step == 3) return lb.role ? "THE HOST'S GAME RULES" : "GAME RULES";
     if (lb.step == 6) return "MODEL - YOU APPEAR AS";
+    if (lb.step == 7) return lb.role ? "THE HOST'S RULES - CUTSCENE CAST" : "GAME RULES - CUTSCENE CAST";
     if (lb.step > 3) return lb.step == 4 ? (lb.role ? "THE HOST'S RULES - RANDOMIZER" : "GAME RULES - RANDOMIZER")
                                          : (lb.role ? "THE HOST'S RULES - EXTRA EVENTS" : "GAME RULES - EXTRA EVENTS");
     snprintf(h, sizeof(h), "%s - %s", lb.role ? "JOIN A GAME" : "HOST A GAME", lb.mode ? "VIA SERVER" : "DIRECT (P2P)");
@@ -1029,6 +1195,8 @@ static void row_text(int r, char* label, char* val, int n)
     case R_IMP: strcpy(label, "IMPORTANT ITEMS"); snprintf(val, n, "%s", g_coop.important ? "For both" : "Shared"); break;
     case R_SKIPS: strcpy(label, "CUTSCENE SKIP"); snprintf(val, n, "%s", g_coop.skip_sync ? "Together" : "Each alone"); break;
     case R_GOVER: strcpy(label, "GAME OVER"); snprintf(val, n, "%s", (lb.role ? coop_host_gameover_both() : g_coop.gameover_both) ? "Both" : "Each player"); break;
+    case R_BIORAND: strcpy(label, "BIORAND"); snprintf(val, n, (lb.role ? coop_biorand() == 1 : biorand_setting()) && biorand_seed_text()[0] ? "On (%s)" : "%s",
+                                                       (lb.role ? coop_biorand() == 1 : biorand_setting()) ? biorand_seed_text()[0] ? biorand_seed_text() : "On" : "Off"); break;
     case R_QUICK: strcpy(label, "QUICK START"); snprintf(val, n, "%s", (lb.role ? coop_quick_start() : g_coop.quick_start) ? "On" : "Off"); break;
     case R_DETECTOR: strcpy(label, "METAL DETECTOR"); snprintf(val, n, "%s", (lb.role ? coop_skip_detector() : g_coop.skip_detector) ? "Skipped" : "As original"); break;
     case R_RIBBON: strcpy(label, "INK RIBBONS"); snprintf(val, n, "%s", settings_get(lset("No ink ribbons needed")) ? "Not needed" : "Needed"); break;
@@ -1059,6 +1227,11 @@ static void row_text(int r, char* label, char* val, int n)
     case R_RAND: strcpy(label, "RANDOMIZER"); snprintf(val, n, "%s", eo->rand ? "On" : "Off"); break;
     case R_VARIETY: strcpy(label, "VARIETY"); snprintf(val, n, "%s", eset(&g_enemy_opts.variety)->names[eo->variety & 1]); break;
     case R_EVENTS: strcpy(label, "EVENT ENEMIES"); snprintf(val, n, "%s", eo->events ? "On" : "Off"); break;
+    case R_CASTPG: strcpy(label, "CUTSCENE CAST"); snprintf(val, n, "%s", eo->cast ? "On" : "Off"); break;   /* a page */
+    case R_CAST: strcpy(label, "RANDOMIZE CAST"); snprintf(val, n, "%s", eo->cast ? "On" : "Off"); break;
+    case R_CASTPOOL: strcpy(label, "CHARACTER MODELS"); snprintf(val, n, "%s", eset(&g_enemy_opts.cast_all)->names[eo->cast_all & 1]); break;
+    case R_CASTASSIGN: strcpy(label, "ASSIGNMENT"); snprintf(val, n, "%s", eset(&g_enemy_opts.cast_assign)->names[eo->cast_assign & 1]); break;
+    case R_CASTIMP: strcpy(label, "IMPORTED MODELS"); snprintf(val, n, "%s", eo->cast_imports ? "On" : "Off"); break;
     case R_SEED: strcpy(label, "SEED"); if (lb.edit == F_SEED) snprintf(val, n, "%s", lb.buf); else snprintf(val, n, "%d", eo->seed); break;
     case R_RSEED: strcpy(label, "NEW RANDOM SEED"); break;
     case R_JOIN: strcpy(label, session_on() ? "LEAVE" : "JOIN"); break;
@@ -1093,11 +1266,13 @@ static const char* row_help(int r)
     case R_FOLLOW: return eset(&g_coop.follow)->help;
     case R_RULES: return host ? "Loot, enemies freezing while you trade, cutscene skips, ink ribbons and game over; the enemy options and extra events have a page each."
                               : "The host's game over rule, enemy options and extra events (read-only).";
-    case R_ENEMYPG: return host ? "A page of enemy options: extra enemies, rearranged enemies and the randomizer (variety, event enemies, seed)."
-                                : "The host's enemy options: extra enemies, rearranged enemies and the randomizer (read-only).";
+    case R_ENEMYPG: return host ? "A page of enemy options: extra enemies, rearranged enemies, the randomizer (variety, event enemies, seed) and the cutscene cast."
+                                : "The host's enemy options: extra enemies, rearranged enemies, the randomizer and the cutscene cast (read-only).";
     case R_EVENTPG: return host ? "A page of rules for single events: a quick start and the prison's metal detector." : "The host's rules for single events: a quick start and the prison's metal detector (read-only).";
     case R_LOOT: return "Shared: each item lies there once - whoever takes it has it, so you split the supplies; one item box. Individual: each finds their own copy and has their own box. Keys and story go to both.";
     case R_TFREEZE: return eset(&g_coop.trade_freeze)->help;
+    case R_BIORAND: return host ? "On: you play the BioRand pack in mods/biorand; your partner needs the same pack (the same seed and options), else it cannot join. Off: the normal game for both."
+                                : "The host plays its BioRand pack; yours is the same, so your game follows it.";
     case R_QUICK: return "On: a new game starts with the manual already read (it stays in FILE) and the combat knife in your bag instead of on the table, for both of you. Off: as in single player.";
     case R_DETECTOR: return "Skipped: the prison's metal detector lets both of you pass with weapons and its security boxes stay shut (one holding items still opens). As original: as in single player.";
     case R_IMP: return "For both: weapons and ink ribbons lie there for each of you, each takes their own copy. Shared: they are one pickup like ammo and herbs - whoever takes it has it.";
@@ -1109,6 +1284,12 @@ static const char* row_help(int r)
     case R_RAND: return eset(&g_enemy_opts.rand)->help;
     case R_VARIETY: return eset(&g_enemy_opts.variety)->help;
     case R_EVENTS: return eset(&g_enemy_opts.events)->help;
+    case R_CASTPG: return host ? "A page for the cutscene cast: the story characters shown as other models in cutscenes (fixed or per cutscene, from the seed)."
+                               : "The host's cutscene cast: whether and how the story characters are shown as other models in cutscenes (read-only).";
+    case R_CAST: return eset(&g_enemy_opts.cast)->help;
+    case R_CASTPOOL: return eset(&g_enemy_opts.cast_all)->help;
+    case R_CASTASSIGN: return eset(&g_enemy_opts.cast_assign)->help;
+    case R_CASTIMP: return eset(&g_enemy_opts.cast_imports)->help;
     case R_SEED: return eset(&g_enemy_opts.seed)->help;
     case R_RSEED: return "Picks a new random seed.";
     case R_HOST: return lb.mode ? "Opens your lobby and a room on the co-op server; give your partner the room code that appears."
@@ -1121,7 +1302,7 @@ static const char* row_help(int r)
     case R_JOIN: return session_on() ? "Leaves the host's lobby." : "Joins the host's lobby; the host starts the game.";
     case R_BACK:
         return lb.step == 1 ? "Back to the title menu; an open lobby or session closes."
-             : lb.step == 2 ? "Back to choosing how to connect (an open lobby stays open)." : lb.step == 3 ? "Back to the lobby." : "Back to the game rules.";
+             : lb.step == 2 ? "Back to choosing how to connect (an open lobby stays open)." : lb.step == 3 ? "Back to the lobby." : lb.step == 7 ? "Back to the randomizer page." : "Back to the game rules.";
     default: return "";
     }
 }
@@ -1207,6 +1388,11 @@ static void pick_input(unsigned int press, unsigned int rept, unsigned int ok, u
         else if (k == LK_END) pick_to(n - 1, 0);
     }
     if (mt.wheel) pick_scroll(-3 * mt.wheel);   /* > 0: away from the player, up the list */
+    if (mt.left && n > PICK_ROWS && mt.x >= PICK_BAR_X - 4 && mt.x <= PICK_BAR_X + 9 && mt.y >= ROW_Y0 - 2 && mt.y < ROW_Y0 + PICK_ROWS * PICK_H) {
+        /* a click on the scroll bar: that part of the list (a long list: 300 and more with imports) */
+        pick_scroll((int)((mt.y - ROW_Y0) / (PICK_ROWS * PICK_H) * (pick_max_top() + 1)) - lb.top);
+        return;
+    }
     hit = pick_at(mt.x, mt.y);
     if (hit >= 0 && (mt.moved || mt.left || mt.wheel) && hit != lb.pick) { lb.pick = hit; CallSystemSe(0, 2); }
     if (mt.left && hit >= 0) { pick_take(); return; }
@@ -1228,13 +1414,20 @@ static void draw_models(void)
     snprintf(pos, sizeof(pos), "%d / %d", (lb.pick < n ? lb.pick : cur) + 1, n);
     text(634 - text_w(pos, 0.45f), HEAD_Y + 2, pos, 0.45f, 0xFFA0A0A0);
     for (i = lb.top; i < n && i < lb.top + PICK_ROWS; i++) {
-        float y = ROW_Y0 + (i - lb.top) * PICK_H, w, sc;
+        float y = ROW_Y0 + (i - lb.top) * PICK_H, w, sc, lim = right;
         const char* nm = appear_name(appear_at(i));
+        const char* grp = appear_group(appear_at(i));
         unsigned int col = i == cur ? 0xFFFFE080 : i == lb.pick ? 0xFFFFFFFF : 0xFFB0B0B0;   /* the current one: gold, with an arrow */
+        if (i == lb.top || strcmp(grp, appear_group(appear_at(i - 1)))) {   /* a group's first row (and the page's): its name on the right */
+            float gw = text_w(grp, 0.35f);
+            if (i > lb.top) rect(ROW_X - 8, y - 3, right, y - 2, 0x60FFE080, Z_FRONT);
+            text(right - gw - 2, y + 4, grp, 0.35f, 0xFFC8A860);
+            lim = right - gw - 10;
+        }
         if (i == lb.pick) rect(ROW_X - 8, y - 2, right, y + PICK_H - 3, 0x50FFFFFF, Z_FRONT);
         if (i == cur) arrow(ROW_X + 4, y + 9, 1, col);
         w = text_w(nm, ROW_SC);
-        sc = w > right - ROW_X - 18 ? ROW_SC * (right - ROW_X - 18) / w : ROW_SC;   /* a long name: narrower */
+        sc = w > lim - ROW_X - 18 ? ROW_SC * (lim - ROW_X - 18) / w : ROW_SC;   /* a long name: narrower */
         text(ROW_X + 12, y + (ROW_SC - sc) * 14, nm, sc, col);
     }
     if (n > PICK_ROWS) {   /* the scroll bar: the page's share of the list, where it is */
@@ -1307,7 +1500,7 @@ static void draw_rows(void)
             float lw = text_w(label, ROW_SC), room = (has_value(r) || val[0]) ? VAL_X - ROW_X - 8 : 634 - ROW_X - 4,
                   ls = lw > room ? ROW_SC * room / lw : ROW_SC;
             text(ROW_X, y + (ROW_SC - ls) * 14, label, ls, col);
-            if (!val[0] && (r == R_ENEMYPG || r == R_EVENTPG)) arrow(ROW_X + lw * ls / ROW_SC + 16, y + 9, 1, col);   /* a page, no summary: the arrow after its name */
+            if (!val[0] && (r == R_ENEMYPG || r == R_EVENTPG || r == R_CASTPG)) arrow(ROW_X + lw * ls / ROW_SC + 16, y + 9, 1, col);   /* a page, no summary: the arrow after its name */
         }
         if (has_value(r)) {
             float w = text_w(val, ROW_SC), sc = w > 190 ? ROW_SC * 190 / w : ROW_SC;   /* long model names: narrower */
@@ -1315,7 +1508,7 @@ static void draw_rows(void)
             if (!locked) { arrow(VAL_X, y + 9, -1, col); arrow(VAL_X + 14 + w + 12, y + 9, 1, col); }
             text(VAL_X + 12, y + (ROW_SC - sc) * 14, val, sc, col);
         } else if (val[0] || lb.edit) {
-            int page = r == R_ENEMYPG || r == R_EVENTPG || r == R_CHAR;   /* opens a page: an arrow after it */
+            int page = r == R_ENEMYPG || r == R_EVENTPG || r == R_CASTPG || r == R_CHAR;   /* opens a page: an arrow after it */
             float lim = page ? 196.0f : 220.0f, w = text_w(val, ROW_SC), sc = w > lim ? ROW_SC * lim / w : ROW_SC;   /* a long address: narrower */
             text(VAL_X, y + (ROW_SC - sc) * 14, val, sc, col);
             if (page) arrow(VAL_X + (sc < ROW_SC ? lim : w) + 16, y + 9, 1, col);
@@ -1361,12 +1554,12 @@ static void draw_previews(void)
 {
     int partner = g_coop.state == COOP_CONNECTED && !g_coop.peer_in_game, k;
     float sx[2] = { partner ? 92.0f : 120.0f, 222.0f };
-    int played = g_coop.start >= 3 && lb.role == 0 && start_valid(g_coop.start) ? saves[g_coop.start - 3].ply_id : 0;
+    int played = g_coop.start >= 3 && lb.role == 0 && start_valid(g_coop.start) ? saves[save_at(g_coop.start - 3)].ply_id : 0;
     /* the chosen model (on the model page the one under the cursor) loads once it has stayed for a
        few frames (scrolling through the list) */
     int chr = lb.step == 6 && lb.pick < appear_count() ? appear_at(lb.pick) : g_coop.chr;
     if (chr != lb.want_chr) { lb.want_chr = chr; lb.chr_stable = 0; }
-    if (++lb.chr_stable >= 8 || pv[0].chr < 0) pv_set(0, lb.want_chr, played);
+    if (++lb.chr_stable >= 8 || pv[0].chr < 0) pv_set(0, appear_played(lb.want_chr, played), played);   /* ("As played (cutscene)": that character's cutscene model) */
     pv_set(1, partner && g_coop.peer_lchr >= 0 && g_coop.peer_lchr <= COOP_CHR_MAX ? g_coop.peer_lchr : -1, 0);
     lb.spin += 1;
     {
@@ -1421,7 +1614,7 @@ static void lobby_open(void)
 static void lobby_close(int keep)
 {
     int k;
-    if (!lb.open) return;
+    if (!lb.open) { font_release(); return; }   /* the title's (title_version) */
     if (!keep && (session_on() || g_coop.request)) {
         g_coop.request = COOP_REQ_STOP;
         host_log("lobby: left, the session closes\n");
@@ -1509,6 +1702,7 @@ void lobby_frame(void)
     static const char* join = (const char*)-1, *stop = (const char*)-1, *title = (const char*)-1;
     static unsigned int hand;
     hand++;
+    { extern void crash_test(unsigned); crash_test(hand); }   /* RECVX_TEST_CRASH (log.c) */
     if (join == (const char*)-1) join = getenv("RECVX_TEST_JOIN");
     if (join && *join && hand >= (unsigned)atoi(join)) {   /* RECVX_TEST_JOIN="n": F3's Join at the n-th frame hand-off */
         host_log("test: join (F3) at hand-off %u\n", hand);

@@ -119,7 +119,8 @@ static void release_textures(void)
     memset(spawned, 0, sizeof(spawned));
 }
 
-void spawn_release(void) { variant_release(); release_textures(); }   /* ps2_texture.c bhReleaseMainTexture; also the enemy variants' models */
+void cast_release(void);   /* cast_glue.c */
+void spawn_release(void) { variant_release(); cast_release(); release_textures(); }   /* ps2_texture.c bhReleaseMainTexture; also the enemy variants' and the cutscene cast's models */
 
 void spawn_textures_released(void) { tl_n = tn_n = 0; memset(spawned, 0, sizeof(spawned)); }   /* njReleaseTextureAll */
 

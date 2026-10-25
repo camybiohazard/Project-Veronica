@@ -31,7 +31,8 @@ void rdv_stop(void);            /* tells the server (CLOSE) */
 void rdv_kick(void);            /* host: removes the partner from the room (KICK); the room and its code stay, the session's keys go */
 void rdv_frame(void);           /* timers: retries, keepalives, punches, the relay switch */
 /* every received datagram: -1 taken here (server message, punch, dropped); 0 not ours (the
-   caller handles it as before); > 0 a game datagram from the partner, decrypted into `buf`, with
+   caller handles it as before: also an encrypted datagram our keys do not open, which may be a
+   direct joiner's, coop_glue.c CoopDirect); > 0 a game datagram from the partner, decrypted into `buf`, with
    `from` set to rdv_peer */
 int rdv_input(NetAddr* from, unsigned char* buf, int n, int cap);
 int rdv_send(const void* buf, int n);   /* a game datagram to the partner (0 while there is no path yet) */
@@ -42,7 +43,6 @@ int rdv_wire_extra(void);       /* bytes it adds now per datagram (encryption, r
 const char* rdv_status(void);   /* for the status line */
 const char* rdv_room(void);     /* host: the room code, "" before the server gave one */
 const char* rdv_path(void);     /* "direct", "direct (LAN)", "relay", "" */
-const char* rdv_join_code(void);/* the protocol-11 join code both games derive (NULL before the introduction) */
 const char* rdv_error(void);    /* joining: why it failed (the session ends), NULL otherwise */
 int rdv_server_parse(const char* s, NetAddr* out);   /* "host" or "host:port" (default 7141); 1 ok (blocks on DNS: the CLI) */
 int rdv_server_valid(const char* s);                 /* the same, only the syntax (no DNS) */

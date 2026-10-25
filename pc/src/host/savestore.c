@@ -97,7 +97,7 @@ static int file_number(const char* name)
     return digits && (*name == '_' || *name == '.') ? v : 0;
 }
 
-typedef struct Scan { int want, max; char* file; int n, found; SaveEntry* list; int count, cap; const char* dir; } Scan;
+typedef struct Scan { int want, max; char* file; int n, found; SaveEntry* list; int count, cap, over; const char* dir; unsigned char* used; } Scan;
 
 static int read_file(const char* path, unsigned char* buf, int cap)
 {
@@ -135,6 +135,7 @@ static SDL_EnumerationResult SDLCALL scan_entry(void* ud, const char* dir, const
     int num = file_number(name);
     if (!num) return SDL_ENUM_CONTINUE;
     if (num > s->max) s->max = num;
+    if (s->used && num <= SAVESTORE_MAX + 1) s->used[num] = 1;
     if (num == s->want && !s->found) {
         s->found = 1;
         if (s->file) SDL_strlcpy(s->file, name, s->n);
@@ -145,6 +146,7 @@ static SDL_EnumerationResult SDLCALL scan_entry(void* ud, const char* dir, const
         Header h;
         SaveEntry* e;
         snprintf(path, sizeof(path), "%s%s", dir, name);   /* SDL's dir ends in a separator */
+        if (s->count == SAVESTORE_MAX) { s->over++; return SDL_ENUM_CONTINUE; }
         if (!parse(b, read_file(path, b, sizeof(b)), NULL, &h)) { SDL_Log("saves: %s is not a valid save: skipped", name); return SDL_ENUM_CONTINUE; }
         if (s->count == s->cap) {
             SaveEntry* l = realloc(s->list, sizeof(SaveEntry) * (s->cap = s->cap ? s->cap * 2 : 32));
@@ -170,6 +172,7 @@ int savestore_list(const char* dir, SaveEntry** out)
 {
     Scan s = { .dir = dir };
     SDL_EnumerateDirectory(dir, scan_entry, &s);
+    if (s.over) SDL_Log("saves: more than %d save files in %s: %d not listed", SAVESTORE_MAX, dir, s.over);
     if (s.count > 1) qsort(s.list, s.count, sizeof(SaveEntry), by_number);
     *out = s.list;
     return s.count;
@@ -182,11 +185,16 @@ int savestore_find(const char* dir, int number, char* file, int n)
     return s.found;
 }
 
-int savestore_highest(const char* dir)
+int savestore_next(const char* dir)
 {
-    Scan s = { 0 };
+    unsigned char used[SAVESTORE_MAX + 2] = { 0 };
+    Scan s = { .used = used };
+    int i;
     SDL_EnumerateDirectory(dir, scan_entry, &s);
-    return s.max;
+    if (s.max < SAVESTORE_NUMBER_MAX) return s.max + 1;
+    for (i = 1; i <= SAVESTORE_MAX + 1; i++)   /* past the last number: the first free one */
+        if (!used[i]) return i;
+    return 0;
 }
 
 typedef struct Blob { const void* p; int n; } Blob;
@@ -199,7 +207,7 @@ static int write_locked(const char* dir, int number, const unsigned char* data, 
     char label[128], name[256], path[1400];
     Blob blob = { b, sizeof(b) };
     if (!savestore_card_valid(data)) return 0;
-    if (number <= 0) number = savestore_highest(dir) + 1;
+    if (number <= 0 && !(number = savestore_next(dir))) return 0;
     h.written = (int64_t)time(NULL);
     h.play_time = rd32(data, 0x824); h.save_ct = rd32(data, 4); h.gm_mode = rd32(data, 0x10);
     h.ply_id = data[8]; h.stg_no = data[9]; h.rom_no = data[10];

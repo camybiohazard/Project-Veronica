@@ -538,7 +538,7 @@ int rdv_input(NetAddr* from, unsigned char* buf, int n, int cap)
     }
     if (!have_ses) return 0;
     if (magic == RDV_E2E_MAGIC) {   /* direct and authenticated: the partner sends here, so it heard us */
-        if (!e2e || (n = game_in(buf, cap, buf, n)) < 0) return -1;
+        if (!e2e || (n = game_in(buf, cap, buf, n)) < 0) return 0;   /* not with our keys: maybe a direct joiner's (coop_glue.c CoopDirect) */
         confirm(from);
         *from = rdv_peer;
         return n;
@@ -656,7 +656,6 @@ int rdv_wire_extra(void) { return have_ses ? (e2e ? RDV_E2E_OVER : 0) + (relay ?
 const char* rdv_status(void) { return status; }
 const char* rdv_room(void) { return room; }
 const char* rdv_path(void) { return st == RDV_ST_DIRECT ? (path_lan ? "direct (LAN)" : "direct") : st == RDV_ST_RELAY ? "relay" : ""; }
-const char* rdv_join_code(void) { return have_ses ? ses.code : NULL; }
 const char* rdv_error(void) { return st == RDV_ST_FAILED ? err : NULL; }
 int rdv_keys_confirmed(void) { return have_ses && keys_ok; }
 const RdvSession* rdv_session_state(void) { return have_ses ? &ses : NULL; }

@@ -25,6 +25,18 @@ enum { ANIM_IDLE, ANIM_PLAYED, ANIM_MALE, ANIM_FEMALE };
 #define ACTOR_MODELS 62
 extern const ActorModel actor_models[];
 
+/* Player models imported from other games' discs (F9, pc/src/import; docs/IMPORT_OUTBREAK.md):
+   actor index ACTOR_MODELS + k, "You appear as" chr COOP_CHR_MAX + 1 + k. Filled by
+   import_registry_load (main thread, the only writer) append-only: an entry below actor_import_n
+   (published last, release) never changes or goes away, so the game thread reads it without a
+   lock and k keeps meaning the same model while it is shown (a model extracted again keeps its k). */
+#define ACTOR_IMPORT_MAX 2048   /* (Outbreak File #2 has about 300 people) */
+extern ActorModel actor_imports[ACTOR_IMPORT_MAX];
+extern const char* actor_import_file[ACTOR_IMPORT_MAX];   /* its .cvxm */
+extern unsigned char actor_import_group[ACTOR_IMPORT_MAX];   /* IMPORT_GROUP_* (import.h) */
+extern int actor_import_n;
+const ActorModel* actor_model(int idx);   /* catalogue entry or import idx, NULL if none */
+
 /* "Use gender-matched animations" (ini appear_gender_anim, default 1): a model of the other sex
    than the character played moves with the motions of a player character of its own sex */
 extern int g_appear_anim;
@@ -51,9 +63,14 @@ int appear_grab_motion(int id, int mtn, int from, int to);
 /* "You appear as" (g_coop.chr): 0 the character played, 1..5 the player files, then these */
 #define COOP_CHR_ACTOR 6
 #define COOP_CHR_MAX (COOP_CHR_ACTOR + ACTOR_MODELS - 1)
+#define COOP_CHR_IMPORT (COOP_CHR_MAX + 1)   /* the imported models after the catalogue */
+/* "As played (cutscene)": the played character's cutscene model. A fixed value past every import
+   (stored in recvx.ini); never sent to the partner: appear_played resolves it first. */
+#define COOP_CHR_CINE 4095
+int appear_played(int chr, int ply_id);   /* chr; for COOP_CHR_CINE the cutscene model of ply_id (0..3; else 0, as played) */
 
-/* The list the menus show (F3, the lobby, ENHANCED SETTINGS): one entry per distinct look, the player
-   files first, the player characters' cutscene models last. Event doubles of a listed look are left
+/* The list the menus show (F3, the lobby, ENHANCED SETTINGS): one entry per distinct look, "As played"
+   and "As played (cutscene)" first, then the player files, the player characters' cutscene models last. Event doubles of a listed look are left
    out of the list only: their chr values stay valid (co-op, recvx.ini) and appear_canon maps them to
    the listed one. */
 int appear_count(void);
@@ -62,13 +79,15 @@ int appear_pos(int chr);              /* the position of chr (a hidden one: its 
 int appear_canon(int chr);            /* chr, or the listed twin of a hidden one */
 int appear_step(int chr, int dir);    /* the next (dir 1) or previous (-1) listed chr, wrapping */
 const char* appear_name(int chr);
+const char* appear_group(int chr);    /* the list's group of chr (the lobby's model page shows them as headers) */
 /* game thread (pc/glue/actor_glue.c). who: display slot 0 our player, 1 the co-op partner,
    ACTOR_DOUBLE the cutscene double of the character played, ACTOR_VARIANT + k enemy variants. idx: catalogue entry, ACTOR_PART + n
    for player part file 10 + n, or -1. */
-#define ACTOR_SLOTS 5
 #define ACTOR_DOUBLE 2
 #define ACTOR_VARIANT 3                 /* 3, 4: enemy variants' models (pc/glue/variant_glue.c), each posed per enemy drawn */
-#define ACTOR_PART 1000
+#define ACTOR_CAST 5                    /* 5..10: the cutscene cast's models (pc/glue/cast_glue.c), one per model a room shows */
+#define ACTOR_SLOTS (ACTOR_CAST + 6)
+#define ACTOR_PART 10000   /* past ACTOR_MODELS + ACTOR_IMPORT_MAX */
 int  actor_set(int who, int idx);       /* 1 = shown (a failed entry is not retried) */
 int  actor_shown(int who);
 int  actor_rigged(int who);             /* its model is posed from a source's skeleton (a humanoid node map was found) */
@@ -76,6 +95,7 @@ struct BH_PWORK;
 void actor_pose(int who, struct BH_PWORK* src);   /* after src's bhSetMotion and bhCalcModel */
 void actor_draw(int who);               /* bhPutModel: the caller sets camera matrix, lights, textures state */
 struct BH_PWORK* actor_work(int who);   /* its work (model, node matrices), NULL when none is shown */
+void actor_weapon_hands(int who, struct O_WRK* wpn, int n);   /* the weapon models' hand pieces hidden while slot who shows an imported model (it has its own hands) */
 int  actor_hand_free(int who, int node);   /* 1: the source's hand node (9, 13) is at the model's hand, which has no mesh of its own */
 int  actor_head(int who, float* out);   /* world position of its head node (else its highest node); 0 when none is shown */
 int  actor_head_node(int who);          /* its head node (the rig's head role), -1: none found or none shown */
@@ -83,6 +103,12 @@ void actor_doubles(int idx);            /* at the hand-off: the appearance for t
 void actor_double_tick(void);           /* every tick before the objects follow their links: the double's pose, hands, face */
 int  actor_double_acting(void);         /* a cutscene double of the character played is shown (a cutscene) */
 int  actor_double_kept(void);           /* the doubles stay the game's for the chosen model: the played character's own cutscene model */
+/* the cutscene cast (cast_glue.c): source ep drawn as slot who's model. actor_act: every tick before the
+   objects follow their links (its face from ep's lip sync, ep's hand nodes at the model's hands, as for the
+   double); actor_put_as: in place of bhPutModel(ep), posed from ep unless it was this tick; 1 = drawn */
+void actor_act(int who, struct BH_PWORK* ep);
+int  actor_put_as(int who, struct BH_PWORK* ep);
+int  actor_own_hand(int who, int side, int* node);   /* its model has a hand of its own on side 0 right / 1 left (1; 2: no such hand at all), posed on source node *node */
 /* before actor_pose(who, src) (slots 0, 1): src shows the mesh of player character `mesh` (0..3, a
    part-file mesh on the real skeleton; -1: a catalogue model is shown) and plays the motions of
    character `motion`, its upper body bent by `pitch` (radians: the free-aim bend, tps_bend). Gender-matched

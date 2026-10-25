@@ -144,6 +144,10 @@ Added for mixed rooms (none of it occurs in retail rooms):
   leader counts as the holding body's family (`pc_family`): the body starts the grab, the type's
   one leader (an unlinked enemy of the same id that the first body's Init makes) plays it and
   lets go (`bhEne06_PlayerControl`, `bhEne03_PlayerControl`); refused, the player stayed grabbed.
+  The albinoid adult and Monster Steve step the hold of any player in `mode0` 4/6 (`bhEne22` /
+  `bhEne17` `PlyDG*`, which read a position table by the player's motion); while another enemy
+  holds the player (`pc_enemy_refused`) they leave it alone. An infant albinoid's hold (motion 42)
+  made the adult read `mtn_pos[42 - 30]` of 4 entries: crash.
 * Watchdog (`coop_glue.c pc_enemy_watch`): an alive enemy unchanged for 150 steps is logged; a
   zombie stuck in a grab state is released.
 
@@ -510,6 +514,7 @@ count for both. Code: `pc/glue/enemyopt_glue.c`, one decomp hook at the end of
 | "Enemy seed" (GAMEPLAY) | `enemy_seed` | seed for placements and randomizer | `RECVX_ENEMY_SEED` |
 | "Randomizer variety" (GAMEPLAY) | `enemy_variety` | 0 = Mild, **1 = Wild** | `RECVX_ENEMY_VARIETY` |
 | "Randomize event enemies" (GAMEPLAY) | `enemy_random_events` | 0/**1** | `RECVX_ENEMY_EVENTS` |
+| "Randomize cutscene cast" and its page (GAMEPLAY, CUTSCENE CAST) | `cast_random`, `cast_models`, `cast_assign`, `cast_imports` | the story characters drawn as other models in cutscenes, visual only (no enemy is touched): [ACTORS.md](ACTORS.md) "Cutscene cast" | `RECVX_CAST` |
 
 Every option first reads the room script once per load (`scan_script`) and marks records that an
 event drives (`LoadWork`, motion pauses, links, positioning, zombie/face/look/render ops), that the

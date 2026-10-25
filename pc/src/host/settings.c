@@ -14,6 +14,8 @@
 #include "enemies.h"
 #include "lobby.h"
 #include "savestore.h"
+#include "biorand.h"
+#include "../net/update.h"
 #include "../audio/audio.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -225,6 +227,14 @@ static const char* tenths(int v, char* b, int n) { snprintf(b, n, "%d.%d", v / 1
    while a SET_CALIB row is chosen: squares on a black and on a white strip, the faint ones at the ends */
 const unsigned char settings_calib[2][CALIB_STEPS] = { { 5, 10, 16, 24, 32 }, { 223, 231, 239, 245, 250 } };
 static void picture_reset(void) { g_config.brightness = 0; g_config.contrast = 100; g_config.gamma = 10; settings_save_later(); }
+static const char* biorand_name(int v, char* b, int n)
+{
+    if (!biorand_pack()) snprintf(b, n, "No pack");
+    else if (v && biorand_seed_text()[0]) snprintf(b, n, "On (%s)", biorand_seed_text());
+    else snprintf(b, n, v ? "On" : "Off");
+    return b;
+}
+static const char* rifle_locked(void) { return biorand_active() ? "On while BioRand is on." : NULL; }
 /* "You appear as": positions in the menus' list (actors.c, without event doubles) */
 static int chr_get(void) { return appear_pos(g_coop.chr); }
 static void chr_set(int v) { g_coop.chr = appear_at(v); }
@@ -323,6 +333,10 @@ static const char* const noclips[] = { "Off", "Through walls", "Walls + fly" };
 static const char* const sources[] = { "Auto", "Keyboard/mouse only", "Gamepad only" };
 static const char* const extras[] = { "Off", "Up to 1 per room", "Up to 2 per room", "Up to 3 per room" };
 static const char* const varieties[] = { "Mild", "Wild" };
+static const char* const cast_pools[] = { "Cutscene models (faces move)", "All models" };
+static const char* const cast_assigns[] = { "Fixed per character", "Random per cutscene" };
+static int cast_on(void) { return g_enemy_opts.cast != 0; }
+static int cast_imports_shown(void) { return cast_on() && __atomic_load_n(&actor_import_n, __ATOMIC_ACQUIRE) > 0; }
 
 #define V(x) ((int*)&(x))
 const Setting g_settings[] = {
@@ -365,6 +379,8 @@ const Setting g_settings[] = {
       .help = "Also use replacements that show something else than the original, such as redesigned menus, title and inventory. Off: only replacements of the original picture. The port's own menu entries keep the original letters." },
 
     { SP_GAMEPLAY, "Skip intro", V(g_config.skip_intro), 0, 1, 1, .flags = SET_RESTART, .help = "Boot straight into the title menu: no warning screen, logos or intro movie. Off: any button skips each of them.", .group = "GENERAL" },
+    { SP_GAMEPLAY, "Check for updates", V(g_config.update_check), 0, 1, 1, .apply = update_start,
+      .help = "Once at start asks the project's update server for the newest version number, shown on the title screen. Nothing else is sent. Off: no network at all." },
     { SP_GAMEPLAY, "Skip door animations", V(g_config.skip_doors), 0, 2, 1, (const char* const[]){ "Off", "Instant", "Skippable" },
       .help = "Door, stairs and ladder animations. Off: always played. Instant: the game's load screen instead. Skippable: played, any key or button ends it." },
     { SP_GAMEPLAY, "Fast loading", V(g_config.fast_loading), 0, 1, 1,
@@ -378,12 +394,16 @@ const Setting g_settings[] = {
     { SP_GAMEPLAY, "Auto-climb stairs", V(g_config.auto_stairs), 0, 1, 1,
       .help = "Walking or running into a staircase climbs it without the action button. Steps onto or off a ledge, doors and items still need the button." },
     { SP_GAMEPLAY, "Head blow-offs", V(g_config.head_blowoff), 0, 1, 1, .help = "Enables head blow-offs on zombies." },
+    { SP_GAMEPLAY, "Rifle ammo stacks", V(g_config.rifle_stack), 0, 1, 1, .locked = rifle_locked,
+      .help = "Rifle and assault rifle bullets stack in one slot as the other ammo does. Off: each pickup takes a slot, as the original." },
     { SP_GAMEPLAY, "Save system", V(g_config.save_system), 0, 1, 1, save_systems,
       .help = "Native files: each save is its own file in the saves folder, as many as you like, no memory card screens. Memory card: the original 15 slots. From the next save screen.", .group = "SAVES" },
     { SP_GAMEPLAY, "Import memory card saves", NULL, .flags = SET_ACTION, .apply = import_card,
       .help = "Copies the memory card's saves into the saves folder as new files (ones already there are skipped). The card keeps them." },
     { SP_GAMEPLAY, "No ink ribbons needed", V(g_config.no_ink_ribbon), 0, 1, 1,
       .help = "Typewriters save without an ink ribbon and use none up. In co-op the host's setting counts (lobby GAME RULES)." },
+    { SP_GAMEPLAY, "BioRand", V(g_config.biorand), 0, 1, 1, .name = biorand_name, .locked = biorand_locked, .shown = biorand_shown, .group = "RANDOMIZER",
+      .help = "Plays the randomizer pack BioRand generated into mods/biorand (items, start inventory and doors from its seed). Off: the normal game, the folder is ignored. Changed at the title menu (also NEW GAME's difficulty screen)." },
     { SP_GAMEPLAY, "Extra enemies", V(g_enemy_opts.extra), 0, 3, 1, extras, .help = "More enemies of the types a room already has (also in single player). In co-op the host's setting counts. Next room.", .group = "ENEMIES" },
     { SP_GAMEPLAY, "Rearranged enemies", V(g_enemy_opts.place), 0, 1, 1, .help = "Free-roaming enemies start elsewhere in their room (from the seed). Story, cutscene and boss enemies stay. Next room." },
     { SP_GAMEPLAY, "Enemy randomizer", V(g_enemy_opts.rand), 0, 1, 1, .help = "Enemies become other types (from the seed), from anywhere in the game, within each room's limits. Bosses stay. Next room." },
@@ -391,7 +411,15 @@ const Setting g_settings[] = {
       .help = "Wild: every kind that fits the room, a different one for each enemy where possible, Tyrants and bats included. Mild: two common kinds per room. Next room." },
     { SP_GAMEPLAY, "Randomize event enemies", V(g_enemy_opts.events), 0, 1, 1,
       .help = "Enemies that rooms show later or that events drive change too: the ones events animate get another look of their own kind, so the scenes still play. Next room." },
-    { SP_GAMEPLAY, "Enemy seed", V(g_enemy_opts.seed), 0, 99999, 1, .fmt = "%d", .help = "Placements and randomizer: the same seed gives the same rooms. In co-op both use the host's." },
+    { SP_GAMEPLAY, "Enemy seed", V(g_enemy_opts.seed), 0, 99999, 1, .fmt = "%d", .help = "Placements, randomizer and cutscene cast: the same seed gives the same rooms. In co-op both use the host's." },
+    { SP_GAMEPLAY, "Randomize cutscene cast", V(g_enemy_opts.cast), 0, 1, 1, .group = "CUTSCENE CAST",
+      .help = "In cutscenes the story characters (Alfred, Steve, ...) are shown as other models, from the enemy seed. Only the look changes. Next room." },
+    { SP_GAMEPLAY, "Character models", V(g_enemy_opts.cast_all), 0, 1, 1, cast_pools, .shown = cast_on,
+      .help = "Cutscene models: the characters' cutscene models, whose mouths and eyes move with the lines. All models: any character, creature or zombie model and the player models; most of them keep a still face." },
+    { SP_GAMEPLAY, "Assignment", V(g_enemy_opts.cast_assign), 0, 1, 1, cast_assigns, .shown = cast_on,
+      .help = "Fixed: each character is always shown as the same model, e.g. Steve as Alfred in every cutscene. Random: every cutscene room picks again. The same seed gives the same picks." },
+    { SP_GAMEPLAY, "Include imported models", V(g_enemy_opts.cast_imports), 0, 1, 1, .shown = cast_imports_shown,
+      .help = "The models in the mods folder's import list join the character models. In co-op only when both players have the same ones." },
 
     { SP_CONTROLS, "Input source", V(g_input_source), 0, 2, 1, sources, .apply = bind_apply_source,
       .help = "Which devices play in this window. Auto: keyboard/mouse and gamepad, while the window has focus. Keyboard/mouse "
@@ -472,7 +500,7 @@ const Setting g_settings[] = {
 
     { SP_EXTRAS, "Infinite health", V(g_cheat.inf_health), 0, 1, 1, .group = "CHEATS" },
     { SP_EXTRAS, "Infinite ammo", V(g_cheat.inf_ammo), 0, 1, 1 },
-    { SP_EXTRAS, "Noclip", V(g_cheat.noclip), 0, 2, 1, noclips, .help = "Walls and enemies no longer block you. Fly: noclip up/down keys (R/F, Page Up/Down) or R2/L2." },
+    { SP_EXTRAS, "Noclip", V(g_cheat.noclip), 0, 2, 1, noclips, .help = "Walls and enemies no longer block you. Fly: Page Up up, F or Page Down down, or R2/L2 on the gamepad." },
     { SP_EXTRAS, "Unlock all", V(g_cheat.unlock), 0, 1, 1,
       .help = "Examining a locked door, card reader or key slot uses its key there, as if you carried it. Switching it on or off counts at once, also in the room you are in. Nothing is added to the inventory." },
     { SP_EXTRAS, "Heal now", NULL, .flags = SET_ACTION | SET_GAME_ONLY, .apply = heal },

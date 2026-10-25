@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.6.10 (2026-10-25)
+
+> [!NOTE]
+> Hey, sorry for just this small update!
+> There are bigger parts in the works coming next week, so stay tuned!
+> As always please report any issues you encounter, thanks for playing!
+>
+> The cutscene modelswap is an early iteration, so it's not perfect yet
+>
+> -aikatore
+
+### Gameplay
+
+- **Rifle ammo stacks** (Gameplay, on by default): rifle and assault rifle bullets stack in one slot
+  like the other ammo. Off: each pickup takes its own slot, as in the original.
+- **Cutscene cast randomizer** (Gameplay, also in the co-op lobby): in cutscenes the story characters
+  appear as other models from the enemy seed, the same one per character or a new one each cutscene;
+  with cutscene models their faces keep moving with the lines.
+
+### Fixes
+
+- **Menu arrows**: the arrows in ENHANCED SETTINGS and the lobby no longer slide between entries when
+  you move the cursor.
+- **Damaged files**: damaged or crafted mod, room, texture and archive files no longer crash the game;
+  a broken room file from the mods folder falls back to the disc's, and oversized HD textures are
+  skipped.
+- **Unusual save names**: the lobby no longer freezes or crashes with unusual save file names.
+- **Crash reports on Linux**: written more reliably, also when the game runs out of stack.
+- **Lighter and lockpick in the item box**: taking the lighter or Claire's lockpick out of the item box
+  no longer makes the other one disappear; with its slot taken, it goes into your bag like any item.
+  Picking up the lighter while holding the lockpick keeps both too.
+- **Full shared item box** (co-op): when both players put items into the last free places at the
+  same time, the partner's item comes back into its bag, or lies at its feet with the bag full,
+  instead of being lost.
+- **Partner's event items** (co-op): an item from an event lying on the floor for the partner no
+  longer crashes the game in some rooms, such as the lockpick in the room where the game starts.
+- **Albinoids and moth eggs**: an adult Albinoid no longer crashes the game while a young one holds
+  you, and a moth egg laid on a co-op partner shown as another playable character is drawn properly.
+
 ## 0.6.9 (2026-10-24)
 
 ### Gameplay

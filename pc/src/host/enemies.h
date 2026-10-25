@@ -13,6 +13,10 @@ typedef struct EnemyOpts {
     int seed;                   /* placements and randomizer (0..2^31-1) */
     int variety;                /* randomizer: 0 Mild (two common kinds per room), 1 Wild (every kind that fits; default) */
     int events;                 /* randomizer: 1 also event enemies (default) */
+    int cast;                   /* cutscene cast randomizer (cast.h): 1 the story characters drawn as other models in cutscenes */
+    int cast_all;               /* its characters: 0 from the cutscene models (faces move), 1 from all models */
+    int cast_assign;            /* 0 fixed per character (the seed), 1 random per cutscene (seed and room file) */
+    int cast_imports;           /* 1: imported models too (co-op: only while both sides have the same, cast_import_id) */
 } EnemyOpts;
 extern EnemyOpts g_enemy_opts;  /* our settings (F1, recvx.ini) */
 

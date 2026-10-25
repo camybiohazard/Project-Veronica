@@ -125,7 +125,40 @@ static int native_path(char* p, int n, int slot)
     return 1;
 }
 
-int lobby_save_slots(void) { return save_native() ? savestore_highest(save_native_dir()) : 15; }
+int lobby_save_list(LobbySave** out)
+{
+    LobbySave* l;
+    int i, n;
+    *out = NULL;
+    if (save_native()) {
+        SaveEntry* e;
+        n = savestore_list(save_native_dir(), &e);   /* sorted, at most SAVESTORE_MAX */
+        int k = 0;
+        if (n && (l = malloc(sizeof(*l) * n))) {
+            for (i = 0; i < n; i++)
+                if (!k || l[k - 1].slot != e[i].number - 1) {   /* two files of one number: the first */
+                    l[k].slot = e[i].number - 1;
+                    memcpy(l[k].file, e[i].file, sizeof(l[k].file));
+                    k++;
+                }
+            *out = l;
+        }
+        free(e);
+        return k;
+    }
+    if (!(l = malloc(sizeof(*l) * 15))) return 0;
+    for (i = 0; i < 15; i++) { l[i].slot = i; l[i].file[0] = 0; }   /* lobby_read_listed reads the slot */
+    *out = l;
+    return 15;
+}
+
+int lobby_read_listed(const LobbySave* s, unsigned char* out)
+{
+    char p[1400];
+    if (!save_native()) return lobby_read_save(s->slot, out);
+    SDL_snprintf(p, sizeof(p), "%s/%s", save_native_dir(), s->file);
+    return savestore_read(p, out);
+}
 
 int lobby_read_save(int slot, unsigned char* out)
 {
@@ -133,7 +166,7 @@ int lobby_read_save(int slot, unsigned char* out)
     FILE* f;
     unsigned int sum = 0, ck;
     int i, n;
-    if (save_native()) return native_path(p, sizeof(p), slot) && savestore_read(p, out);   /* ponytail: a folder scan per call; keep a list if hundreds of saves make the lobby slow */
+    if (save_native()) return native_path(p, sizeof(p), slot) && savestore_read(p, out);   /* a folder scan: lists read lobby_read_listed */
     if (slot < 0 || slot > 14) return 0;
     card_path(p, sizeof(p), slot);
     if (!(f = pc_fopen(p, "rb"))) return 0;

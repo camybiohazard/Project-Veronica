@@ -1,0 +1,74 @@
+/* Importing assets from other games' discs (F9 window; docs/IMPORT_OUTBREAK.md). The user's own
+   disc image is read in place; what is extracted goes to <dir>/<source>/ (default mods/import),
+   never into the repository. One source so far: Resident Evil Outbreak File #2 (SLUS-20984). */
+#pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum { IMPORT_OUTBREAK2, IMPORT_SOURCES };
+
+/* the groups of models (F9 lists them by group), and what to extract: bits 1 << group (F9 checkboxes,
+   RECVX_IMPORT_WHAT) */
+enum { IMPORT_GROUP_PLAYERS, IMPORT_GROUP_CUTSCENE, IMPORT_GROUP_NPCS, IMPORT_GROUP_ENEMIES, IMPORT_GROUPS };
+enum { IMPORT_PLAYERS = 1, IMPORT_CUTSCENE = 2, IMPORT_NPCS = 4, IMPORT_ENEMIES = 8, IMPORT_ALL = 15 };
+/* the groups offered for now: F9's checkboxes and table, what import_run extracts and what "You appear
+   as" lists (a manifest of an older run may hold the others: left out). The cutscene / high-detail
+   versions and the enemies work the same way; IMPORT_ALL here brings them back. */
+#define IMPORT_OFFERED (IMPORT_PLAYERS | IMPORT_NPCS)
+
+typedef struct ImportSettings {
+    char dir[1024];                     /* ini import_dir; empty: <mods>/import (RECVX_MODS, default ./mods) */
+    char iso[IMPORT_SOURCES][1024];     /* ini import_outbreak2_iso */
+} ImportSettings;
+extern ImportSettings g_import;
+
+/* one extracted model (a line of <dir>/<source>/manifest.txt) */
+typedef struct ImportItem {
+    char id[16];          /* the disc's file name without extension, e.g. P00_00 */
+    char name[48];        /* e.g. Kevin Ryman */
+    char variant[32];     /* e.g. Costume 1 */
+    int ok;               /* glTF written */
+    int nodes, meshes, verts, tris, textures;
+    int player;           /* 1: converted for "You appear as" (<id>.cvxm), 2: male, female in `female` */
+    int female;
+    int group;            /* IMPORT_GROUP_* (from the id) */
+    char note[160];       /* failure reason, or what was left out */
+} ImportItem;
+
+typedef struct ImportSource {
+    const char* key;      /* folder and ini name: outbreak2 */
+    const char* title;    /* Resident Evil Outbreak File #2 */
+    const char* serial;   /* SLUS-20984 (checked in SYSTEM.CNF) */
+} ImportSource;
+extern const ImportSource import_sources[IMPORT_SOURCES];
+
+/* progress of a running extraction (written by its thread, read by the overlay) */
+typedef struct ImportProgress {
+    volatile int running, done, total, failed;
+    char phase[160];      /* what is being done (always 0-terminated) */
+} ImportProgress;
+extern ImportProgress g_import_progress;
+
+/* where `src`'s files go */
+void import_source_dir(int src, char* out, int n);
+
+/* the results of the last extraction of `src` (read from its manifest) */
+int import_results(int src, ImportItem* out, int max, char* when, int wn);
+
+/* runs the extraction of `src` (`what`: IMPORT_* bits) on a thread of its own; 0 if one is running */
+int import_start(int src, int what);
+/* the same, synchronously (RECVX_IMPORT=outbreak2 headless runs); returns the number of failures, -1 if the disc is unusable */
+int import_run(int src, int what);
+
+/* "You appear as": publishes the converted player models of all sources' manifests to
+   actors.c (actor_imports). Main thread; at start (config_load) and after an extraction. */
+void import_registry_load(void);
+
+/* source-specific extractors (ob2.c) */
+int ob2_group(const char* id);   /* IMPORT_GROUP_* of a disc file name, -1: not a character model */
+int ob2_extract(const char* iso, const char* outdir, int what, ImportItem* items, int max, int* n);
+
+#ifdef __cplusplus
+}
+#endif

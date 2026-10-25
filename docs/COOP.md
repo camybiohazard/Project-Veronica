@@ -5,7 +5,7 @@ over the internet or a LAN (UDP). Co-op is an optional addon: with it off the ga
 as without it (every hook is `#ifdef TARGET_PC` and `if (coop_on)`).
 
 Part 1 is for players: how to host, join and play. Part 2 is the reference: architecture,
-protocol 26, security and limits. Related: [SERVER.md](SERVER.md) (the optional co-op server),
+protocol 29, security and limits. Related: [SERVER.md](SERVER.md) (the optional co-op server),
 [USER_GUIDE.md](USER_GUIDE.md) (settings, controls), [ACTORS.md](ACTORS.md) (models and voices),
 [ENEMIES.md](ENEMIES.md) (enemy options), [ARCHITECTURE.md](ARCHITECTURE.md),
 [BUILDING.md](BUILDING.md).
@@ -72,7 +72,8 @@ drawn in the game's own style; your model turns in a 3D preview on the left. It 
 * **FOLLOW** (joiner): see "Follow host".
 * **RELAY**: *Only if needed* (Automatic) or *Always* (Via server), see "Connection modes".
 
-**Step 3: GAME RULES** (host): **LOOT** (Shared (one pickup) / Individual (each their own)),
+**Step 3: GAME RULES** (host): **BIORAND** (On / Off with the seed, only when the host has a BioRand pack,
+see "BioRand"), **LOOT** (Shared (one pickup) / Individual (each their own)),
 **IMPORTANT ITEMS** (For both / Shared; only with shared loot, see "Loot modes"), **FREEZE ON TRADE**, **CUTSCENE SKIP** (Together /
 Each alone, see "Cutscenes"), **INK RIBBONS** (Needed / Not needed, see "Saving without ink
 ribbons"), **GAME OVER** (Each player / Both, see "Game over"), and two entries that open a page
@@ -80,8 +81,8 @@ of their own (an arrow after them; RANDOMIZER also shows On or Off):
 
 | Entry | Its page |
 |---|---|
-| **RANDOMIZER** | The enemy options: **RANDOMIZER**, **VARIETY** (Wild / Mild) and **EVENT ENEMIES** (both shown only with the randomizer on), **SEED**, **NEW RANDOM SEED**, then **EXTRA ENEMIES**, **REARRANGED**. |
-| **EXTRA EVENTS** | Rules for single events: **QUICK START** (On / Off, see "Quick start"), **METAL DETECTOR** (Skipped / As original, see "Metal detector"). |
+| **RANDOMIZER** | The enemy options: **RANDOMIZER**, **VARIETY** (Wild / Mild) and **EVENT ENEMIES** (both shown only with the randomizer on), **SEED**, **NEW RANDOM SEED**, then **EXTRA ENEMIES**, **REARRANGED**, and **CUTSCENE CAST** (it shows On or Off), which opens a page of its own: **RANDOMIZE CAST** (On / Off), **CHARACTER MODELS** (Cutscene models / All models) and **ASSIGNMENT** (Fixed per character / Random per cutscene; both while on), and **IMPORTED MODELS** (On / Off; while on, shown only to a player who has imported models). BACK returns to the RANDOMIZER page. See [ACTORS.md](ACTORS.md) "Cutscene cast". |
+| **EXTRA EVENTS** | Rules for single events: **QUICK START** (On / Off, see "Quick start"; hidden and off while BioRand is on), **METAL DETECTOR** (Skipped / As original, see "Metal detector"). |
 
 Confirm or a click opens a page; BACK (or cancel, or a right click) returns to GAME RULES on its
 entry. The joiner sees the host's GAME OVER rule and both pages read-only (THE HOST'S RULES) once
@@ -113,7 +114,8 @@ PORT and open the lobby again.
   ADDRESS** puts `ip:port#CODE` on the clipboard. The joiner types that whole string; case, `-`
   and spaces in the code do not matter, and a space may replace `#`. Without the right code the
   host does not answer: "The host did not accept the join code" / "The address needs the host's
-  join code".
+  join code". After each wrong code the host waits a little longer before it answers that address
+  again (up to a minute); the code itself never goes over the network.
 * **Room code** (Via server): the server gives the session a code `XXXX-XXXX`; the joiner enters
   it in **CODE**.
 * **Password** (Via server, optional): set by the host before opening; the joiner needs the same.
@@ -154,8 +156,9 @@ at the title is pulled into that game.
 Hosting with a server still accepts direct joins (`ip:port#CODE`). An address typed in the
 joiner's CODE / ADDRESS row is always joined directly. The first partner to arrive gets the session.
 
-The status line says how you are connected: *connected directly*, *connected directly (LAN)*,
-or *connected via the relay* (the detour adds to the ping), and *encrypted* when through the server.
+The status line says how you are connected: through a server *connected directly*, *connected
+directly (LAN)* or *connected via the relay* (the detour adds to the ping); a join by address shows
+the address. Every session is *encrypted*, a direct one too (protocol 28).
 
 ## Playing over the internet
 
@@ -222,7 +225,7 @@ the co-op server ..." (name lookup, at most 5 s, never stalls the game), "The ho
   direct session goes on, a relayed one ends.
 * The server frees a vanished joiner's place after `member_timeout` (default 10 s); see also
   "Rejoin after a crash".
-* Game and server must speak the same server protocol (3); the game protocol (22) is end to end.
+* Game and server must speak the same server protocol (3); the game protocol (29) is end to end.
 
 ## In the game
 
@@ -445,7 +448,12 @@ when joining", ini `coop_items`):
 
 With shared loot both players use one item box. Both may use a box at the same time; if both take
 the same entry, the host decides and the joiner's copy leaves its inventory again ("the partner
-took ... first"). Saves keep the box as the player's own game has it.
+took ... first"). If both put items into the last free places at once, the host's go in and the
+joiner's item comes back: into its inventory, or, with that full too, onto the floor where the
+joiner stands ("... lies at your feet"). It lies there as the partner's event items do, only for
+that player, kept with its game (saves too) until taken, and taking it gives back exactly that item
+(its rounds, its ammunition kind). No item is lost either way. Saves keep the box as the player's
+own game has it.
 
 ### Items from events
 
@@ -469,6 +477,27 @@ or already holds the item (not for stackable items), gets nothing.
 An item that is the triggering player's alone: nothing goes on the partner's floor; with shared
 loot a partner who watched the event and got one too gives it back at once ("... from the partner's
 event is the partner's").
+
+### BioRand
+
+With BioRand (only with `--dev`; [modding/README.md](modding/README.md#randomizer-biorand)) the host chooses in GAME RULES, row
+**BIORAND** (the same setting as single player's; shown only when the host has a pack in `mods/biorand`).
+On, both play the host's pack:
+
+* The partner needs the same pack: generated with the same seed and options (BioRand's seed string),
+  so the same room files. A partner without a pack, or with another one, is refused when it joins (or when
+  the host turns BIORAND on) with "The host plays BioRand seed N; generate the same seed (or ask the host to
+  turn BioRand off)"; the host's status says "... left: its BioRand pack is not this one".
+* The partner's game follows the host's choice for the session whatever its own setting (its own setting is
+  back after the session); THE HOST'S RULES shows BIORAND while it is on.
+* QUICK START is off and hidden (the pack has its own start inventory). A partner without a game of its own
+  starts with the pack's start inventory, as the host's new game did (room 0/0's block, run by the game's own
+  item actions on its inventory).
+* Randomized pickups count by the item they give, not by their model: important items for both
+  (`coop_item_taken`), the partner's event items shown in a room (`grant_slot`, `grant_model`).
+* Loading a save from the lobby's START made with another BioRand state asks first (START again loads it).
+
+Rifle ammo stacks for both while BioRand is on. Off, the game is the normal one for both, packs or not.
 
 ### Quick start
 
@@ -630,16 +659,19 @@ grabbed by is released on the host, an unanswered trade item returns to its owne
 
 ## Enemy options in co-op
 
-The host's enemy options (EXTRA ENEMIES, REARRANGED, RANDOMIZER, VARIETY, EVENT ENEMIES, SEED; F1 /
-ENHANCED SETTINGS GAMEPLAY, lobby GAME RULES, RANDOMIZER) count for both. The joiner's lobby shows them (read-only) before the game
+The host's enemy options (EXTRA ENEMIES, REARRANGED, RANDOMIZER, VARIETY, EVENT ENEMIES, SEED, and the
+CUTSCENE CAST page; F1 / ENHANCED SETTINGS GAMEPLAY, lobby GAME RULES, RANDOMIZER) count for both: both
+players see the same cutscene cast, picked from the host's seed (the joiner's own cast settings do not
+count while it is joined). The joiner's lobby shows them (read-only) before the game
 starts; changes in game take effect at the next room load on both sides. Enemies the host adds
 appear in the joiner's game in the same slots. Details: [ENEMIES.md](ENEMIES.md).
 
 ## You appear as
 
 "You appear as" (lobby MODEL, F3, F1 / ENHANCED SETTINGS APPEARANCE; ini `coop_char`) chooses your model: the
-character you play, Claire, Chris, Steve, Wesker, Claire's second costume, or a story-cast, creature
-or zombie model. Your partner sees you as that model, and so do you (also in single player). The
+character you play, the character you play in its cutscene model ("As played (cutscene)": sent to
+the partner as that cutscene model, no protocol change), Claire, Chris, Steve, Wesker, Claire's second
+costume, or a story-cast, creature or zombie model. Your partner sees you as that model, and so do you (also in single player). The
 partner's voice follows its model. Both players need the same build. "Swapped model in cutscenes"
 (`appear_in_cutscenes`) counts for your own screen: off, your cutscenes (also one replayed from
 the partner's event) show the real Claire or Chris. Models, voices and cutscene behaviour:
@@ -667,7 +699,7 @@ only on the host; "locked" ones cannot change during a session.
 
 | Label | ini key | Values (default) |
 |---|---|---|
-| You appear as (APPEARANCE page) | `coop_char` | model index (0: as played) |
+| You appear as (APPEARANCE page) | `coop_char` | model index (0: as played; 4095: as played, cutscene model) |
 | Partner's name tag | `coop_nametag` | 0/1 (1) |
 | Show ping | `show_ping` | 0/1 (1) |
 | Hide IP addresses | `hide_ip` | 0/1 (0); see "Hiding IP addresses" |
@@ -993,7 +1025,16 @@ floor or trigger, "Yes" chosen, an item used) hold only where the player did it.
   (`sys->itm` 320..359, 8 entries) and shows it on the floor of that room with a pickup trigger. A
   room without a record of the item gets the item's display model for the visit.
 * **Item box** (`EV_BOX`, `EV_BOXFIX`): with shared loot, what was taken out and put in when the box
-  screen closes; the host decides conflicts and sends back what the joiner could not have.
+  screen closes; the host decides conflicts and sends back what the joiner could not have. An item
+  the joiner took that the host had not (taken there first) leaves the joiner's inventory again
+  (`inv_drop`). One it put in that the host's box had no room for (`box_back`) leaves the joiner's copy
+  of the box and goes into its inventory, else into a free pending entry of the event items
+  (`grant_return`: `GRANT_RET` and the word's top byte in the high half of the entry's x word) at its
+  feet; the pickup restores the inventory as it was and adds that word (`pc_inv_add`), not what a
+  pickup of the item gives, and the "already have one" rule of event items does not apply. Shown with
+  the room's record of the item if hidden, else its display model (also beside a visible pickup of
+  the same item). With all 8 entries in use it stays in the joiner's copy of the box. A host's put the
+  joiner's copy has no room for stays the host's (its box is the one both use).
 
 ### Effects and voices
 
@@ -1004,6 +1045,16 @@ floor or trigger, "Yes" chosen, an item used) hold only where the player did it.
   the receiver's player where they land. Budget: at most 8 per frame and none while 48 events wait
   for acknowledgement (cosmetic, dropped rather than queued). The Bandersnatch's stretched arm goes
   as `FX_ARM`.
+* **Which effects** (protocol 28, `coop_proto.c` `fx_rules`): only those a sender's window can start
+  (a survey of every creation site in the decomp): 2 5 10 11 13 15 16 23 24 108 130 (blood, splashes,
+  bolts, blasts, explosions, ripples, grenades), 250..298 (mince, fire, sand, acid, blood, the moth's
+  powder, fluid), 303..306 and 350..399 (vomit, fire, sparks, blood emitters, poison). Each entry is
+  fresh (modes 0: its own init runs on the receiver) and carries what its creators set: per effect the
+  `type` and `mdlver` its tables have, its counters and delays, its flags, a link exactly when its step
+  reads one (flg 0x80 with the work and node), its owner's texture (`stflg` 0x20, `tex_id` in that
+  list) or model, `exp0` only where it belongs to a work. Left out on purpose: effects whose state
+  cannot go as fields (OR_WORK effects, raw pointers in counters, a drawing function or extra slot set
+  by the creator) and those only room scripts or other effects make. Anything else is refused.
 * **Voices**: `Pose.voice_n` counts the sender's player voices, `Pose.voice` is the last one; the
   receiver plays each new count at the partner's position in the voice of the partner's model.
   Voice calls during a host enemy's step on the stand-in play nothing (the partner's game sends them).
@@ -1017,10 +1068,21 @@ floor or trigger, "Yes" chosen, an item used) hold only where the player did it.
   The joiner realizes it into the same slot; one that arrives while the joiner's room does not run
   waits (up to 900 frames). It also carries the randomizer records the host had to keep.
 * `EV_EOPTS` (host): the enemy options (extra, placements, randomizer, seed, variety, event
-  enemies), at every new session, before each game state and on every change. Placements and
+  enemies, and the cutscene cast's on/off, models, assignment and imported models: protocol 29), at
+  every new session, before each game state and on every change. Placements and
   randomizer are computed from the room file (records, script, collision) and the seed only, so
   both make the same records in the same slots, event records included.
 * More than 48 active enemy slots are sent as a moving window of 48 per frame.
+* **The cutscene cast** ([ACTORS.md](ACTORS.md) "Cutscene cast") is computed on each side from the
+  host's options, the room file and the seed only, so both draw the same models in the same scenes;
+  nothing per record is sent (it is only drawn: the records, their slots and snapshots are untouched). A side that runs
+  out of display slots or texture memory shows that record as itself, only on its own screen.
+* **Imported models** in the cast: each side sends the identity of its imported models list in
+  `PoseExt.imp_id` (`cast_import_id`: a hash of the names and groups in list order, 0 none). With the
+  host's IMPORTED MODELS on, each side uses them only while the partner's `imp_id` equals its own (the
+  same models in the same order, so the same picks); otherwise both pick from the built-in models
+  alone, and nobody sees a model the other lacks. A game without a partner yet (the host before the
+  joiner arrives) has no partner list: no imported models in its cast until then.
 
 ### Trade transactions
 
@@ -1131,10 +1193,10 @@ send time minus the echoed datagram's arrival. Sample = arrival - our clock - th
 smoothed (EWMA 0.1). The name tag's point goes with the recorded frame (`stream_point`) and is
 interpolated with the in-between frames; it snaps on camera cuts and in vanilla mode.
 
-## Protocol 26
+## Protocol 29
 
-`COOP_VERSION` is **26**; both players need builds with the same version (a mismatch is reported,
-e.g. "the host runs co-op protocol 25, we 26: both need the same build"). The co-op server does not
+`COOP_VERSION` is **29**; both players need builds with the same version (a mismatch is reported,
+e.g. "the host runs co-op protocol 28, we 29: both need the same build"). The co-op server does not
 look at the game protocol. Version history in short: 11 join code, 1200-byte datagrams, checked
 events, `EV_ATR`; 12 `EV_FX`; 13 `EV_GRANT`; 14 `EV_TSCREEN`; 15 `EV_GONE`; 16 player id and rejoin
 tag, `EV_OWN`; 17 trade requests; 18 voices; 19 the game rules `OPT_IMPORTANT`, `OPT_NO_RIBBON`,
@@ -1147,7 +1209,7 @@ make other enemies from the same seed); 21 `COOP_HIT_PRECISE` in `EV_ENE_HIT` (t
 and `OPT_SKIP_DETECTOR`, `PF_GAME_OVER`, `EV_BLOB` `pad` 2 and the `EV_OWN` `tid` (see "Game over",
 "Metal detector"); 23 the game rule `OPT_QUICK_START` (see "Quick start"; it takes the last free bit of
 `Pose.opts`, so a further rule needs a field of its own); 24 enemy slots 0..254 (`COOP_ENE_SLOTS`, the PC's
-255 slots) in every slot field, and `EV_FX` marks its `FX_*` references in `refs` (the bytes 253..255 are slots now); 25 `Pose.use`, the trigger the sender is using (one player at a puzzle at a time, see "Puzzles"; the pose grew to 112 bytes); 26 `EneSnap.id`, the enemy type in the slot: a snapshot applies only to a slot holding the same type (`hokan_count` is 16 bits now; the snapshot stays 100 bytes). `Pose.pflg` and `Pose.flr` were added inside protocol 18,
+255 slots) in every slot field, and `EV_FX` marks its `FX_*` references in `refs` (the bytes 253..255 are slots now); 25 `Pose.use`, the trigger the sender is using (one player at a puzzle at a time, see "Puzzles"; the pose grew to 112 bytes); 26 `EneSnap.id`, the enemy type in the slot: a snapshot applies only to a slot holding the same type (`hokan_count` is 16 bits now; the snapshot stays 100 bytes); 27 `PoseExt.br`, `br_seed`, `br_id` (BioRand: the host's choice and each side's pack; `Pose.opts` has no free bit, so a field of its own; the extension grew to 104 bytes); 28 direct sessions are encrypted after a handshake bound to the whole join code (`PKT_HELLO`, `PKT_HELLO_ACK`, see "Security"), so `Pose.auth`, the 32-bit join-code proof, is gone (`rsv`, zero), the goodbye's `COOP_REJ_STATE`, and a generic `EV_FX` only for the effects co-op sends, each field checked (see "Effects and voices"); 29 the cutscene cast: `EV_EOPTS` carries `cast`, `cast_all`, `cast_assign`, `cast_imports` (the event stays 88 bytes) and `PoseExt.imp_id`, the sender's imported models (the extension grew to 108 bytes). `Pose.pflg` and `Pose.flr` were added inside protocol 18,
 `Pose.rcase` inside protocol 22, the aim pitch in `Pose.pflg`'s spare bits inside protocol 23 (0 means "not
 sent", and receivers fall back; a receiver before the pitch reads `pflg & 6` only and keeps the straight pose).
 
@@ -1156,11 +1218,14 @@ All structures are little-endian, packed as the compiler lays them out on x86 (p
 
 ### Datagrams
 
-At most `COOP_DGRAM_MAX` = 1200 bytes (below every internet path MTU). A frame's content goes into
-as many datagrams as needed, each starting with the pose so each is useful alone:
+At most `COOP_DGRAM_MAX` = 1200 bytes on the wire (below every internet path MTU). In a session each
+is sealed: `"CVXE"`, a 64-bit counter, the datagram encrypted, a 16-byte Poly1305 tag (28 bytes more:
+`rdv_seal`, directly with the handshake's keys, through a server with the server session's). A
+frame's content goes into as many datagrams as needed, each starting with the pose so each is useful
+alone:
 
 ```
-Pose (112) | Event x nev (88 each, nev <= 16) | EneSnap x nene (100 each, nene <= 48) | PoseExt (92, if PF_EXT)
+Pose (112) | Event x nev (88 each, nev <= 16) | EneSnap x nene (100 each, nene <= 48) | PoseExt (108, if PF_EXT)
 ```
 
 The size must be exactly that sum. The first datagram of a frame carries the `PoseExt`. Up to 16
@@ -1170,14 +1235,15 @@ over its datagrams.
 | Packet type (`Pose.type`) | Meaning |
 |---|---|
 | `PKT_POSE` 1 | A frame's pose with events, snapshots, extension. |
-| `PKT_BYE` 2 | Goodbye: a bare `Pose`, sent three times by every stop and at exit. `reject` 3 (`COOP_REJ_REMOVED`): the host removed us. |
-| `PKT_REJECT` 3 | Host to a sender it will not adopt: `reject` 1 wrong join code, 2 already has a partner. At most one per second. |
+| `PKT_BYE` 2 | Goodbye: a bare `Pose`, sent three times by every stop and at exit. `reject` 3 (`COOP_REJ_REMOVED`): the host removed us; 4 (`COOP_REJ_BIORAND`, a joiner's): its BioRand pack is not the host's; 5 (`COOP_REJ_STATE`, a joiner's): the host's game state failed its checks there (the joiner leaves rather than wait for the same again). |
+| `PKT_REJECT` 3 | Host to a sender it will not adopt: `reject` 1 wrong join code, 2 already has a partner. At most one per second, plain text (the only datagram a session sends unsealed). |
+| `PKT_HELLO` 4, `PKT_HELLO_ACK` 5 | The direct handshake (`CoopHello`, as large as a `Pose`: magic, version, type, a zero byte, the 32-byte public value, zeros), joiner to host and back; never inside a session. |
 
 ### Pose (112 bytes)
 
 | Bytes | Fields |
 |---|---|
-| 0-15 | `magic` "COOP" (0x504F4F43), `version` u16, `type` u8, `flags` u8, `sid` (sender's session), `auth` (`coop_auth(join code, sid)`): all a relay needs |
+| 0-15 | `magic` "COOP" (0x504F4F43), `version` u16, `type` u8, `flags` u8, `sid` (sender's session), `rsv` (zero; protocol 27 and before: the 32-bit join-code proof) |
 | 16-31 | `seq` (sender's frame counter; older poses dropped), `t_ms`, `echo_ms`, `echo_age` (ping) |
 | 32-39 | `chr`, `costume`, `stg`, `rom`, `pos` (room entry point), `opts` (host's game rules: `OPT_INDIVIDUAL` 1, `OPT_TRADE_FREEZE` 2, `OPT_IMPORTANT` 4, `OPT_NO_RIBBON` 8, `OPT_SKIP_SYNC` 16, `OPT_GAMEOVER_BOTH` 32, `OPT_SKIP_DETECTOR` 64, `OPT_QUICK_START` 128), `regroup` (host counter), `mfile` (sender's own part file - 10) |
 | 40-91 | position (3 floats), angles (3 ints), `mtn_no`, `frm_no` (the frame shown, before the step's advance: `actor_frame`), `mtn_md`, `hokan_count`, `hokan_rate`, `wpnr_no`, `hp`, `mode0`, `mode1`, `nev`, `nene` |
@@ -1198,11 +1264,16 @@ in a cutscene with `PF_SKIP` of its own and the partner's, sets `cb_flg 0x100000
 request ends with the cutscene; while the partner is no longer in one in our room, a pending request
 skips at once.
 
-### PoseExt (92 bytes)
+### PoseExt (108 bytes)
 
 `name[16]`, `lchr` (lobby model), `lobby` (lobby open), `items` (joiner: `ITEMS_NEW/SAVE/HOST/CURRENT`),
 `rec` (host: `REC_UNKNOWN/NONE/HAVE/OFF`), `note[40]` (what the player chose), `pid[16]` and `tag[16]`
-(joiner: player id and rejoin tag). Only printable ASCII is shown.
+(joiner: player id and rejoin tag), then BioRand (protocol 27): `br` (host: 1 it plays its pack; joiner: 1 it
+has a pack; anything above 1 refused), 3 zero bytes (else refused), `br_seed` (the sender's pack's seed number,
+0xFFFFFFFF unknown), `br_id` (its identity, `biorand_id`: a hash of `log_pl0.txt` with the seed string and spoiler,
+and the room files' names and sizes; 0 no pack). A joiner whose `br_id` differs from the host's while the host's
+`br` is 1 says goodbye with `COOP_REJ_BIORAND`. Then (protocol 29) `imp_id`, the sender's imported models
+(`cast_import_id`, 0 none; see "Added enemies and options"). Only printable ASCII is shown.
 
 ### EneSnap (100 bytes)
 
@@ -1234,7 +1305,7 @@ enemy's (`mode[0]` 0) to one whose own Init ran.
 | `EV_BOX` | 12 | either | Shared item box: words taken out and put in (up to 16) |
 | `EV_BOXFIX` | 13 | host | Box correction: items the joiner could not have |
 | `EV_SPAWN` | 14 | host | An added enemy (`SpawnNote`), or a randomizer record the host kept |
-| `EV_EOPTS` | 15 | host | Enemy options: extra 0..3, placements, randomizer, seed, variety 0..1, event enemies 0..1 |
+| `EV_EOPTS` | 15 | host | Enemy options: extra 0..3, placements, randomizer, seed, variety 0..1, event enemies 0..1, cutscene cast 0..1, its models 0..1, assignment 0..1, imported models 0..1 |
 | `EV_ATR` | 16 | either | 1..2 room records (wall, trigger, floor, object) after a world event |
 | `EV_FX` | 17 | either | An effect started here (`FX_BURST` 308, `FX_PARTICLE` 302, `FX_ARM`, or a generic entry). What it follows (`idx`), its model's owner and `exp0` are each an enemy slot or, with their bit in `refs` (`FXR_IDX` 1, `FXR_OWNER` 2, `FXR_EXP0` 4), `FX_RECEIVER` 0, `FX_SENDER` 1 or `FX_NONE` 2 |
 | `EV_GRANT` | 18 | either | An event gave the sender an item: item, count, floor, position |
@@ -1270,8 +1341,9 @@ Trade screen ops (`EV_TSCREEN`):
   session id, both streams restart, the host's game state goes over).
 * A new session id from the peer resets both event streams and the pose sequence check.
 * 3 s without a datagram: partner "not responding"; 15 s: lost (joiner stops, host waits again).
-* The host adopts the first sender that proves the join code; once a partner is there, datagrams
-  from anyone else are dropped unread (a stranger with a valid proof gets "busy", rate limited).
+* The host adopts the first sender whose datagrams open with keys of the join code (see "Security");
+  once a partner is there, datagrams from anyone else are dropped (a stranger with the code gets
+  "busy", rate limited).
 
 ## Security
 
@@ -1279,10 +1351,10 @@ Co-op is meant for playing with friends. The host and joiner trust each other's 
 outcomes (a host could give a partner any items); the checks below keep a malformed or hostile
 datagram from corrupting memory or crashing the game.
 
-**Every received datagram** passes `coop_check_all` before anything changes (peer, session, event
-stream or game):
+**Every received datagram** is opened with its session's keys (a forged, altered or replayed one is
+dropped) and passes `coop_check_all` before anything changes (peer, session, event stream or game):
 
-* Header: size at least a `Pose`, magic, version, type; the join-code proof (`auth`); for a pose,
+* Header: size at least a `Pose`, magic, version, type, `rsv` zero; for a pose,
   `nev <= 16`, `nene <= 48`, and the size exactly what the counts say; `PoseExt` enumerations in range.
 * Pose: finite floats (and below 1e7), `busy`, `mset` and `flr` in range, no `flags` or `opts` bit
   this protocol does not have.
@@ -1290,8 +1362,8 @@ stream or game):
   `EV_GRAB`, `EV_BOXFIX`, `EV_SPAWN`, `EV_EOPTS`, `EV_SKIP`, `TS_SWAP`, `TS_QUERY`; joiner-only: `EV_UNGRAB`,
   `EV_GONE`, `EV_OWN`, `TS_DONE`). Examples: joints -1..63, damage 0..10000 and none on an absent
   joint, only the hit bits, weapon < 23; flag words < 120; item words id 1..155, count <= 999; enemy
-  slots < 255; transfer chunks aligned and inside the total; effect ids < 400, references an enemy
-  slot or `FX_*`; world-record objects in slots 4..31; grant positions within the save format;
+  slots < 255; transfer chunks aligned and inside the total; effects only as listed in "Effects and
+  voices", references an enemy slot or `FX_*`; world-record objects in slots 4..31; grant positions within the save format;
   `EV_SKIP` only `SKIP_GO` in a room 0..9 / 0..99.
 * Every snapshot: slot < 255, model index -1..15, motion set and motion < 512, enemy type < 100, finite floats.
 
@@ -1304,7 +1376,15 @@ Then, when applying:
   stay local. The slot must be a zombie with the same linked child; the host takes back only slots it
   handed over.
 * The game state is checked before loading: version, character, a stage/room/case a room file exists
-  for, difficulty, finite position, weapons < 23, items < 156. Room follow only to a room that exists.
+  for, difficulty, finite position, weapons < 23, items < 156 in the inventories and boxes (`sys->itm`
+  0..255) and in the pending event items (`GRANT0`, with their floor). The other words of `sys->itm`
+  are no items and take any value: the important item spots (256..287, bitmaps), BioRand's marker and
+  pack id (288, 289), the files read (383, a bit per file), unused words. A state that fails ends the
+  joiner's session with the reason (it would only get the same again), and the host shows that it left.
+  Room follow only to a room that exists.
+* Effects: the partner's references must name works that are here, with the node (`lkono`), model
+  and texture (`tex_id` within the texture list) the effect will index; at most 64 a frame and 256
+  alive (half of `eff[]`).
 * World events and records: see "World events and records" (only the receiver's own script's
   blocks and writes).
 * Item box changes apply only with shared loot; trade requests only for the open screen and when our
@@ -1313,15 +1393,34 @@ Then, when applying:
 **Limits**: per frame at most 96 datagrams, 128 KB and 3 ms of reading (checked before a datagram is
 read); oversized datagrams and ICMP errors are skipped. 1200-byte datagrams are never fragmented.
 
-**Join code**: 8 characters of a 32-character alphabet (40 bits) from the system's randomness. Every
-datagram carries `auth = coop_auth(code, sid)`; the host adopts a partner and the joiner listens to a
-host only after a valid proof. This keeps strangers who find the open port out; it is **not
-encryption** (whoever can read the traffic sees the proofs). The log shows only the first half of
-the code. There is no per-address limit on wrong proofs (a guesser needs about 2^39 datagrams).
+**Join code and direct sessions** (protocol 28, `coop_proto.h` `CoopDirect`): the code is 8
+characters of a 32-character alphabet (40 bits) from the system's randomness; the log shows only its
+first half. It is the password of a PAKE handshake (CPace on X25519, Monocypher): both games map the
+code to a curve point G (Elligator 2 of `BLAKE2b("recvx direct v1 G" || code)`), the joiner sends
+`Y = X25519(y, G)` for a fresh secret y in `PKT_HELLO`, the host answers with its own in
+`PKT_HELLO_ACK`, and both take `K = X25519(own secret, other's Y)` with both values and the whole
+code into `BLAKE2b-512`, which gives one XChaCha20-Poly1305 key per direction. Every datagram of the
+session is then sealed with a 16-byte Poly1305 tag (counter nonces, a 64-entry replay window); the
+host takes a partner, and the joiner listens to a host, only when its datagrams open with these keys.
+So:
+
+* A wrong code gives other keys: the host cannot open the joiner's datagrams (and answers "wrong
+  join code"), nothing the joiner sends is taken, and nothing of its game state reaches it.
+* Nothing on the wire lets anyone test codes offline, not even a whole recorded handshake (the
+  values are uniform points; K needs a secret): each guess costs a handshake with the host, answered
+  only then. An attacker who intercepts a join can try one code per handshake it intercepts.
+* The host answers at most `COOP_HS_RATE` (20) new handshakes a second in all, keeps at most 64
+  (an answered one stays at least 3 s however many come), lets each address have one guess open at a
+  time, and after each wrong code an address waits: 250 ms, doubled per failure, up to a minute,
+  forgotten after 10 minutes (`CoopGuard`, the last 32 addresses). A guesser gets at most 20 guesses a
+  second however many addresses it has (one a minute per address after nine failures);
+  the code is one of 2^40, so on average 2^39 guesses: about 870 years at that rate. A flood of
+  handshakes can delay a join (the budget is shared), not get in.
+* Everything is encrypted: someone who reads the traffic learns nothing of the game.
 
 **Through the server**: every session is encrypted end to end (X25519 key exchange,
-XChaCha20-Poly1305 per datagram, Argon2id for the password); the join code is derived from the
-session keys. Without a password a passive observer, including a logging server, learns nothing; a
+XChaCha20-Poly1305 per datagram, Argon2id for the password); the room code and the introduction are
+bound into the session keys. Without a password a passive observer, including a logging server, learns nothing; a
 room password also protects against an actively malicious server. Details and the server's own
 limits: [SERVER.md](SERVER.md).
 
@@ -1443,7 +1542,7 @@ General test aids used with these (`RECVX_TELEPORT`, `RECVX_WARP`, `RECVX_EQUIP`
 
 ctest `coop` (`pc/tests/test_coop.c`) checks every event type from the side that sends it and
 refused from the other, malformed variants of each (`EV_SKIP`: its op, its room, from the joiner), pose
-fields out of range and every pose flag and game rule (all eight bits of each are in use), datagram headers and proofs, transfers, the event
+fields out of range and every pose flag and game rule (all eight bits of each are in use), datagram headers, every effect co-op sends against its rule (crafted ones refused: unknown effects, type 65535, modes, missing textures and models), the direct handshake (keys of every code character, replays, the backoff and its bounds), transfers, the event
 ring, join address parsing, world event actions, record merging, the target rule and the loop guard, then fuzzes
 200000 random and mutated datagrams. ctest `net` covers the socket (busy port, oversized datagrams,
 receive timestamps) and port mapping start/stop cycles.

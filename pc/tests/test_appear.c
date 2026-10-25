@@ -1,4 +1,4 @@
-/* "You appear as" list (pc/src/host/actors.c): event doubles left out, the cutscene models last,
+/* "You appear as" list (pc/src/host/actors.c): "As played (cutscene)" second, event doubles left out, the cutscene models last,
    every chr still valid. */
 #include "../src/host/actors.h"
 #include <stdio.h>
@@ -8,13 +8,20 @@
 int main(void)
 {
     int n = appear_count();
-    CHECK(n == COOP_CHR_MAX + 1 - 8);
+    CHECK(n == COOP_CHR_MAX + 1 - 8 + 1);   /* (+ "As played (cutscene)") */
     for (int i = 0; i < n; i++) {
         CHECK(appear_pos(appear_at(i)) == i && appear_canon(appear_at(i)) == appear_at(i));
-        if (i && i != n - 4) CHECK(appear_at(i) > appear_at(i - 1));   /* catalogue order: player files first, then the tail */
+        if (i > 2 && i != n - 4) CHECK(appear_at(i) > appear_at(i - 1));   /* catalogue order: player files first, then the tail */
     }
     for (int c = 0; c <= COOP_CHR_MAX; c++) CHECK(appear_canon(appear_canon(c)) == appear_canon(c));
-    CHECK(appear_at(0) == 0 && appear_at(5) == 5);                       /* As played, the player files */
+    CHECK(appear_at(0) == 0 && appear_at(1) == COOP_CHR_CINE && appear_at(2) == 1 && appear_at(6) == 5);   /* As played, As played (cutscene), the player files */
+    CHECK(appear_pos(COOP_CHR_CINE) == 1 && appear_pos(1) == 2 && appear_step(0, 1) == COOP_CHR_CINE && appear_step(COOP_CHR_CINE, 1) == 1);
+    CHECK(!strcmp(appear_name(COOP_CHR_CINE), "As played (cutscene)") && !strcmp(appear_group(COOP_CHR_CINE), "CVX characters") && appear_voice(COOP_CHR_CINE) < 0);
+    /* "As played (cutscene)" resolved for the character played (Claire, Chris, Steve, Wesker); every stored value keeps its model */
+    CHECK(appear_played(COOP_CHR_CINE, 0) == COOP_CHR_ACTOR + 0 && appear_played(COOP_CHR_CINE, 1) == COOP_CHR_ACTOR + 1);
+    CHECK(appear_played(COOP_CHR_CINE, 2) == COOP_CHR_ACTOR + 3 && appear_played(COOP_CHR_CINE, 3) == COOP_CHR_ACTOR + 5 && appear_played(COOP_CHR_CINE, 4) == 0);
+    for (int c = 0; c <= COOP_CHR_MAX; c++) CHECK(appear_played(c, 1) == c);
+    CHECK(appear_canon(COOP_CHR_CINE - 1) == 0 && appear_canon(COOP_CHR_CINE + 1) == 0);
     /* the player characters' cutscene models last: Claire, Chris, Steve, Wesker */
     CHECK(appear_at(n - 4) == COOP_CHR_ACTOR + 0 && appear_at(n - 3) == COOP_CHR_ACTOR + 1);
     CHECK(appear_at(n - 2) == COOP_CHR_ACTOR + 3 && appear_at(n - 1) == COOP_CHR_ACTOR + 5);
@@ -47,6 +54,20 @@ int main(void)
     CHECK(appear_voice(COOP_CHR_ACTOR + 0) == 0 && appear_voice(COOP_CHR_ACTOR + 1) == 1 && appear_voice(COOP_CHR_ACTOR + 3) == 2 && appear_voice(COOP_CHR_ACTOR + 5) == 3);   /* the cutscene models */
     CHECK(appear_voice(COOP_CHR_ACTOR + 8) == 1 && appear_voice(COOP_CHR_ACTOR + 13) == 1 && appear_voice(COOP_CHR_ACTOR + 17) == 1);  /* Alfred, Rodrigo, Tyrant */
     CHECK(appear_voice(COOP_CHR_ACTOR + 12) == 0 && appear_voice(COOP_CHR_ACTOR + 24) < 0 && appear_voice(COOP_CHR_MAX + 1) < 0);    /* Alexia, Cerberus */
+    /* imported player models (pc/src/import): listed last, after the cutscene models */
+    actor_imports[0] = (ActorModel){ .name = "Kevin", .anim = ANIM_MALE };
+    actor_imports[1] = (ActorModel){ .name = "Alyssa", .anim = ANIM_FEMALE };
+    actor_import_n = 2;
+    CHECK(appear_count() == n + 2 && appear_at(n) == COOP_CHR_IMPORT && appear_at(n + 1) == COOP_CHR_IMPORT + 1 && appear_at(n + 2) == 0);
+    CHECK(appear_pos(COOP_CHR_IMPORT + 1) == n + 1 && appear_canon(COOP_CHR_IMPORT + 1) == COOP_CHR_IMPORT + 1 && appear_canon(COOP_CHR_IMPORT + 2) == 0);
+    CHECK(appear_step(COOP_CHR_ACTOR + 5, 1) == COOP_CHR_IMPORT && appear_step(COOP_CHR_IMPORT + 1, 1) == 0);
+    CHECK(!strcmp(appear_name(COOP_CHR_IMPORT + 1), "Alyssa") && appear_voice(COOP_CHR_IMPORT) == 1 && appear_voice(COOP_CHR_IMPORT + 1) == 0);
+    actor_import_group[1] = 2;
+    CHECK(!strcmp(appear_group(1), "CVX characters") && !strcmp(appear_group(COOP_CHR_IMPORT + 1), "Outbreak NPCs"));
+    CHECK(!strcmp(appear_group(COOP_CHR_ACTOR), "CVX cutscene") && !strcmp(appear_group(COOP_CHR_ACTOR + 13), "CVX story cast"));
+    CHECK(!strcmp(appear_group(COOP_CHR_ACTOR + 61), "CVX enemies"));
+    CHECK(actor_model(ACTOR_MODELS + 1) == &actor_imports[1] && !actor_model(ACTOR_MODELS + 2) && actor_model(3) == &actor_models[3]);
+    actor_import_n = 0;
     printf("appear: ok, %d of %d listed\n", n, COOP_CHR_MAX + 1);
     return 0;
 }

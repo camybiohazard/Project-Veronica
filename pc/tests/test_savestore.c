@@ -103,7 +103,7 @@ int main(void)
     CHECK(savestore_write(dir, 999, e, NULL) == 999);
     CHECK(savestore_write(dir, 0, e, NULL) == 1000);
     CHECK(savestore_write(dir, 0, d, NULL) == 1001);
-    CHECK(savestore_highest(dir) == 1001);
+    CHECK(savestore_next(dir) == 1002);
     n = savestore_list(dir, &l);
     CHECK(n == 4 && l[0].number == 1 && l[1].number == 999 && l[2].number == 1000 && l[3].number == 1001);
     CHECK(n == 4 && !strcmp(l[2].file, "1000_Chris_Airport-Elev.sav"));
@@ -146,6 +146,22 @@ int main(void)
         CHECK(n == 5 && l[4].number == 1505);
         free(l);
         CHECK(savestore_write(dir, 0, d, NULL) == 1506);
+    }
+
+    /* sparse numbers: the last 9-digit number (a broken file) is listed as nothing; new saves take the first free number */
+    {
+        snprintf(path, sizeof(path), "%s/999999999_test.sav", dir); write_raw(path, "x", 1);
+        snprintf(path, sizeof(path), "%s/1234567890_ten_digits.sav", dir); write_raw(path, "x", 1);
+        n = savestore_list(dir, &l);
+        CHECK(n == 6 && l[5].number == 1506);
+        free(l);
+        CHECK(savestore_next(dir) == 2);
+        CHECK(savestore_write(dir, 0, d, NULL) == 2);
+        CHECK(savestore_write(dir, 999999999, d, "999999999_test.sav") == 999999999);
+        n = savestore_list(dir, &l);
+        CHECK(n == 8 && l[7].number == 999999999 && !strcmp(l[7].file, "999999999_Claire_Prison-front.sav"));
+        free(l);
+        CHECK(savestore_next(dir) == 3);
     }
 
     /* memory card import: valid slots keep their number if free, empty ones are skipped, the

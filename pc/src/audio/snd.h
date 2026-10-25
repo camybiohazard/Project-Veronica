@@ -26,6 +26,7 @@ void snd_synth_lock(void);
 void snd_synth_unlock(void);
 uint16_t snd_synth_se_active(int port);
 uint16_t snd_synth_midi_active(void);   /* playing MIDI ports */
+float snd_synth_voice_level(void);       /* the player's voice (SE port 4) since the last call: mean |sample|, 0..1 */
 void snd_synth_xbanks_stop(void);       /* (lock held) stop what plays from the extra banks */
 /* PC extra banks (docs/ENEMIES.md "Sounds of added types"): a room's bank 3 from the disc (key stage*1000 + room*10 +
    case), or a player voice bank CORE_00n bank 4 (key 0xFFF0 + n, docs/ACTORS.md "Voices"); 1..31 or 0 (none) */

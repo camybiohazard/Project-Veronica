@@ -29,7 +29,7 @@ run() { # BIN DIR MODE
   # Modern, the default before Combined (the script walks with the d-pad, which Combined plays as
   # tank controls; the version line keeps it from becoming Combined); INI: more lines, later ones win (e.g. "fixed_cam_controls = 2")
   { echo "show_fps = 0"; echo "difficulty_select = 0"; echo "fixed_cam_version = 1"; echo "fixed_cam_controls = 1"; [ -n "${INI:-}" ] && printf "%s\n" "$INI"; } > "$2/save/recvx.ini"
-  SDL_VIDEO_DRIVER=offscreen SDL_AUDIO_DRIVER=dummy RECVX_SKIP_MOVIES=1 RECVX_MODS="$2/mods" \
+  SDL_VIDEO_DRIVER=offscreen SDL_AUDIO_DRIVER=dummy RECVX_SKIP_MOVIES=1 RECVX_UPDATE_CHECK=0 RECVX_MODS="$2/mods" \
   RECVX_TELEPORT=1:0:6:0 RECVX_EQUIP=20:5:60 RECVX_INF_AMMO=1 RECVX_INPUT="$newgame,$walk" \
   RECVX_INTERP_T=0.5 RECVX_DUMP_FRAMES="$2/frames" RECVX_DUMP_EVERY=10 RECVX_DUMP_FROM=300 \
   timeout -s KILL "$MAX_SECS" "$1" "$ISO" --skip-intro --size 640x480 --"$3" --save-dir "$2/save" \

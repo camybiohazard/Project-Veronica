@@ -51,6 +51,8 @@ typedef struct {
     int  skip_intro;         /* boot straight into the title menu */
     int  battle_unlocked;    /* the title menu offers BATTLE GAME without a cleared game (pc/glue/lobby_glue.c) */
     int  difficulty_select;  /* NEW GAME asks for the difficulty as the PAL/JP versions (adv.c CheckButton) */
+    int  biorand;            /* BioRand: the pack in <mods>/biorand is served (pc/glue/biorand_glue.c); changed at the title only */
+    int  rifle_stack;        /* rifle and assault rifle bullets stack as the other ammo (always while BioRand is on) */
     int  no_ink_ribbon;      /* typewriters save without an ink ribbon and use none (in co-op the host's; pc_no_ink_ribbon) */
     int  save_system;        /* 0 native save files (<save_dir>/saves, default), 1 the memory card (<save_dir>/card0) */
     int  native_3d;
@@ -59,6 +61,7 @@ typedef struct {
     int  hd_textures_font;   /* the pack may replace the game's font pages too (default 0: the original font) */
     int  hd_textures_ui;     /* the pack's replacements that differ from the original (redesigned menus) are used too (default 1) */
     char hd_textures_dir[1024];   /* ini hd_textures_dir, --hd-textures DIR: the pack folder instead of mods/textures */
+    int  update_check;       /* ask the project's update server for the newest version (pc/src/net/update.c) */
 } HostConfig;
 extern HostConfig g_config;
 void config_load(void);
@@ -79,6 +82,7 @@ void host_pump_events(void);
 void host_present(void);
 void host_fatal(const char* fmt, ...);
 void host_log(const char* fmt, ...);
+void crash_thread_init(void);   /* log.c: first thing in a thread that may crash (the crash report's signal stack) */
 
 /* kernel.c */
 void ps2_poll_interrupts(void);

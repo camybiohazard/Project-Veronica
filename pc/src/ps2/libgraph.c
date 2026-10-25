@@ -4,6 +4,7 @@
  */
 #include "ps2_platform.h"
 #include "../gs/gs.h"
+#include "../host/biorand.h"
 #include "../gs/stream.h"
 #include "../host/prof.h"
 #include "../host/cheat.h"
@@ -89,6 +90,7 @@ int sceGsSwapDBuffDc(sceGsDBuffDc* db, int id)
     cheat_frame();
     coop_frame();
     lobby_frame();
+    biorand_frame();
     tps_frame();
     stream_submit();
     /* then the draw environment for the next frame (+ optional clear) */

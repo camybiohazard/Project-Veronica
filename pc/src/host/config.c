@@ -8,6 +8,7 @@
 #include "bindings.h"
 #include "modern.h"
 #include "../net/rdv_proto.h"
+#include "../import/import.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <string.h>
@@ -47,8 +48,11 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "skip_intro", &g_config.skip_intro, 0, 1 },
     { "battle_unlocked", &g_config.battle_unlocked, 0, 1 },
     { "difficulty_select", &g_config.difficulty_select, 0, 1 },
+    { "biorand", &g_config.biorand, 0, 1 },             /* BioRand's pack in mods/biorand served (biorand.h) */
+    { "rifle_stack", &g_config.rifle_stack, 0, 1 },     /* rifle ammo stacks (forced on while BioRand is on) */
     { "no_ink_ribbon", &g_config.no_ink_ribbon, 0, 1 },   /* typewriters save without an ink ribbon (co-op: the host's) */
     { "save_system", &g_config.save_system, 0, 1 },     /* 0 native files, 1 memory card */
+    { "update_check", &g_config.update_check, 0, 1 },  /* the newest version from the update server, once per start (net/update.h) */
     { "native_3d", &g_config.native_3d, 0, 1 },
     { "native_tex", &g_config.native_tex, 0, 1 },
     { "hd_textures", &g_config.hd_textures, 0, 1 },
@@ -58,7 +62,7 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "smooth_menus", &g_config.menu_smooth, 0, 1 },
     { "frame_blend", &g_config.frame_blend, -1, 1 },
     { "coop_port", &g_coop.port, 1, 65535 },
-    { "coop_char", &g_coop.chr, 0, COOP_CHR_MAX },
+    { "coop_char", &g_coop.chr, 0, COOP_CHR_CINE },   /* (imports and the ids between: checked after import_registry_load) */
     { "appear_gender_anim", &g_appear_anim, 0, 1 },
     { "appear_cutscene_face", &g_appear_face, 0, 1 },
     { "appear_in_cutscenes", &g_appear_cutscene, 0, 1 },
@@ -87,6 +91,10 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "enemy_seed", &g_enemy_opts.seed, 0, 0x7FFFFFFF },
     { "enemy_variety", &g_enemy_opts.variety, 0, 1 },    /* 0 Mild, 1 Wild */
     { "enemy_random_events", &g_enemy_opts.events, 0, 1 },
+    { "cast_random", &g_enemy_opts.cast, 0, 3 },         /* cutscene cast (docs/ACTORS.md "Cutscene cast"): 0/1 (an older 2, Enemies, is off; 3, Both, on: config_load) */
+    { "cast_models", &g_enemy_opts.cast_all, 0, 1 },     /* characters: 0 cutscene models, 1 all models */
+    { "cast_assign", &g_enemy_opts.cast_assign, 0, 1 },  /* 0 fixed per character, 1 random per cutscene */
+    { "cast_imports", &g_enemy_opts.cast_imports, 0, 1 },
     { "tps", (int*)&g_tps.on, 0, 1 },
     { "tps_fov", &g_tps.fov, 30, 130 },
     { "tps_aim_fov", &g_tps.aim_fov, 20, 130 },
@@ -148,7 +156,7 @@ void config_load(void)
     int combined_seen = 0;
     FILE* f;
     path(p, sizeof(p));
-    if (!(f = pc_fopen(p, "r"))) { default_name(); player_id(); return; }
+    if (!(f = pc_fopen(p, "r"))) { import_registry_load(); default_name(); player_id(); return; }
     while (fgets(line, sizeof(line), f))
         if (sscanf(line, " coop_join = %127s", g_coop.join) == 1) continue;
         else if (sscanf(line, " fixed_cam_version = %d", &v) == 1) { combined_seen = 1; continue; }
@@ -158,15 +166,19 @@ void config_load(void)
         else if (sscanf(line, " coop_name = %15[^\r\n]", g_coop.name) == 1) continue;
         else if (sscanf(line, " iso = %1023[^\r\n]", g_config.iso_path) == 1) continue;
         else if (sscanf(line, " hd_textures_dir = %1023[^\r\n]", ini_hd_dir) == 1) { SDL_strlcpy(g_config.hd_textures_dir, ini_hd_dir, sizeof(ini_hd_dir)); continue; }
+        else if (sscanf(line, " import_dir = %1023[^\r\n]", g_import.dir) == 1) continue;   /* F9 imports (pc/src/import) */
+        else if (sscanf(line, " import_outbreak2_iso = %1023[^\r\n]", g_import.iso[IMPORT_OUTBREAK2]) == 1) continue;
         else if (sscanf(line, " %63[a-z_0-9] = %127[^\r\n]", k, val) == 2 && bind_ini_line(k, trim(val))) continue;
         else if (sscanf(line, " %63[a-z_0-9] = %d", k, &v) == 2)
             for (size_t i = 0; i < SDL_arraysize(keys); i++)
                 if (!strcmp(k, keys[i].key) && v >= keys[i].lo && v <= keys[i].hi) *keys[i].val = v;
     fclose(f);
+    import_registry_load();   /* the imported player models: their chr values exist from here */
     /* a file from before Combined (no fixed_cam_version line): Modern, the default then and always
        written, becomes Combined; Classic, never the default since Modern, stays */
     if (!combined_seen && g_modern_on == 1) g_modern_on = MODERN_COMBINED;
     g_coop.chr = appear_canon(g_coop.chr);   /* an event double no longer listed: its listed twin (actors.c) */
+    g_enemy_opts.cast = g_enemy_opts.cast == 1 || g_enemy_opts.cast == 3;   /* the cutscene cast had 1 Characters, 2 Enemies, 3 Both: the characters' on */
     default_name();
     player_id();
 }
@@ -208,6 +220,8 @@ static int write_ini(FILE* f, void* ud)
     }
     if (g_config.iso_path[0]) fprintf(f, "iso = %s\n", g_config.iso_path);
     if (ini_hd_dir[0]) fprintf(f, "hd_textures_dir = %s\n", ini_hd_dir);   /* not --hd-textures */
+    if (g_import.dir[0]) fprintf(f, "import_dir = %s\n", g_import.dir);
+    if (g_import.iso[IMPORT_OUTBREAK2][0]) fprintf(f, "import_outbreak2_iso = %s\n", g_import.iso[IMPORT_OUTBREAK2]);
     bind_ini_write(f);
     return 0;
 }

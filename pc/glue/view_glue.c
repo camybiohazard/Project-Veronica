@@ -99,9 +99,10 @@ uint32_t pc_menu_tag(unsigned int prim, int n, const NativeVertex* v, const Nati
         if (v) { MIX(lroundf(v[i].s * 4096.0f)); MIX(lroundf(v[i].t * 4096.0f)); }
         else { MIX(r[i].u | (uint32_t)r[i].v << 16); MIX(lroundf(r[i].s * 4096.0f)); MIX(lroundf(r[i].t * 4096.0f)); }
     x = v ? v->x : r->x / 16.0f; y = v ? v->y : r->y / 16.0f;   /* 2D: w = 1 */
-    if (!(prim & 0x10)) {   /* untextured: its colour and which way each corner lies from the first (a left
-                               arrow is not a right one, a horizontal line not a vertical one; a growing box stays itself) */
-        MIX(v ? (uint32_t)v->r | v->g << 8 | v->b << 16 : (uint32_t)r->r | r->g << 8 | r->b << 16);
+    if (!(prim & 0x10)) {   /* untextured: which way each corner lies from the first (a left arrow is not a right
+                               one, a horizontal line not a vertical one; a growing box stays itself). Not its colour:
+                               a cursor highlight recolours a row's arrows, and with the colour in the look the old
+                               row's arrows paired with the new row's and slid across between frames */
         for (int i = 1; i < n; i++) {
             float dx = (v ? v[i].x : r[i].x / 16.0f) - x, dy = (v ? v[i].y : r[i].y / 16.0f) - y;
             MIX((dx > 0.5f) - (dx < -0.5f) + 3 * ((dy > 0.5f) - (dy < -0.5f)));

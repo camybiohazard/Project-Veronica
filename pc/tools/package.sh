@@ -26,6 +26,13 @@ tgz() {   # tgz NAME: stage/NAME -> out/NAME.tar.gz, stable owners and order
     tar -C "$stage" --owner=0 --group=0 --numeric-owner --sort=name -czf "$out/$1.tar.gz" "$1"
 }
 need() { [ -f "$1" ] || { echo "missing $1 (build it first)" >&2; exit 1; }; }
+mods_dirs() {   # mods_dirs DIR: the empty mods/ and mods/textures/ folders, each with a note
+    mkdir -p "$1/mods/textures"
+    printf '%s\r\n' "Mods: replacement room files and archive entries go here (see docs/USER_GUIDE.md)." \
+        "BioRand writes its own folder biorand/ here." > "$1/mods/README.txt"
+    printf '%s\r\n' "HD texture packs for PCSX2 (SLUS-20184) go here, as they come; each pack in its own folder." \
+        "Several packs: number the folders (1_addon, 2_base); the first by name wins." > "$1/mods/textures/README.txt"
+}
 
 while [ $# -gt 0 ]; do
     case $1 in
@@ -35,6 +42,7 @@ while [ $# -gt 0 ]; do
         ${STRIP:-strip} -o "$d/recvx" "$b"
         chmod 755 "$d/recvx"
         copy_docs "$d" $docs
+        mods_dirs "$d"
         tgz "$n"
         mkdir -p "$stage/$n-debug"; cp "$b" "$stage/$n-debug/recvx"; tgz "$n-debug"
         ;;
@@ -44,6 +52,7 @@ while [ $# -gt 0 ]; do
         n=recvx-enhanced-port-$ver-windows-x86; d=$stage/$n; mkdir -p "$d"
         "$ws" -o "$d/recvx.exe" "$b"
         copy_docs "$d" $docs
+        mods_dirs "$d"
         (cd "$stage" && rm -f "$out/$n.zip" && zip -qrX "$out/$n.zip" "$n")
         mkdir -p "$stage/$n-debug"; cp "$b" "$stage/$n-debug/recvx.exe"
         (cd "$stage" && rm -f "$out/$n-debug.zip" && zip -qrX "$out/$n-debug.zip" "$n-debug")

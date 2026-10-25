@@ -1,6 +1,7 @@
 /* pure rules of the PC hooks (pc/include/pc_rules.h, pc/src/gs/native.h), built with the game's flags and types */
 #include "../../decomp/include/ps2/veronica/prog/types.h"
 #include "pc_rules.h"
+#include "../src/host/biorand.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -258,6 +259,32 @@ static void inventory(void)
         CHECK(c[2] == 0x210000 && c[3] == 0x5000f && c[4] == 0x80000 && c[0] == 3);
         CHECK(pc_inv_room(c, 8, it) == 4);
     }
+    {   /* the item box's and GetItem's special slot (Claire: lighter 55, lockpick 50; Chris: the lighter) */
+        unsigned int d[12] = { 0, 0x370001 };
+        CHECK(!pc_to_special(d, 50, 55, 50));                  /* the lockpick out of the box: the lighter stays, a cell */
+        CHECK(!pc_to_special(d, 55, 55, 50));                  /* a second lighter: a cell */
+        d[1] = 0x320001;
+        CHECK(!pc_to_special(d, 55, 55, 50));                  /* the lighter with the lockpick in the slot: a cell */
+        d[1] = 0;
+        CHECK(pc_to_special(d, 55, 55, 50) && pc_to_special(d, 50, 55, 50));   /* an empty slot takes either */
+        CHECK(!pc_to_special(d, 50, 55, -1));                  /* Chris: the lockpick is any item */
+        CHECK(!pc_to_special(d, 0x08, 55, 50));                /* the knife (count 0) is no special-slot item */
+    }
+}
+
+/* BioRand: the item a pickup gives (a room's type, else id) and the seed from its log line */
+static void biorand(void)
+{
+    CHECK(pc_pickup_item(0, 21) == 21);       /* retail: type 0, the record's id */
+    CHECK(pc_pickup_item(42, 51) == 42);      /* BioRand: type is the item, id the model */
+    CHECK(pc_pickup_item(156, 21) == 21);     /* not an item: the id */
+    CHECK(pc_biorand_seed("R840-0KR3-T4HH4HZZZMEZ9H0007HZZZZZZZ5ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ") == 123456);
+    CHECK(pc_biorand_seed("R840-JZYL-T4HH4HZZZ") == 654321);
+    CHECK(pc_biorand_seed("r840-0kr3-x") == -1);   /* (lower case 'r': not a seed string) */
+    CHECK(pc_biorand_seed("R840-0kr3-") == 123456);
+    CHECK(pc_biorand_seed("R840-0KR") == -1);
+    CHECK(pc_biorand_seed("R840-0KS3-") == -1);   /* S is not in its alphabet */
+    CHECK(pc_biorand_seed("") == -1);
 }
 
 int main(void)
@@ -270,6 +297,7 @@ int main(void)
     warp_music();
     unlock();
     inventory();
+    biorand();
     if (fails) { printf("%d failed\n", fails); return 1; }
     printf("rules: all passed\n");
     return 0;

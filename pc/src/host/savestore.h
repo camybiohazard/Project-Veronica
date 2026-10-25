@@ -1,7 +1,7 @@
 /* Native saves (docs/ARCHITECTURE.md "Save system"): one file per save in a folder,
    NNN_<label>.sav = a 64-byte header + the game's save exactly as the memory card holds it
    (SAVEDATA-nn, the SAVEFILE struct: sys->version..save_end and its byte-sum checksum).
-   NNN is the save's number (3 digits, more when needed, no limit); the label (character and
+   NNN is the save's number (3 digits, more when needed, up to SAVESTORE_NUMBER_MAX); the label (character and
    room) is for people only and never parsed. Any thread; writes go through pc_save_file and
    are serialized by a lock. */
 #ifndef RECVX_SAVESTORE_H
@@ -14,6 +14,8 @@ extern "C" {
 #define SAVE_DATA_BYTES 0x838     /* sizeof(SAVEFILE), a card save file */
 #define SAVE_HEADER_BYTES 64
 #define SAVE_CONFIG_BYTES 0x34    /* sizeof(CONFIGFILE), the card's system file BASLUS-20184 (system.dat here) */
+#define SAVESTORE_MAX 10000           /* saves listed at most (more are logged and left out) */
+#define SAVESTORE_NUMBER_MAX 999999999 /* the highest save number (9 digits) */
 #define SAVE_PARTNERS_FMT "%03d.coop-partners.bin"   /* co-op: the host's saved partner inventories of save NNN */
 
 typedef struct SaveEntry {
@@ -24,7 +26,8 @@ typedef struct SaveEntry {
     int save_ct, gm_mode, ply_id, stg_no, rom_no;
 } SaveEntry;
 
-/* the valid saves in dir, sorted by number (malloc'd array in *out, free() it); invalid files are skipped */
+/* the valid saves in dir, sorted by number (malloc'd array in *out, free() it, NULL if none); invalid
+   files are skipped; at most SAVESTORE_MAX */
 int  savestore_list(const char* dir, SaveEntry** out);
 /* 1: path is a valid save; its card bytes in data (SAVE_DATA_BYTES) */
 int  savestore_read(const char* path, unsigned char* data);
@@ -32,8 +35,8 @@ int  savestore_read(const char* path, unsigned char* data);
    name of the save this one overwrites, removed once the new file is in place if its name
    differs. Returns the number written, 0 on error (nothing changed). */
 int  savestore_write(const char* dir, int number, const unsigned char* data, const char* replaces);
-/* the highest save number of the files in dir (names only, 0: none) */
-int  savestore_highest(const char* dir);
+/* the number a new save gets (names only): the highest + 1, past SAVESTORE_NUMBER_MAX the lowest free one (0: none) */
+int  savestore_next(const char* dir);
 /* 1 if a file of save `number` exists (any label); its name in file (n bytes) if not NULL */
 int  savestore_find(const char* dir, int number, char* file, int n);
 /* "NNN_label.sav" with the label made safe for any file system (UTF-8 kept, at most 64 bytes) */

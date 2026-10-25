@@ -25,7 +25,7 @@ enum {
     B_TPS_FWD, B_TPS_BACK, B_TPS_LEFT, B_TPS_RIGHT, B_TPS_RUN, B_TPS_ACTION, B_TPS_CANCEL,
     B_TPS_STATUS, B_TPS_MAP, B_TPS_AIM, B_TPS_FIRE, B_TPS_RELOAD, B_TPS_QUICKTURN, B_TPS_KNIFE, B_TPS_OPTIONS, B_TPS_RECENTER,
     /* port hotkeys (keyboard) */
-    B_TPS_TOGGLE, B_SETTINGS, B_CHEATS, B_COOP, B_FULLSCREEN, B_NOCLIP_UP, B_NOCLIP_DOWN,
+    B_TPS_TOGGLE, B_SETTINGS, B_CHEATS, B_COOP, B_IMPORT, B_FULLSCREEN, B_NOCLIP_UP, B_NOCLIP_DOWN,
     B_COUNT
 };
 enum { BIND_KB, BIND_PAD };            /* device sets */
@@ -45,9 +45,10 @@ void bind_set(int row, int dev, int slot, int code);   /* a code another row of 
 void bind_reset(int dev);                               /* defaults of one set */
 int  bind_conflict(int row, int dev);                   /* another row of the same context shares a code: that row + 1, else 0 */
 int  bind_row_shown(int row, int dev);                  /* the row exists for this device */
+extern int g_dev_mode;                                   /* --dev: developer tools (the import window, F9) */
 const char* bind_code_name(int dev, int code, char* buf, int n);   /* for menus, by the connected pad's type */
 const char* bind_row_label(int row, char* buf, int n);  /* game rows: the actions of the button under the key type */
-const char* bind_pad_desc(void);                        /* the connected gamepad, or "No gamepad" */
+const char* bind_pad_desc(char* buf, int n);            /* the connected gamepad (its name in buf), or "No gamepad"; any thread */
 const char* bind_swapped(void);                         /* the row the last bind_set moved a code from, or NULL */
 
 /* capture ("press a key"): main-thread events; any thread starts/polls */
@@ -62,8 +63,8 @@ int  bind_combo(int row, int dev, int slot);                    /* a reload slot
 void bind_combo_frame(int on, const bool* keys, int mouse);     /* each pad report, first: which reload combinations were pressed with aim held */
 int  bind_pad_raw(int row);                                     /* the gamepad holds an input of the row, whichever set reads it now */
 int  bind_hotkey(const void* sdl_event, int row);               /* a key-down event of this hotkey */
-void* bind_gamepad(void);              /* the open SDL_Gamepad (pad.c) */
-void bind_set_gamepad(void* gamepad);
+void* bind_gamepad(void);              /* the open SDL_Gamepad (pad.c): game thread only */
+void bind_set_gamepad(void* gamepad);  /* game thread: pad.c opened or closed it */
 const bool* bind_keys(void);           /* SDL keyboard state plus scripted keys (RECVX_KEYS) */
 void bind_latch_event(const void* sdl_event);              /* main thread: a key or button change, for bind_latch_frame */
 const bool* bind_latch_frame(int on, const bool* keys);    /* pad report: on (a menu, Smooth menus), keys and buttons that changed since the last report at least once each */

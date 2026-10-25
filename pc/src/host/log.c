@@ -5,7 +5,13 @@
  * Always, also without --log: a crash writes recvx-crash.log (the current directory, where --log puts
  * recvx.log): the version, the signal or exception, the backtrace and the port's last messages
  * (host_log keeps the last LAST_N in memory), a few KB players can attach to a bug report.
+ * Linux: each thread that may crash calls crash_thread_init for an alternate signal stack of its own
+ * (a stack overflow has none left to run the handler on); the handler writes the signal, the address
+ * and the thread with write() alone first, then the backtrace and the last messages.
  */
+#ifndef _WIN32
+#define _GNU_SOURCE   /* REG_EIP */
+#endif
 #ifdef _WIN32
 #define GetThreadId win_GetThreadId   /* the PS2 kernel shim declares its own */
 #define CreateThread win_CreateThread
@@ -38,6 +44,25 @@ void log_keep(const char* fmt, va_list ap)
     net_mask_addrs(t, NULL, last[i], LAST_W);
 }
 
+/* test aid, game thread: RECVX_TEST_CRASH="stack" (a stack overflow) or "null" (a write through a null
+   pointer) at frame hand-off n ("stack:n", default 100), to check the crash report */
+static __attribute__((noinline)) int overflow(volatile char* p)
+{
+    volatile char b[4096];
+    b[0] = *p;
+    return b[0] == 42 ? 0 : overflow(b) + b[1];   /* (never 42: c is 0) */
+}
+void crash_test(unsigned hand)
+{
+    static const char* how = (const char*)-1;
+    const char* at;
+    if (how == (const char*)-1) how = SDL_getenv("RECVX_TEST_CRASH");
+    if (!how || hand < ((at = SDL_strchr(how, ':')) ? (unsigned)SDL_atoi(at + 1) : 100u)) return;
+    host_log("test: crash (%s) at hand-off %u\n", how, hand);
+    if (!SDL_strncmp(how, "stack", 5)) { volatile char c = 0; overflow(&c); }
+    *(volatile int*)(uintptr_t)SDL_atoi("0") = 1;
+}
+
 /* the kept lines, oldest first, through `out` (async-signal-safe on Linux: write) */
 static void last_dump(void (*out)(void*, const char*, size_t), void* ud)
 {
@@ -53,7 +78,10 @@ static void last_dump(void (*out)(void*, const char*, size_t), void* ud)
 #ifndef _WIN32
 #include <execinfo.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <signal.h>
+#include <sys/syscall.h>
+#include <ucontext.h>
 #include <unistd.h>
 
 static int log_fd = -1, console_fd = 2, pipe_rd = -1;
@@ -92,21 +120,52 @@ static int SDLCALL tee_thread(void* ud)
 
 static void out_fd(void* fd, const char* p, size_t n) { write_all(*(int*)fd, p, n); }
 
-static void on_fatal(int sig)
+/* async-signal-safe text: s, or v in base 10 / 16, appended at p */
+static char* put_s(char* p, const char* s) { while (*s) *p++ = *s++; return p; }
+static char* put_u(char* p, unsigned long v, unsigned base)
+{
+    char t[24];
+    int n = 0;
+    do t[n++] = "0123456789abcdef"[v % base]; while (v /= base);
+    while (n) *p++ = t[--n];
+    return p;
+}
+
+static void on_fatal(int sig, siginfo_t* si, void* uc)
 {
     static int entered;
     void* frames[64];
     int n, fd;
-    char msg[96];
+    long tid = syscall(SYS_gettid);
+    char msg[256], *p = msg;
     if (__atomic_exchange_n(&entered, 1, __ATOMIC_ACQ_REL)) for (;;) pause();   /* another thread is writing the report; the process ends with it */
-    n = backtrace(frames, 64);
-    int len = SDL_snprintf(msg, sizeof(msg), "\nfatal signal %d (%s), backtrace:\n", sig, sig == SIGSEGV ? "segmentation fault" : sig == SIGABRT ? "abort" : "signal");
-    write_all(console_fd, msg, (size_t)len);
-    backtrace_symbols_fd(frames, n, console_fd);
-    if (log_fd >= 0) { write_all(log_fd, msg, (size_t)len); backtrace_symbols_fd(frames, n, log_fd); fsync(log_fd); }
+    /* first what write() alone can give: the signal, the address, the thread */
+    p = put_s(p, "\nfatal signal "); p = put_u(p, (unsigned)sig, 10);
+    p = put_s(p, sig == SIGSEGV ? " (segmentation fault)" : sig == SIGABRT ? " (abort)" : sig == SIGBUS ? " (bus error)" : sig == SIGFPE ? " (arithmetic)" : sig == SIGILL ? " (illegal instruction)" : " (signal)");
+    p = put_s(p, ", address 0x"); p = put_u(p, (unsigned long)si->si_addr, 16);
+#if defined(__i386__)
+    p = put_s(p, ", eip 0x"); p = put_u(p, (unsigned long)((ucontext_t*)uc)->uc_mcontext.gregs[REG_EIP], 16);
+#elif defined(__x86_64__)
+    p = put_s(p, ", rip 0x"); p = put_u(p, (unsigned long)((ucontext_t*)uc)->uc_mcontext.gregs[REG_RIP], 16);
+#else
+    (void)uc;
+#endif
+    p = put_s(p, ", thread "); p = put_u(p, (unsigned long)tid, 10);
+    p = put_s(p, tid == getpid() ? " (main)\n" : "\n");
+    write_all(console_fd, msg, (size_t)(p - msg));
+    if (log_fd >= 0) write_all(log_fd, msg, (size_t)(p - msg));
     if ((fd = open(crash_path, O_WRONLY | O_CREAT | O_TRUNC, 0644)) >= 0) {
         write_all(fd, crash_head, strlen(crash_head));
-        write_all(fd, msg + 1, (size_t)len - 1);
+        write_all(fd, msg + 1, (size_t)(p - msg) - 1);
+        fsync(fd);
+    }
+    /* then the backtrace (backtrace() was primed at start: no library loading here) and the last messages */
+    n = backtrace(frames, 64);
+    write_all(console_fd, "backtrace:\n", 11);
+    backtrace_symbols_fd(frames, n, console_fd);
+    if (log_fd >= 0) { write_all(log_fd, "backtrace:\n", 11); backtrace_symbols_fd(frames, n, log_fd); fsync(log_fd); }
+    if (fd >= 0) {
+        write_all(fd, "backtrace:\n", 11);
         backtrace_symbols_fd(frames, n, fd);
         last_dump(out_fd, &fd);
         fsync(fd);
@@ -115,6 +174,23 @@ static void on_fatal(int sig)
     }
     signal(sig, SIG_DFL);
     raise(sig);
+}
+
+/* each thread that may crash (the main thread through crash_init): an own stack for the handler, so
+   stack overflows are reported too; freed when the thread ends */
+static pthread_key_t altstack_key;
+static void altstack_free(void* p)
+{
+    stack_t ss = { .ss_flags = SS_DISABLE };
+    sigaltstack(&ss, NULL);
+    free(p);
+}
+void crash_thread_init(void)
+{
+    stack_t ss = { .ss_size = 64 * 1024 };
+    if (!(ss.ss_sp = malloc(ss.ss_size))) return;
+    if (sigaltstack(&ss, NULL)) { free(ss.ss_sp); return; }
+    pthread_setspecific(altstack_key, ss.ss_sp);
 }
 
 /* exit(): what the game printed just before is still in the pipe (the tee thread dies
@@ -135,15 +211,16 @@ static void on_exit_drain(void)
 /* main(), always: the crash report's handler */
 void crash_init(const char* version)
 {
-    static char altstack[64 * 1024];   /* an own stack for the handler, so stack overflows are reported too */
-    stack_t ss = { .ss_sp = altstack, .ss_size = sizeof(altstack), .ss_flags = 0 };
     struct sigaction sa;
+    void* f;
     static const int sigs[] = { SIGSEGV, SIGABRT, SIGFPE, SIGBUS, SIGILL, SIGTRAP };
     SDL_snprintf(crash_head, sizeof(crash_head), "recvx-enhanced-port %s crashed (Linux; addresses: addr2line -f -e recvx)\n", version);
-    sigaltstack(&ss, NULL);
+    pthread_key_create(&altstack_key, altstack_free);
+    crash_thread_init();
+    backtrace(&f, 1);   /* loads what backtrace needs now, not in the handler */
     memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = on_fatal;
-    sa.sa_flags = SA_ONSTACK;
+    sa.sa_sigaction = on_fatal;
+    sa.sa_flags = SA_ONSTACK | SA_SIGINFO;
     for (unsigned i = 0; i < sizeof(sigs) / sizeof(sigs[0]); i++) sigaction(sigs[i], &sa, NULL);
 }
 
@@ -192,6 +269,8 @@ static LONG WINAPI on_fatal(EXCEPTION_POINTERS* ep)
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
+
+void crash_thread_init(void) {}   /* (the filter runs on the faulting thread) */
 
 /* main(), always: the crash report's handler */
 void crash_init(const char* version)

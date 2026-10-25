@@ -8,6 +8,8 @@
  */
 #include "../ps2_platform.h"
 #include "audio.h"
+#include "../host/biorand.h"
+#include "../../include/pc_parse.h"
 #include <SDL3/SDL.h>
 #include <string.h>
 #include <stdio.h>
@@ -32,17 +34,29 @@
    Files in $RECVX_MODS (default ./mods) replace disc files without touching the image
    (docs/modding/README.md "The mods folder"): <mods>/NAME for files opened by name (room files RM_SRRC.RDX, also names the
    disc does not have, and plain ISO files), <mods>/<AFS file>/<id> for entries of AFS archives
-   (e.g. mods/MRY.AFS/12). */
+   (e.g. mods/MRY.AFS/12). While BioRand is on, <mods>/biorand/ (its pack: room files, SYSTEM.AFS/10, /11;
+   not its title picture ADV.AFS/2) comes first; off, that folder is not looked at (pc/src/host/biorand.h). */
 static FILE* mod_open_path(const char* name, uint32_t* size, char* path, size_t npath)
 {
     static const char* dir;
-    FILE* f;
+    FILE* f = NULL;
     if (!dir) dir = SDL_getenv("RECVX_MODS") ? SDL_getenv("RECVX_MODS") : "mods";
     while (*name == '\\' || *name == '/') name++;
-    snprintf(path, npath, "%s/%s", dir, name);
-    if (!(f = pc_fopen(path, "rb"))) return NULL;
-    fseek(f, 0, SEEK_END);
-    *size = (uint32_t)ftell(f);
+    if (biorand_active() && SDL_strcasecmp(name, "ADV.AFS/2")) {   /* (not its title picture: its colours are broken; the disc's, or an HD pack's) */
+        snprintf(path, npath, "%s/biorand/%s", dir, name);
+        f = pc_fopen(path, "rb");
+    }
+    if (!f) snprintf(path, npath, "%s/%s", dir, name);
+    if (!f && !(f = pc_fopen(path, "rb"))) return NULL;
+    {
+        long n = fseek(f, 0, SEEK_END) ? -1 : ftell(f);
+        if (n < 0 || n > 0x7FFFF800L) {   /* (sizes are ints in the game; whole sectors are read) */
+            host_log("mods: %s cannot be read\n", path);
+            fclose(f);
+            return NULL;
+        }
+        *size = (uint32_t)n;
+    }
     host_log("mods: %s replaces the disc file (%u bytes)\n", path, *size);
     return f;
 }
@@ -85,34 +99,46 @@ int pc_mod_room_sound_key(int key)
 typedef struct { uint32_t lsn; uint32_t count; uint32_t* ofs; uint32_t* size; char name[32]; } Partition;
 static Partition pt[MAX_PT];
 
+#define AFS_BAD 0xFFFFFFFFu   /* Partition.size of an entry outside the archive */
 static int load_partition(int ptid, const char* fname)
 {
-    uint32_t lsn, size;
-    uint8_t sec[SECTOR];
+    uint32_t lsn, size, count, nsec, bad = 0;
+    uint8_t sec[SECTOR], *toc;
+    uint32_t *ofs, *len;
+    int n;
     Partition* p;
     if (ptid < 0 || ptid >= MAX_PT) return 0;
-    if (!cdvd_find_file(fname, &lsn, &size)) { host_log("adxf: partition file %s not found\n", fname); return 0; }
-    if (!cdvd_read_sectors(lsn, 1, sec) || memcmp(sec, "AFS", 3) != 0) { host_log("adxf: %s is not AFS\n", fname); return 0; }
-    p = &pt[ptid];
+    p = &pt[ptid];   /* (unusable until this parse has succeeded) */
     SDL_free(p->ofs); SDL_free(p->size);
+    memset(p, 0, sizeof(*p));
+    if (!cdvd_find_file(fname, &lsn, &size)) { host_log("adxf: partition file %s not found\n", fname); return 0; }
+    if (!cdvd_read_sectors(lsn, 1, sec) || (n = pc_afs_count(sec, size)) < 0) { host_log("adxf: %s is not AFS (or its table does not fit it)\n", fname); return 0; }
+    count = (uint32_t)n;
+    nsec = (8 + count * 8 + SECTOR - 1) / SECTOR;   /* (count <= PC_AFS_MAX: no overflow) */
+    toc = SDL_malloc((size_t)nsec * SECTOR);
+    ofs = SDL_malloc((count ? count : 1) * sizeof(uint32_t));
+    len = SDL_malloc((count ? count : 1) * sizeof(uint32_t));
+    if (!toc || !ofs || !len || !cdvd_read_sectors(lsn, nsec, toc)) {
+        host_log("adxf: cannot read the table of %s\n", fname);
+        SDL_free(toc); SDL_free(ofs); SDL_free(len);
+        return 0;
+    }
+    for (uint32_t i = 0; i < count; i++)
+        if (!pc_afs_entry(toc, i, size, &ofs[i], &len[i])) { len[i] = AFS_BAD; bad++; }
+    SDL_free(toc);
+    if (bad) host_log("adxf: %s: %u entries outside the archive, not read\n", fname, bad);
     while (*fname == '\\') fname++;
     SDL_strlcpy(p->name, fname, sizeof(p->name));
     p->lsn = lsn;
-    memcpy(&p->count, sec + 4, 4);
-    {
-        uint32_t bytes = 8 + p->count * 8, nsec = (bytes + SECTOR - 1) / SECTOR;
-        uint8_t* toc = SDL_malloc(nsec * SECTOR);
-        cdvd_read_sectors(lsn, nsec, toc);
-        p->ofs = SDL_malloc(p->count * 4); p->size = SDL_malloc(p->count * 4);
-        for (uint32_t i = 0; i < p->count; i++) { memcpy(&p->ofs[i], toc + 8 + i * 8, 4); memcpy(&p->size[i], toc + 12 + i * 8, 4); }
-        SDL_free(toc);
-    }
+    p->ofs = ofs;
+    p->size = len;
+    p->count = count;
     return 1;
 }
 
 int adx_afs_locate(int ptid, int fid, uint32_t* lsn, uint32_t* size)
 {
-    if (ptid < 0 || ptid >= MAX_PT || !pt[ptid].ofs || fid < 0 || (uint32_t)fid >= pt[ptid].count) return 0;
+    if (ptid < 0 || ptid >= MAX_PT || !pt[ptid].ofs || fid < 0 || (uint32_t)fid >= pt[ptid].count || pt[ptid].size[fid] == AFS_BAD) return 0;
     *lsn = pt[ptid].lsn + pt[ptid].ofs[fid] / SECTOR;
     *size = pt[ptid].size[fid];
     return 1;

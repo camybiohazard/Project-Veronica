@@ -11,7 +11,7 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 iso=${RECVX_ISO:-$root/ISO/SLUS-20184 ROM.iso}
 mkdir -p "$out/save" "$out/frames"
 newgame="100:down,103:-,110:cross,113:-,160:cross,163:-,200:cross,203:-,240:cross,243:-,280:cross,283:-"
-SDL_VIDEO_DRIVER=offscreen SDL_AUDIO_DRIVER=dummy RECVX_SKIP_MOVIES=1 \
+SDL_VIDEO_DRIVER=offscreen SDL_AUDIO_DRIVER=dummy RECVX_SKIP_MOVIES=1 RECVX_UPDATE_CHECK=0 \
 RECVX_DUMP_FRAMES="$out/frames" RECVX_TELEPORT="1:$target" \
 RECVX_INPUT="$newgame${MORE_INPUT:+,$MORE_INPUT}" \
 timeout -s KILL "$secs" "${RECVX_BIN:-$root/build/pc/recvx}" "$iso" --skip-intro --size ${SIZE:-320x240} \

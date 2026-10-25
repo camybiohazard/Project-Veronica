@@ -117,7 +117,13 @@ that texture, and the key needs the draw's TEX0 (size, format, CLUT bank) and pa
 nothing is loaded ahead of the first draw.
 
 Loaded replacements stay in a budget of 1024 MB (`RECVX_HD_CACHE_MB`); the least recently used
-are dropped and read again when needed. One log line sums it up 2 s after lookups and loads stop
+are dropped and read again when needed. A replacement is at most 8192 x 8192 texels (8 times the
+PS2's largest texture) and 384 MB in memory (a DDS file as it is, mipmaps included; a PNG decoded
+to RGBA); a larger one, a DDS declaring more mipmap levels than its size has or one whose levels do
+not fit the file is skipped (`cannot load ...` in the log). This is read from the file's size and
+header before the file is: a loader thread starts a file only when its memory fits, with the files
+read but not uploaded yet and those the other threads are reading, in 128 MB (a larger file is
+read alone). One log line sums it up 2 s after lookups and loads stop
 (read and check times on either thread, upload on the render thread):
 
 ```

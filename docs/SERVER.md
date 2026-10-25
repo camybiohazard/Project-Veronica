@@ -338,7 +338,7 @@ Crypto is Monocypher 4.0.2 (fetched by CMake): BLAKE2b, Argon2id, X25519, XChaCh
   CREATE / JOIN and INTRO. A low-order peer key (zero shared secret) is refused.
 - Both derive `BLAKE2b-512(keyed with the password key if any, "recvx e2e v2" | shared secret |
   host pk | joiner pk | room id | epoch | flags | room code)`, giving two directional
-  XChaCha20-Poly1305 keys, the punch MAC key, the co-op join code and the check code. Any change to
+  XChaCha20-Poly1305 keys, the punch MAC key, a code (co-op protocols before 28 proved it per datagram) and the check code. Any change to
   the introduction on the way gives the two sides different keys: nothing decrypts, nothing goes
   out in clear.
 - Encrypted datagram: `"CVXE"` | 64-bit counter (the nonce) | ciphertext | 16-byte MAC

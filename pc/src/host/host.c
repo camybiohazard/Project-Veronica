@@ -11,6 +11,9 @@
 #include "lobby.h"
 #include "bindings.h"
 #include "settings.h"
+#include "biorand.h"
+#include "../import/import.h"
+#include "../net/update.h"
 void render_loop(void);
 #include <SDL3/SDL.h>
 #include <stdarg.h>
@@ -99,9 +102,9 @@ float pc_overlay_x(float x)
     return overlay_stretch ? 320.0f + (x - 320.0f) * pc_hor_scale() : x;
 }
 
-HostConfig g_config = { .window_w = 1280, .window_h = 960, .borderless_extra = 1,.vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .menu_smooth = 1, .frame_blend = 0, .aspect = 2, .show_fps = 1, .show_ping = 1,
+HostConfig g_config = { .rifle_stack = 1, .window_w = 1280, .window_h = 960, .borderless_extra = 1,.vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .menu_smooth = 1, .frame_blend = 0, .aspect = 2, .show_fps = 1, .show_ping = 1,
                        .screen_filter = 1, .cinema_bars = 1, .screen_effects = 1, .native_3d = 1, .model_cull = 1, .native_tex = 1, .hd_textures = 1, .hd_textures_ui = 1, .quick_knife = 1, .head_blowoff = 1,
-                       .skip_doors = 1, .fast_loading = 1, .auto_stairs = 1, .skip_intro = 1, .battle_unlocked = 1, .difficulty_select = 1, .contrast = 100, .gamma = 10, .fog_intensity = 100 };   /* first-start defaults; recvx.ini overrides */
+                       .skip_doors = 1, .fast_loading = 1, .auto_stairs = 1, .skip_intro = 1, .battle_unlocked = 1, .difficulty_select = 1, .contrast = 100, .gamma = 10, .fog_intensity = 100, .update_check = 1 };   /* first-start defaults; recvx.ini overrides */
 SDL_Window* g_window;
 SDL_GLContext g_gl;
 
@@ -257,6 +260,7 @@ static void parse_args(int argc, char** argv)
         else if (!strcmp(argv[i], "--skip-intro")) g_config.skip_intro = 1;
         else if (!strcmp(argv[i], "--hd-textures") && i + 1 < argc) { SDL_strlcpy(g_config.hd_textures_dir, argv[++i], sizeof(g_config.hd_textures_dir)); }
         else if (!strcmp(argv[i], "--third-person")) g_tps.on = 1;
+        else if (!strcmp(argv[i], "--dev")) g_dev_mode = 1;
         else if (!strcmp(argv[i], "--quiet")) g_config.log_level = 0;
         else if (!strcmp(argv[i], "--coop-host") && i + 1 < argc) { g_coop.port = atoi(argv[++i]); g_coop.request = COOP_REQ_HOST; }
         else if (!strcmp(argv[i], "--coop-join") && i + 1 < argc) { SDL_strlcpy(g_coop.join, argv[++i], sizeof(g_coop.join)); g_coop.request = COOP_REQ_JOIN; }
@@ -304,6 +308,7 @@ static int SDLCALL game_thread(void* ud)
 {
     char* game_argv[] = { "cdrom0:\\SLUS_201.84;1", NULL };
     (void)ud;
+    crash_thread_init();
     prof_thread(PROF_LOGIC);
     { extern void profile_thread(char); profile_thread('g'); }   /* RECVX_PROFILE */
     exit(recvx_game_main(1, game_argv));
@@ -327,6 +332,15 @@ int main(int argc, char** argv)
     config_load();
     parse_args(argc, argv);   /* command line overrides the saved settings */
     { extern void variants_load(void); variants_load(); }   /* mods/enemies.ini: custom enemies (variants.h) */
+    biorand_scan();   /* mods/biorand: BioRand's pack (biorand.h) */
+    if (SDL_getenv("RECVX_IMPORT")) {   /* headless import (docs/IMPORT_OUTBREAK.md): RECVX_IMPORT=outbreak2, then exit */
+        int src = -1, what = SDL_getenv("RECVX_IMPORT_WHAT") ? atoi(SDL_getenv("RECVX_IMPORT_WHAT")) : IMPORT_PLAYERS;
+        for (int i = 0; i < IMPORT_SOURCES; i++) if (!strcmp(SDL_getenv("RECVX_IMPORT"), import_sources[i].key)) src = i;
+        if (src < 0) host_fatal("RECVX_IMPORT: unknown source '%s' (outbreak2)", SDL_getenv("RECVX_IMPORT"));
+        if (SDL_getenv("RECVX_IMPORT_ISO")) SDL_strlcpy(g_import.iso[src], SDL_getenv("RECVX_IMPORT_ISO"), sizeof(g_import.iso[src]));
+        exit(import_run(src, what) == 0 ? 0 : 1);
+    }
+    update_start();   /* the newest version for the title, on a thread of its own (net/update.h) */
     ps2_memory_init();
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD))

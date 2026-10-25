@@ -54,6 +54,7 @@ struct Frame {
     uint32_t* vx; size_t nvx, cvx;           /* event index of each vertex */
     uint32_t* stq; size_t cstq;              /* per vertex: its ST and RGBAQ events (NOEV: none) */
     uint64_t* spos; size_t nspos, cspos;     /* native strip vertices' screen positions (gpos), once per frame */
+    uint16_t (*box)[4]; size_t cbox;         /* per instance: x0, y0, x1, y1 of its screen positions (x0 > x1: none) */
     int spos_done;
     GsState start;
     uint8_t clut_start[GS_CLUT_STATE_SIZE];
@@ -583,8 +584,10 @@ static uint64_t project(const NativeVertex* nv)
     x = x < 0 ? 0 : x > 0xFFFF ? 0xFFFF : x; y = y < 0 ? 0 : y > 0xFFFF ? 0xFFFF : y;
     return (uint64_t)x | ((uint64_t)y << 16);
 }
+static uint64_t gpos(const Frame* f, const Group* g, uint32_t v);
 /* the native strips' screen positions of an executed frame, projected once (a frame is
-   matched as the newer and then as the older one, each instance against every candidate) */
+   matched as the newer and then as the older one, each instance against every candidate),
+   and each instance's box */
 static void frame_spos(const Frame* cf)
 {
     Frame* f = (Frame*)cf;   /* a cache of the frame's own data */
@@ -602,11 +605,42 @@ static void frame_spos(const Frame* cf)
         nv = native_verts(f, g->v0);
         for (uint32_t v = 0; v < g->nv; v++) f->spos[g->sp + v] = project(&nv[v]);
     }
+    GROW(f->box, 0, f->cbox, f->nin);
+    for (size_t i = 0; i < f->nin; i++) {
+        uint16_t* b = f->box[i];
+        b[0] = b[1] = 0xFFFF; b[2] = b[3] = 0;
+        for (uint32_t k = 0; k < f->in[i].ng; k++) {
+            const Group* g = &f->g[f->in[i].g0 + k];
+            for (uint32_t v = 0; v < g->nv; v++) {
+                uint64_t q = gpos(f, g, v);
+                uint16_t x = (uint16_t)q, y = (uint16_t)(q >> 16);
+                if (q == NO_POS) continue;
+                if (x < b[0]) b[0] = x;
+                if (y < b[1]) b[1] = y;
+                if (x > b[2]) b[2] = x;
+                if (y > b[3]) b[3] = y;
+            }
+        }
+    }
     f->spos_done = 1;
 }
 static uint64_t gpos(const Frame* f, const Group* g, uint32_t v)
 {
     return g->key0 & (NATIVE_KEY | RAW_KEY) ? f->spos[g->sp + v] : vtx(f, g->v0 + v);
+}
+
+/* the least inst_pair can give for instances a (frame p) and b (frame c): each judged vertex pair is
+   at least as far apart (moved) as their boxes, capped as inst_pair caps it */
+static long inst_gap(const Frame* p, size_t a, const Frame* c, size_t b)
+{
+    const uint16_t *x = p->box[a], *y = c->box[b];
+    long d = 0;
+    if (x[0] > x[2] || y[0] > y[2]) return 0;   /* no position: nothing known */
+    if ((long)x[0] - y[2] > d) d = (long)x[0] - y[2];
+    if ((long)y[0] - x[2] > d) d = (long)y[0] - x[2];
+    if ((long)x[1] - y[3] > d) d = (long)x[1] - y[3];
+    if ((long)y[1] - x[3] > d) d = (long)y[1] - x[3];
+    return d < 2 * JUMP ? d : 2 * JUMP;
 }
 
 /* Pair the groups of instance b (frame c) with those of instance a (frame p) by strip and
@@ -850,6 +884,23 @@ int stream_match(const Frame* p, const Frame* c)
             size_t m = (lo + hi) / 2;
             if (p->in[order[m]].mesh < b->mesh) lo = m + 1; else hi = m;
         }
+        if (!MENU_TAG(b->mesh)) {
+            /* the same choice as below (the nearest, the first in order of the nearest), with fewer
+               candidates judged: the one whose box is nearest first, then only those whose boxes could
+               do as well (a crowd of 30 zombies: 3000 judged a frame before, 750 now) */
+            size_t first = (size_t)-1;
+            long gap = 2 * JUMP + 1, d;
+            for (size_t m = lo; m < p->nin && p->in[order[m]].mesh == b->mesh; m++)
+                if (!used[m] && (d = inst_gap(p, order[m], c, i)) < gap) { gap = d; first = m; }
+            if (first != (size_t)-1 && (d = inst_pair(p, &p->in[order[first]], c, b)) >= 0) { best_d = d; best = first; }
+            for (size_t m = lo; m < p->nin && p->in[order[m]].mesh == b->mesh; m++) {
+                if (used[m] || m == first) continue;
+                gap = inst_gap(p, order[m], c, i);
+                if (gap > best_d || (gap == best_d && m > best)) continue;
+                d = inst_pair(p, &p->in[order[m]], c, b);
+                if (d >= 0 && (d < best_d || (d == best_d && m < best))) { best_d = d; best = m; }
+            }
+        } else
         for (size_t m = lo; m < p->nin && p->in[order[m]].mesh == b->mesh && best_d; m++) {
             const Inst* a = &p->in[order[m]];
             long d;

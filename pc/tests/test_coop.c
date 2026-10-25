@@ -40,13 +40,39 @@ static Event ev(int type)
     case EV_OWN: e.u.blob.total = COOP_OWN_SIZE; e.u.blob.off = 1536; e.u.blob.len = 28; e.u.blob.pad = 1; break;
     case EV_GONE: e.u.gn.n = 2; e.u.gn.slot[0] = 3; e.u.gn.id[0] = 1; e.u.gn.slot[1] = 30; e.u.gn.id[1] = 1; break;
     case EV_SKIP: e.stg = 0; e.rom = 2; e.u.sk.op = SKIP_GO; break;
-    case EV_FX: coop_fx_put(&e.idx, &e.u.fx.refs, FXR_IDX, FX_NONE); e.u.fx.id = 350; e.u.fx.owner = 4; e.u.fx.txp = 0; e.u.fx.mlw = -1;
+    case EV_FX: e.idx = 4; e.u.fx.id = 350; e.u.fx.flg = 1; e.u.fx.owner = 4; e.u.fx.txp = 0; e.u.fx.mlw = -1; e.u.fx.stflg = 0x20; e.u.fx.tex_id = 7;   /* a zombie's vomit */
         coop_fx_put(&e.u.fx.exp0, &e.u.fx.refs, FXR_EXP0, FX_NONE); e.u.fx.s[0] = 896; break;
     }
     return e;
 }
 static int host_sends(int t) { return t != EV_UNGRAB && t != EV_GONE && t != EV_OWN; }
 static int guest_sends(int t) { return t != EV_PLY_HIT && t != EV_BLOB && t != EV_GRAB && t != EV_BOXFIX && t != EV_SPAWN && t != EV_EOPTS && t != EV_SKIP; }
+
+/* a generic EV_FX of effect `id` as its FxRule allows it (any rule's for an id without one) */
+static Event fx_sample(int id)
+{
+    const FxRule* s = coop_fx_rule(id) ? coop_fx_rule(id) : coop_fx_rule(5);
+    Event e = ev(EV_FX);
+    memset(&e.u.fx, 0, sizeof(e.u.fx));
+    e.idx = 0;
+    e.u.fx.id = (uint16_t)id;
+    while (s->types && !(s->types >> e.u.fx.type & 1)) e.u.fx.type++;
+    e.u.fx.flr_no = s->flr_min > 0 ? s->flr_min : s->flr_max < 0 ? s->flr_max : 0;
+    e.u.fx.lkono = s->lk_min;
+    e.u.fx.flg = 1 | s->flg | (s->refs & FXF_LINK_REQ ? 0x80 : 0);
+    if (s->refs & (FXF_LINK_REQ | FXF_LKWK)) e.idx = 3;
+    else coop_fx_put(&e.idx, &e.u.fx.refs, FXR_IDX, FX_NONE);
+    e.u.fx.txp = s->refs & FXF_TXP ? 1 : -1;
+    e.u.fx.stflg = s->refs & FXF_TXP ? 0x20 : 0;
+    e.u.fx.tex_id = s->refs & FXF_TXP ? 2 : -1;
+    e.u.fx.mlw = s->refs & FXF_MLW ? 2 : -1;
+    if (s->refs & (FXF_TXP | FXF_MLW)) e.u.fx.owner = 4;
+    else coop_fx_put(&e.u.fx.owner, &e.u.fx.refs, FXR_OWNER, FX_NONE);
+    if (s->refs & FXF_EXP0) e.u.fx.exp0 = 5;
+    else coop_fx_put(&e.u.fx.exp0, &e.u.fx.refs, FXR_EXP0, FX_NONE);
+    e.u.fx.s[0] = e.u.fx.s[1] = e.u.fx.s[2] = 256;
+    return e;
+}
 
 /* a malformed variant of a valid event must be rejected */
 #define BAD(type, from_host, stmt) do { Event e_ = ev(type); Event* e = &e_; stmt; CHECK(coop_check_event(e, from_host) != COOP_OK); } while (0)
@@ -209,6 +235,10 @@ static void test_events(void)
     BAD(EV_EOPTS, 1, e->u.eo.rand = 2);
     BAD(EV_EOPTS, 1, e->u.eo.variety = 2);
     BAD(EV_EOPTS, 1, e->u.eo.events = -1);
+    BAD(EV_EOPTS, 1, e->u.eo.cast = 2);
+    BAD(EV_EOPTS, 1, e->u.eo.cast_all = 2);
+    BAD(EV_EOPTS, 1, e->u.eo.cast_assign = -1);
+    BAD(EV_EOPTS, 1, e->u.eo.cast_imports = 2);
     /* EV_FX: an effect number the game has, references to an enemy slot or FX_*, finite floats; bursts bounded */
     /* EV_GRANT: an item the game has, a floor, a count, a room, a position the save region can hold */
     BAD(EV_GRANT, 0, e->u.gt.item = 0);
@@ -237,8 +267,78 @@ static void test_events(void)
             coop_fx_put(&e.u.fx.exp0, &e.u.fx.refs, FXR_EXP0, r[k]);
             CHECK(coop_fx_get(e.idx, e.u.fx.refs, FXR_IDX) == r[k] && coop_fx_get(e.u.fx.owner, e.u.fx.refs, FXR_OWNER) == r[7 - k] &&
                   coop_fx_get(e.u.fx.exp0, e.u.fx.refs, FXR_EXP0) == r[k]);
+        }
+        e = ev(EV_FX);   /* the vomit's zombie and model owner: any slot, or a player (FX_*) */
+        for (k = 0; k < 7; k++) {
+            e.u.fx.refs = 0;
+            coop_fx_put(&e.idx, &e.u.fx.refs, FXR_IDX, r[k]);
+            coop_fx_put(&e.u.fx.owner, &e.u.fx.refs, FXR_OWNER, r[6 - k]);
+            coop_fx_put(&e.u.fx.exp0, &e.u.fx.refs, FXR_EXP0, FX_NONE);
             CHECK(coop_check_event(&e, 1) == COOP_OK);
         }
+    }
+    {   /* protocol 28: only the effects co-op sends, each field as its creators set it (FxRule) */
+        Event e;
+        int id, n = 0;
+        for (id = 0; id < 400; id++) {   /* each rule's own sample passes; no other effect number does */
+            if (id == FX_PARTICLE || id == FX_BURST) continue;
+            e = fx_sample(id);
+            CHECK((coop_check_event(&e, 1) == COOP_OK) == (coop_fx_rule(id) != NULL));
+            n += coop_fx_rule(id) != NULL;
+        }
+        CHECK(n == 41);
+#define BADFX(id_, stmt) do { Event e_ = fx_sample(id_); Event* e = &e_; CHECK(coop_check_event(e, 1) == COOP_OK); stmt; CHECK(coop_check_event(e, 1) == COOP_BAD_FIELD); } while (0)
+        e = fx_sample(5);   /* the review's crafted entry: effect 195, type 65535, active, mode0 0, scale z 512, nothing referenced, txp = mlw = -1 */
+        e.u.fx.id = 195; e.u.fx.type = 65535; e.u.fx.s[2] = 512;
+        CHECK(coop_check_event(&e, 1) == COOP_BAD_FIELD);
+        BADFX(5, e->u.fx.type = 65535);           /* types: past its tables */
+        BADFX(5, e->u.fx.type = 3);
+        BADFX(256, e->u.fx.type = 7);
+        BADFX(2, e->u.fx.type = 2);               /* (a type its init knows, but not one its creator makes) */
+        BADFX(130, e->u.fx.type = 5);
+        BADFX(11, e->u.fx.type = 5);              /* 11: a mdlver 1 type with mdlver 0 */
+        { Event x = fx_sample(11); x.u.fx.type = 5; x.u.fx.mdlver = 1; CHECK(coop_check_event(&x, 1) == COOP_OK); }
+        BADFX(5, e->u.fx.mode[0] = 1);            /* modes: a fresh entry */
+        BADFX(350, e->u.fx.mode[1] = 3);
+        BADFX(297, e->u.fx.mode[3] = 255);
+        BADFX(5, e->u.fx.mdlver = 4);             /* mdlver: its texture's frames, its tables */
+        BADFX(13, e->u.fx.mdlver = 2);
+        BADFX(23, e->u.fx.flr_no = 2);            /* flr_no: 23's ani_ct */
+        BADFX(23, e->u.fx.flr_no = -1);
+        BADFX(24, e->u.fx.ct[0] = -1);            /* counters: indices, lives, delays */
+        BADFX(24, e->u.fx.ct[0] = 48);
+        BADFX(252, e->u.fx.ct[0] = 121);
+        BADFX(274, e->u.fx.ct[0] = -5);
+        BADFX(354, e->u.fx.ct[1] = 1);
+        BADFX(350, e->u.fx.ct[3] = 65);
+        { Event x = fx_sample(130); x.u.fx.ct[0] = -32768; x.u.fx.ct[3] = 32767; CHECK(coop_check_event(&x, 1) == COOP_OK); }   /* (its init sets them) */
+        BADFX(350, e->u.fx.txp = -1);             /* textures: an effect drawn with its owner's texture has one ... */
+        BADFX(350, e->u.fx.tex_id = -1);
+        BADFX(350, e->u.fx.stflg = 0);
+        BADFX(5, e->u.fx.txp = 0; e->u.fx.owner = 4; e->u.fx.refs &= ~FXR_OWNER);   /* ... the others none */
+        BADFX(5, e->u.fx.tex_id = 0);
+        BADFX(5, e->u.fx.stflg = 0x20);
+        BADFX(364, e->u.fx.mlw = -1);             /* models: 364 is a part of its owner's model, the others their own */
+        BADFX(5, e->u.fx.mlw = 0; e->u.fx.owner = 4; e->u.fx.refs &= ~FXR_OWNER);
+        BADFX(364, e->u.fx.refs |= FXR_OWNER; e->u.fx.owner = FX_NONE - FX_RECEIVER);   /* a model needs its owner */
+        BADFX(2, e->u.fx.flg |= 0x80);            /* links: flg 0x80 only with what it follows ... */
+        BADFX(5, e->u.fx.flg |= 0x80);
+        BADFX(252, e->u.fx.flg &= ~0x80);         /* ... and always for those whose steps read it */
+        BADFX(252, e->u.fx.refs |= FXR_IDX; e->idx = FX_NONE - FX_RECEIVER);
+        BADFX(350, e->u.fx.flg |= 0x80);          /* the vomit's zombie without the flag */
+        BADFX(350, e->u.fx.refs |= FXR_IDX; e->idx = FX_NONE - FX_RECEIVER);
+        BADFX(370, e->u.fx.type = 3);             /* 370's types 3 5 6 7 read their link */
+        { Event x = fx_sample(370); x.u.fx.type = 3; x.u.fx.flg |= 0x80; x.idx = 7; x.u.fx.refs &= ~FXR_IDX; CHECK(coop_check_event(&x, 1) == COOP_OK); }
+        BADFX(5, e->u.fx.flg |= 0x10000);         /* flags: bhCheckWall on an effect, a texture group, ... */
+        BADFX(5, e->u.fx.flg |= 0x800000);
+        BADFX(2, e->u.fx.flg &= ~0x100000u; e->u.fx.flg |= 0x40000);
+        BADFX(5, e->u.fx.flg = 0);
+        BADFX(5, e->u.fx.exp0 = 4; e->u.fx.refs &= ~FXR_EXP0);   /* exp0: only for those that belong to a work */
+        BADFX(355, e->u.fx.refs |= FXR_EXP0; e->u.fx.exp0 = FX_NONE - FX_RECEIVER);
+        BADFX(108, e->u.fx.lkono = 11);           /* 108: its ripple sizes, near the room */
+        BADFX(108, e->u.fx.p[2] = 20000);
+        BADFX(16, e->u.fx.lkono = 0);             /* 16: its delay */
+        BADFX(11, e->u.fx.lkono = 3);
     }
     BAD(EV_FX, 0, e->u.fx.lkono = 64);
     BAD(EV_FX, 0, e->u.fx.txp = 16);
@@ -324,12 +424,12 @@ static void test_snaps(void)
 }
 
 /* ---------------------------------------------------------------- datagrams */
-static int dgram(unsigned char* buf, int nev, int nene, int ext, uint32_t sid, const char* code)
+static int dgram(unsigned char* buf, int nev, int nene, int ext, uint32_t sid)
 {
     Pose p;
     int n = sizeof(Pose), k;
     memset(&p, 0, sizeof(p));
-    p.magic = COOP_MAGIC; p.version = COOP_VERSION; p.type = PKT_POSE; p.sid = sid; p.auth = coop_auth(code, sid);
+    p.magic = COOP_MAGIC; p.version = COOP_VERSION; p.type = PKT_POSE; p.sid = sid;
     p.nev = nev; p.nene = nene; p.flags = ext ? PF_EXT : 0; p.mset = MSET_OWN;
     memcpy(buf, &p, sizeof(p));
     for (k = 0; k < nev; k++) { Event e = ev(EV_FLAGS); e.id = k + 1; memcpy(buf + n, &e, sizeof(e)); n += sizeof(e); }
@@ -343,20 +443,19 @@ static void test_dgrams(void)
     static unsigned char b[4096];
     int n, nev, nene, ext;
     Pose p;
-    n = dgram(b, 3, 4, 1, 77, CODE);
+    n = dgram(b, 3, 4, 1, 77);
     CHECK(n <= COOP_DGRAM_MAX);
-    CHECK(coop_check_all(b, n, CODE, 1, &nev, &nene, &ext) == COOP_OK && nev == 3 && nene == 4 && ext == 1);
-    CHECK(coop_check_all(b, n, "ABCD2346", 1, &nev, &nene, &ext) == COOP_BAD_AUTH);   /* B12: wrong join code */
-    CHECK(coop_check_all(b, n, "", 1, &nev, &nene, &ext) == COOP_BAD_AUTH);
-    CHECK(coop_check_all(b, n - 1, CODE, 1, &nev, &nene, &ext) == COOP_BAD_SIZE);
-    CHECK(coop_check_all(b, n + 1, CODE, 1, &nev, &nene, &ext) == COOP_BAD_SIZE);
-    CHECK(coop_check_all(b, 10, CODE, 1, &nev, &nene, &ext) == COOP_BAD_SIZE);
+    CHECK(coop_check_all(b, n, 1, &nev, &nene, &ext) == COOP_OK && nev == 3 && nene == 4 && ext == 1);
+    CHECK(coop_check_all(b, n - 1, 1, &nev, &nene, &ext) == COOP_BAD_SIZE);
+    CHECK(coop_check_all(b, n + 1, 1, &nev, &nene, &ext) == COOP_BAD_SIZE);
+    CHECK(coop_check_all(b, 10, 1, &nev, &nene, &ext) == COOP_BAD_SIZE);
     memcpy(&p, b, sizeof(p));
-#define BADP(stmt, want) do { Pose q = p; stmt; memcpy(b, &q, sizeof(q)); CHECK(coop_check_all(b, n, CODE, 1, &nev, &nene, &ext) == want); memcpy(b, &p, sizeof(p)); } while (0)
+#define BADP(stmt, want) do { Pose q = p; stmt; memcpy(b, &q, sizeof(q)); CHECK(coop_check_all(b, n, 1, &nev, &nene, &ext) == want); memcpy(b, &p, sizeof(p)); } while (0)
     BADP(q.magic = 1, COOP_BAD_HDR);
     BADP(q.version = 10, COOP_BAD_VERSION);
     BADP(q.type = 9, COOP_BAD_TYPE);
-    BADP(q.sid = 78, COOP_BAD_AUTH);              /* the proof belongs to its session */
+    BADP(q.rsv = 1, COOP_BAD_FIELD);              /* protocol 28: no proof here (the seal is the proof), zero */
+    BADP(q.sid = 78, COOP_OK);
     BADP(q.nev = 17, COOP_BAD_COUNT);             /* oversized counts */
     BADP(q.nene = COOP_SNAP_FRAME + 1, COOP_BAD_COUNT);
     BADP(q.nev = 255, COOP_BAD_COUNT);
@@ -395,41 +494,53 @@ static void test_dgrams(void)
         memset(&x, 0, sizeof(x));
         x.items = ITEMS_CURRENT; x.rec = REC_OFF;
         memcpy(b + n - sizeof(x), &x, sizeof(x));
-        CHECK(coop_check_all(b, n, CODE, 1, &nev, &nene, &ext) == COOP_OK);
+        CHECK(coop_check_all(b, n, 1, &nev, &nene, &ext) == COOP_OK);
         x.items = ITEMS_CURRENT + 1;
         memcpy(b + n - sizeof(x), &x, sizeof(x));
-        CHECK(coop_check_all(b, n, CODE, 1, &nev, &nene, &ext) == COOP_BAD_FIELD);
+        CHECK(coop_check_all(b, n, 1, &nev, &nene, &ext) == COOP_BAD_FIELD);
         x.items = 0; x.rec = REC_OFF + 1;
         memcpy(b + n - sizeof(x), &x, sizeof(x));
-        CHECK(coop_check_all(b, n, CODE, 1, &nev, &nene, &ext) == COOP_BAD_FIELD);
+        CHECK(coop_check_all(b, n, 1, &nev, &nene, &ext) == COOP_BAD_FIELD);
+        x.rec = 0; x.br = 1; x.br_seed = 123456; x.br_id = 0x1234;   /* protocol 27: BioRand */
+        memcpy(b + n - sizeof(x), &x, sizeof(x));
+        CHECK(coop_check_all(b, n, 1, &nev, &nene, &ext) == COOP_OK);
+        x.br = 2;
+        memcpy(b + n - sizeof(x), &x, sizeof(x));
+        CHECK(coop_check_all(b, n, 1, &nev, &nene, &ext) == COOP_BAD_FIELD);
+        x.br = 1; x.br_pad[1] = 1;
+        memcpy(b + n - sizeof(x), &x, sizeof(x));
+        CHECK(coop_check_all(b, n, 1, &nev, &nene, &ext) == COOP_BAD_FIELD);
         memset(b + n - sizeof(x), 0, sizeof(x));
     }
     {   /* one bad event spoils the datagram */
         Event e = ev(EV_ENE_HIT);
         e.u.eh.jnt[0] = 100;
         memcpy(b + sizeof(Pose) + sizeof(Event), &e, sizeof(e));
-        CHECK(coop_check_all(b, n, CODE, 0, &nev, &nene, &ext) == COOP_BAD_FIELD);
-        n = dgram(b, 3, 4, 1, 77, CODE);
+        CHECK(coop_check_all(b, n, 0, &nev, &nene, &ext) == COOP_BAD_FIELD);
+        n = dgram(b, 3, 4, 1, 77);
     }
     {   /* one bad snapshot too */
         EneSnap s;
         memcpy(&s, b + sizeof(Pose) + 3 * sizeof(Event), sizeof(s));
         s.mdl = 40;
         memcpy(b + sizeof(Pose) + 3 * sizeof(Event), &s, sizeof(s));
-        CHECK(coop_check_all(b, n, CODE, 1, &nev, &nene, &ext) == COOP_BAD_FIELD);
+        CHECK(coop_check_all(b, n, 1, &nev, &nene, &ext) == COOP_BAD_FIELD);
     }
-    {   /* a goodbye and a rejection are bare poses; a rejection carries no proof */
+    {   /* a goodbye and a rejection are bare poses; the handshake's types never get here */
         Pose q = p;
         q.type = PKT_BYE; q.nev = q.nene = 0; q.flags = 0;
         memcpy(b, &q, sizeof(q));
-        CHECK(coop_check_all(b, sizeof(Pose), CODE, 1, &nev, &nene, &ext) == COOP_OK);
-        CHECK(coop_check_all(b, sizeof(Pose) + 1, CODE, 1, &nev, &nene, &ext) == COOP_BAD_SIZE);
-        q.type = PKT_REJECT; q.auth = 0;
+        CHECK(coop_check_all(b, sizeof(Pose), 1, &nev, &nene, &ext) == COOP_OK);
+        CHECK(coop_check_all(b, sizeof(Pose) + 1, 1, &nev, &nene, &ext) == COOP_BAD_SIZE);
+        q.type = PKT_REJECT;
         memcpy(b, &q, sizeof(q));
-        CHECK(coop_check_all(b, sizeof(Pose), CODE, 1, &nev, &nene, &ext) == COOP_OK);
-        q.type = PKT_BYE;
+        CHECK(coop_check_all(b, sizeof(Pose), 1, &nev, &nene, &ext) == COOP_OK);
+        q.type = PKT_HELLO;
         memcpy(b, &q, sizeof(q));
-        CHECK(coop_check_all(b, sizeof(Pose), CODE, 1, &nev, &nene, &ext) == COOP_BAD_AUTH);
+        CHECK(coop_check_all(b, sizeof(Pose), 1, &nev, &nene, &ext) == COOP_BAD_TYPE);
+        q.type = PKT_HELLO_ACK;
+        memcpy(b, &q, sizeof(q));
+        CHECK(coop_check_all(b, sizeof(Pose), 1, &nev, &nene, &ext) == COOP_BAD_TYPE);
     }
     /* B10: the largest frame part still fits a datagram */
     CHECK(sizeof(Pose) + sizeof(PoseExt) + sizeof(Event) <= COOP_DGRAM_MAX && sizeof(Pose) + sizeof(EneSnap) <= COOP_DGRAM_MAX);
@@ -514,7 +625,179 @@ static void test_code(void)
         strcpy(host, code);
     }
     CHECK(rdv_code_norm("abcd-2345", code) && !strcmp(code, "ABCD2345") && !rdv_code_norm("ABCD234O", code) && !rdv_code_norm("ABCD23456", code));
-    CHECK(coop_auth(CODE, 5) != coop_auth("ABCD2346", 5) && coop_auth(CODE, 5) != coop_auth(CODE, 6) && coop_auth(CODE, 5) == coop_auth(CODE, 5));
+}
+
+/* ---------------------------------------------------------------- direct sessions (protocol 28) */
+#define HIP 0x0100007Fu                 /* 127.0.0.1, network order */
+#define JIP 0x0200000Au                 /* 10.0.0.2 */
+static uint16_t jport = 7000;           /* the joiner's port in shake, send_j */
+static uint8_t wire[2048];
+/* the joiner j (at ip:7000) shakes hands with the host h: 1 when j has keys */
+static int shake(CoopDirect* h, CoopDirect* j, uint32_t ip, uint32_t now)
+{
+    CoopHello m, r;
+    int rn, k;
+    if (!coop_direct_hello(j, HIP, 7140, &m)) return 0;
+    memcpy(wire, &m, sizeof(m));
+    k = coop_direct_in(h, ip, jport, now, wire, sizeof(m), sizeof(wire), &r, &rn);
+    if (k || rn != (int)sizeof(r) || r.type != PKT_HELLO_ACK) return 0;
+    memcpy(wire, &r, sizeof(r));
+    CHECK(coop_direct_in(j, HIP, 7140, now, wire, sizeof(r), sizeof(wire), &m, &rn) == 0 && rn == 0);
+    return coop_direct_ready(j, HIP, 7140);
+}
+/* j sends a pose; what h makes of it (the plain length, 0, COOP_DIN_WRONG) */
+static int send_j(CoopDirect* h, CoopDirect* j, uint32_t ip, uint32_t now, uint32_t sid)
+{
+    unsigned char pose[512];
+    CoopHello r;
+    int n = dgram(pose, 1, 0, 0, sid), k, rn;
+    k = coop_direct_seal(j, HIP, 7140, pose, n, wire, sizeof(wire));
+    if (!k) return -100;
+    CHECK(k == n + COOP_DIRECT_OVER);
+    k = coop_direct_in(h, ip, jport, now, wire, k, sizeof(wire), &r, &rn);
+    if (k > 0) CHECK(k == n && !memcmp(wire, pose, n));   /* what was sealed, nothing else */
+    return k;
+}
+static void test_direct(void)
+{
+    static CoopDirect h, j, x;
+    static unsigned char sealed[2048];
+    CoopHello m, r;
+    unsigned char pose[512];
+    int k, rn, n, i;
+    uint32_t t = 1000, w;
+    coop_direct_init(&h, 1, CODE);
+    coop_direct_init(&j, 0, CODE);
+    CHECK(!coop_direct_ready(&j, HIP, 7140) && !coop_direct_seal(&j, HIP, 7140, "x", 1, wire, sizeof(wire)));   /* no keys: nothing goes */
+    CHECK(shake(&h, &j, JIP, t));
+    CHECK(!coop_direct_ready(&h, JIP, 7000));     /* the host sends only once the joiner proved the code */
+    CHECK(send_j(&h, &j, JIP, t, 5) > 0);         /* it did: its datagram opened */
+    CHECK(coop_direct_ready(&h, JIP, 7000));
+    {   /* and back: the joiner opens the host's */
+        n = dgram(pose, 2, 1, 1, 9);
+        k = coop_direct_seal(&h, JIP, 7000, pose, n, wire, sizeof(wire));
+        CHECK(k == n + COOP_DIRECT_OVER && k <= COOP_DGRAM_MAX + COOP_DIRECT_OVER);
+        CHECK(coop_direct_in(&j, HIP, 7140, t, wire, k, sizeof(wire), &r, &rn) == n && !memcmp(wire, pose, n));
+        k = coop_direct_seal(&h, JIP, 7000, pose, n, wire, sizeof(wire));
+        CHECK(coop_direct_in(&j, HIP, 7141, t, wire, k, sizeof(wire), &r, &rn) == 0);   /* from another address: not the host's */
+        memcpy(sealed, wire, k);
+        CHECK(coop_direct_in(&j, HIP, 7140, t, wire, k, sizeof(wire), &r, &rn) == n);
+        memcpy(wire, sealed, k);
+        CHECK(coop_direct_in(&j, HIP, 7140, t, wire, k, sizeof(wire), &r, &rn) == 0);   /* a replay */
+        k = coop_direct_seal(&h, JIP, 7000, pose, n, wire, sizeof(wire));
+        wire[40] ^= 1;
+        CHECK(coop_direct_in(&j, HIP, 7140, t, wire, k, sizeof(wire), &r, &rn) == 0);   /* altered */
+        k = coop_direct_seal(&j, HIP, 7140, pose, n, wire, sizeof(wire));
+        CHECK(coop_direct_in(&j, HIP, 7140, t, wire, k, sizeof(wire), &r, &rn) == 0);   /* our own, reflected: other direction, other key */
+    }
+    /* every character of the code counts: a joiner with one character off gets a session whose datagrams do not open */
+    for (i = 0; i < COOP_CODE_LEN; i++) {
+        char c[COOP_CODE_LEN + 1];
+        strcpy(c, CODE);
+        c[i] = c[i] == 'Z' ? 'Y' : 'Z';
+        coop_direct_init(&x, 0, c);
+        CHECK(shake(&h, &x, JIP + (uint32_t)(i + 1) * 0x1000000u, t));   /* the handshake itself shows nothing */
+        CHECK(send_j(&h, &x, JIP + (uint32_t)(i + 1) * 0x1000000u, t, 7) == COOP_DIN_WRONG);
+        t += 1000;
+    }
+    {   /* a wrong code from one address: it waits, longer each time, up to a minute; no answer meanwhile */
+        uint32_t bad = 0x0300000Au, last = 0;
+        for (i = 0; i < 12; i++) {
+            coop_direct_init(&x, 0, "ZZZZ2345");
+            CHECK(shake(&h, &x, bad, t));
+            CHECK(send_j(&h, &x, bad, t, 7) == COOP_DIN_WRONG);
+            w = (uint32_t)coop_guard_wait(&h.guard, bad, t);
+            CHECK(w >= COOP_GUARD_MIN && w <= COOP_GUARD_MAX && w >= last);
+            last = w;
+            CHECK(!shake(&h, &x, bad, t + w - 1));   /* still waiting: the HELLO goes unanswered */
+            t += w;
+        }
+        CHECK(last == COOP_GUARD_MAX);
+        CHECK(send_j(&h, &x, bad, t, 7) == 0);   /* the guess was spent with its handshake: nothing to try it on */
+        CHECK(shake(&h, &j, JIP, t));            /* meanwhile the right joiner (its own address) is answered at once */
+        CHECK(send_j(&h, &j, JIP, t, 6) > 0);
+        t += COOP_GUARD_FORGET + 1;
+        coop_direct_init(&x, 0, "ZZZZ2345");
+        CHECK(shake(&h, &x, bad, t) && send_j(&h, &x, bad, t, 7) == COOP_DIN_WRONG);
+        CHECK(coop_guard_wait(&h.guard, bad, t) == COOP_GUARD_MIN);   /* forgotten after 10 minutes: a fresh start */
+    }
+    {   /* one open guess per address: handshakes from more ports of it replace each other */
+        static CoopDirect y;
+        uint32_t ip = 0x0400000Au;
+        coop_direct_init(&x, 0, "ZZZZ2345");
+        coop_direct_init(&y, 0, "ZZZZ2346");
+        CHECK(shake(&h, &x, ip, t));
+        jport = 7001;
+        CHECK(shake(&h, &y, ip, t));
+        jport = 7000;
+        CHECK(send_j(&h, &x, ip, t, 7) == 0);   /* its handshake is gone */
+        jport = 7001;
+        CHECK(send_j(&h, &y, ip, t, 7) == COOP_DIN_WRONG);
+        jport = 7000;
+        t += COOP_GUARD_MAX;
+    }
+    {   /* the guard table is bounded: more failing addresses than it has push out the oldest */
+        CoopGuard g;
+        memset(&g, 0, sizeof(g));
+        for (i = 0; i < COOP_GUARD_N * 3; i++) coop_guard_fail(&g, 1000 + i, 5000 + i);
+        CHECK(coop_guard_wait(&g, 1000, 5000 + i) == 0 && coop_guard_wait(&g, 1000 + i - 1, 5000 + i) > 0);
+    }
+    {   /* a lost answer: the repeated HELLO gets the same answer (no new keys), a stranger's HELLO flood only COOP_HS_RATE a second */
+        CoopHello r2;
+        coop_direct_init(&j, 0, CODE);
+        CHECK(coop_direct_hello(&j, HIP, 7140, &m));
+        memcpy(wire, &m, sizeof(m));
+        CHECK(coop_direct_in(&h, JIP, 7000, t, wire, sizeof(m), sizeof(wire), &r, &rn) == 0 && rn == sizeof(r));
+        memcpy(wire, &m, sizeof(m));
+        CHECK(coop_direct_in(&h, JIP, 7000, t, wire, sizeof(m), sizeof(wire), &r2, &rn) == 0 && rn == sizeof(r2) && !memcmp(&r, &r2, sizeof(r)));
+        t += 2000;
+        for (i = k = 0; i < 100; i++) {
+            coop_direct_init(&x, 0, CODE);
+            CHECK(coop_direct_hello(&x, HIP, 7140, &m));
+            memcpy(wire, &m, sizeof(m));
+            coop_direct_in(&h, 0x0A000000u + i, 7000, t, wire, sizeof(m), sizeof(wire), &r, &rn);
+            k += rn > 0;
+        }
+        CHECK(k == COOP_HS_RATE);
+        memcpy(wire, &r2, sizeof(r2));   /* the first answer reaches the joiner late: its keys still open at the host */
+        CHECK(coop_direct_in(&j, HIP, 7140, t, wire, sizeof(r2), sizeof(wire), &m, &rn) == 0 && coop_direct_ready(&j, HIP, 7140));
+        CHECK(send_j(&h, &j, JIP, t, 8) > 0);   /* (the flood pushed out unproven handshakes only) */
+        t += 1000;
+        coop_direct_init(&x, 0, CODE);
+        CHECK(shake(&h, &x, 0x0B000000u, t));   /* a second later the budget is back */
+    }
+    {   /* malformed handshakes: no answer */
+        CoopHello z;
+        CHECK(coop_direct_hello(&x, HIP, 7140, &m));
+        z = m; z.zero[5] = 1; memcpy(wire, &z, sizeof(z));
+        CHECK(coop_direct_in(&h, 0x0C000000u, 7000, t, wire, sizeof(z), sizeof(wire), &r, &rn) == 0 && rn == 0);
+        memcpy(wire, &m, sizeof(m));
+        CHECK(coop_direct_in(&h, 0x0C000000u, 7000, t, wire, sizeof(m) - 1, sizeof(wire), &r, &rn) == 0 && rn == 0);
+        z = m; memset(z.key, 0, 32); memcpy(wire, &z, sizeof(z));   /* a low-order value: no secret in it */
+        CHECK(coop_direct_in(&h, 0x0C000001u, 7000, t, wire, sizeof(z), sizeof(wire), &r, &rn) == 0 && rn == 0);
+        memcpy(wire, &m, sizeof(m));
+        CHECK(coop_direct_in(&j, 0x0C000000u, 7000, t, wire, sizeof(m), sizeof(wire), &r, &rn) == 0 && rn == 0);   /* a joiner answers no HELLO */
+        z = m; z.version = COOP_VERSION - 1; memcpy(wire, &z, sizeof(z));
+        CHECK(coop_direct_in(&h, 0x0C000000u, 7000, t, wire, sizeof(z), sizeof(wire), &r, &rn) == COOP_DIN_RAW);   /* another build: reported */
+        n = dgram(wire, 0, 0, 0, 1);
+        CHECK(coop_direct_in(&h, 0x0C000000u, 7000, t, wire, n, sizeof(wire), &r, &rn) == 0);   /* a plain pose of this protocol: dropped */
+        ((Pose*)wire)->type = PKT_REJECT;
+        CHECK(coop_direct_in(&j, HIP, 7140, t, wire, n, sizeof(wire), &r, &rn) == COOP_DIN_RAW);   /* a rejection: plain text */
+        memset(wire, 0x45, 300);
+        CHECK(coop_direct_in(&h, JIP, 7000, t, wire, 300, sizeof(wire), &r, &rn) == 0);   /* garbage */
+        CHECK(sizeof(CoopHello) == sizeof(Pose));
+    }
+    /* the table of handshakes is bounded and a proven session stays while handshakes flood in */
+    for (i = 0; i < COOP_HS_N * 4; i++) {
+        coop_direct_init(&x, 0, CODE);
+        t += 1000 / COOP_HS_RATE + 1;
+        CHECK(shake(&h, &x, 0x0D000000u + i, t));
+    }
+    CHECK(send_j(&h, &j, JIP, t, 8) > 0);
+    coop_direct_forget(&h, JIP, 7000);
+    CHECK(!coop_direct_ready(&h, JIP, 7000) && send_j(&h, &j, JIP, t, 8) == 0);   /* removed: its keys are gone */
+    coop_direct_wipe(&h);
+    coop_direct_wipe(&j);
 }
 
 /* ---------------------------------------------------------------- EV_ATR: what of a partner's record is taken */
@@ -627,15 +910,15 @@ static void fuzz(int iters)
         if (i % 3 == 0) {   /* random bytes after a valid header */
             n = sizeof(Pose) + rnd() % (COOP_DGRAM_MAX - sizeof(Pose));
             for (k = 0; k < n; k++) b[k] = rnd();
-            if (i % 2) { Pose p; memcpy(&p, b, sizeof(p)); p.magic = COOP_MAGIC; p.version = COOP_VERSION; p.type = PKT_POSE; p.auth = coop_auth(CODE, p.sid); memcpy(b, &p, sizeof(p)); }
+            if (i % 2) { Pose p; memcpy(&p, b, sizeof(p)); p.magic = COOP_MAGIC; p.version = COOP_VERSION; p.type = PKT_POSE; p.rsv = 0; memcpy(b, &p, sizeof(p)); }
         } else {            /* a valid datagram, a few bytes or fields changed */
             int ne = rnd() % 9, ns = rnd() % 4;
-            n = dgram(b, ne, ns, rnd() & 1, rnd(), CODE);
+            n = dgram(b, ne, ns, rnd() & 1, rnd());
             for (k = 0; k < ne; k++) { Event e = ev(1 + rnd() % (EV_TYPES - 1)); memcpy(b + sizeof(Pose) + k * sizeof(Event), &e, sizeof(e)); }
             for (k = rnd() % 6; k > 0 && n > (int)sizeof(Pose); k--) b[sizeof(Pose) + rnd() % (n - sizeof(Pose))] = rnd();
             if (rnd() % 8 == 0) n += (int)(rnd() % 5) - 2;
         }
-        r = coop_check_all(b, n, CODE, rnd() & 1, &nev, &nene, &ext);
+        r = coop_check_all(b, n, rnd() & 1, &nev, &nene, &ext);
         if (r == COOP_OK) {
             accepted++;
             for (k = 0; k < nev; k++) {
@@ -734,6 +1017,7 @@ int main(int argc, char** argv)
     test_xfer();
     test_ring();
     test_code();
+    test_direct();
     test_atr();
     test_trig();
     fuzz(iters);

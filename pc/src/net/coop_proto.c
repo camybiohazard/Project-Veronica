@@ -1,17 +1,19 @@
 /* Co-op wire checks, join code, transfers and room script tables (coop_proto.h). Pure functions:
    no game state, so pc/tests/test_coop.c runs them against malformed input. */
 #include "coop_proto.h"
+#include "monocypher.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 _Static_assert(sizeof(Pose) == 112, "wire: Pose");
-_Static_assert(sizeof(PoseExt) == 92, "wire: PoseExt");
+_Static_assert(sizeof(PoseExt) == 108, "wire: PoseExt");
 _Static_assert(sizeof(Event) == 88, "wire: Event");
 _Static_assert(sizeof(EneSnap) == 100, "wire: EneSnap");
 _Static_assert(sizeof(AtrRec) == 36, "wire: AtrRec (ATR_WORK)");
-_Static_assert(COOP_CODE_LEN == RDV_CODE_LEN, "join codes are made and read as room codes (rdv_code_from, rdv_code_norm)");
+_Static_assert(sizeof(CoopHello) == sizeof(Pose), "wire: CoopHello (a build before protocol 28 must see a datagram of a Pose's size to report the version)");
+_Static_assert(COOP_CODE_LEN == RDV_CODE_LEN,"join codes are made and read as room codes (rdv_code_from, rdv_code_norm)");
 
 static int fin(float f) { return isfinite(f) && fabsf(f) < 1e7f; }
 static int fins(const float* f, int n) { while (n--) if (!fin(*f++)) return 0; return 1; }
@@ -30,7 +32,7 @@ int coop_check_pose(const Pose* p)
     return COOP_OK;
 }
 
-int coop_check_dgram(const void* buf, int n, const char* code, int* nev, int* nene, int* ext)
+int coop_check_dgram(const void* buf, int n, int* nev, int* nene, int* ext)
 {
     Pose p;
     int x;
@@ -39,7 +41,7 @@ int coop_check_dgram(const void* buf, int n, const char* code, int* nev, int* ne
     if (p.magic != COOP_MAGIC) return COOP_BAD_HDR;
     if (p.version != COOP_VERSION) return COOP_BAD_VERSION;
     if (p.type < PKT_POSE || p.type > PKT_REJECT) return COOP_BAD_TYPE;
-    if (code && p.type != PKT_REJECT && p.auth != coop_auth(code, p.sid)) return COOP_BAD_AUTH;
+    if (p.rsv) return COOP_BAD_FIELD;
     if (p.type != PKT_POSE) { *nev = *nene = *ext = 0; return n == (int)sizeof(Pose) ? COOP_OK : COOP_BAD_SIZE; }
     if (p.nev > COOP_EV_FRAME || p.nene > COOP_SNAP_FRAME) return COOP_BAD_COUNT;
     x = (p.flags & PF_EXT) != 0;
@@ -47,7 +49,7 @@ int coop_check_dgram(const void* buf, int n, const char* code, int* nev, int* ne
     if (x) {   /* the extension's enumerations */
         PoseExt e;
         memcpy(&e, (const unsigned char*)buf + n - sizeof(e), sizeof(e));
-        if (e.items > ITEMS_CURRENT || e.rec > REC_OFF) return COOP_BAD_FIELD;
+        if (e.items > ITEMS_CURRENT || e.rec > REC_OFF || e.br > 1 || e.br_pad[0] || e.br_pad[1] || e.br_pad[2]) return COOP_BAD_FIELD;
     }
     *nev = p.nev; *nene = p.nene; *ext = x;
     return coop_check_pose(&p);
@@ -70,6 +72,104 @@ static int xfer_fields_ok(const Event* e)
 }
 
 static int fx_ref(int r) { return r < COOP_ENE_SLOTS || (r >= FX_RECEIVER && r <= FX_NONE); }   /* an enemy slot or FX_* */
+
+/* The effects (decomp effect.c bhJumpEffect*: effsub*.c, en*.c) whose creators run in a sender window, from
+   their creators and steps (a survey of every creation site; ids seen in play: 5 11 250 253 254 256 257 267
+   274 275 297 305 353 354 356 364 370 397). Left out on purpose: effects made only by another effect's
+   step or a room/event table (not in a window), an enemy's Init step (the window opens after it: 258 261
+   262 270), and those that cannot go as fields: OR_WORK effects whose state overlays the fields (307
+   309..312 349), raw pointers in their counters (304), exp0 an extra eff[] slot or a drawing function the
+   creator sets (300 365 366), gunfire the receiver makes itself (3 9 14 132 229), 301/302 and 308 (they
+   go as their call), 17 and 29 (lkwkp a barrel or a room record). */
+#define A FXC_ANY
+#define ANYF -128, 127
+static const FxRule fx_rules[] = {
+    /*  id  type_max types                                      flg        refs                        mdlver   flr      lkono   ct0..ct3 */
+    {   2,  10, 1u << 3,                                     0x100000, 0,                          FXV_ANY,  0, 0,   0,  0, { 0, 0, 0, 0 } },  /* en25 */
+    {   5,   2, 0,                                           0,        FXF_LINK,                   3,       ANYF,    0, 63, { A, 0, 0, 0 } },  /* blood: mdlver its colour, ani_ct of texture 5 (4) */
+    {  10,   1, 1u << 1,                                     0x100000, 0,                          FXV_ANY, ANYF,    0,  0, { A, 0, 0, 0 } },  /* gun splash */
+    {  11,  11, 1u << 0 | 1u << 1 | 1u << 2 | 1u << 5 | 1u << 10 | 1u << 11, 0, 0,                1,        0, 1,   0,  2, { A, 0, 0, 0 } },  /* splashes (types by mdlver: coop_check_event) */
+    {  13,   0, 0,                                           0x40000,  0,                          1,        0, 0,   0,  0, { 0, A, A, 100 } },/* bow gun bolt: mdlver its model (objP) */
+    {  15,   2, 1u << 2,                                     0,        0,                          FXV_ANY,  0, 6,   0,  0, { A, 0, 0, 0 } },  /* water hit: flr_no its delay */
+    {  16,   0, 0,                                           0,        0,                          FXV_ANY,  0, 0,  16, 16, { 0, 0, 0, 0 } },  /* blast: lkono its delay */
+    {  23,   2, 0,                                           0,        0,                          FXV_ANY,  0, 1,   0,  0, { A, 0, 0, 0 } },  /* explosion: flr_no its ani_ct (texture 9: 2) */
+    {  24,   0, 0,                                           0,        0,                          FXV_ANY,  0, 1,   0,  0, { 0, 0, 0, 0 } },  /* debris: ct0 indexes its extra work */
+    { 108, 0xFFFF, 0,                                        0,        0,                          FXV_ANY, ANYF,   10, 20, { 0, 0, 0, 0 } },  /* water ripple: lkono 10 12 13 15 20 (coop_check_event) */
+    { 130,   6, 1u << 0 | 1u << 1 | 1u << 2 | 1u << 3 | 1u << 4 | 1u << 6, 0x4100000, 0,         FXV_ANY,  0, 0,   0,  0, { A, A, A, A } },  /* grenade / rocket: type + 14 a weapon */
+    { 250, 0xFFFF, 0,                                        0,        FXF_TXP,                    3,       ANYF,    0, 63, { A, A, A, A } },  /* mince: mdlver its colour */
+    { 252, 0xFFFF, 0,                                        0,        FXF_LINK_REQ,               FXV_ANY, ANYF,    0, 63, { 120, A, A, A } },/* fire: ct0 its length */
+    { 253,   2, 0,                                           0,        0,                          1,       ANYF,    0, 63, { A, A, A, A } },  /* sand dust: uvtble[type + 3 * mdlver] */
+    { 254,   2, 0,                                           0,        0,                          FXV_ANY, ANYF,    0, 63, { A, A, A, A } },  /* sand particles: col[type] */
+    { 256,   6, 0,                                           0,        FXF_TXP,                    FXV_ANY, ANYF,    0, 63, { A, A, A, A } },  /* acid: param[type] */
+    { 257, 0xFFFF, 0,                                        0,        0,                          FXV_ANY, ANYF,    0, 63, { A, 0, A, A } },  /* acid drop: ct1 a UV index its init keeps */
+    { 259,   1, 0,                                           0,        FXF_TXP,                    FXV_ANY, ANYF,    0, 63, { A, A, A, A } },  /* blood */
+    { 260, 0xFFFF, 0,                                        0,        FXF_TXP,                    FXV_ANY, ANYF,    0, 63, { A, A, A, A } },  /* moth powder (en06's texture 1: apply_fx) */
+    { 267,   3, 0,                                           0,        0,                          FXV_ANY, ANYF,    0, 63, { A, A, A, A } },  /* fluid */
+    { 274, 0xFFFF, 0,                                        0,        FXF_LINK_REQ,               FXV_ANY, ANYF,    0, 63, { 300, 8, A, A } },/* fire: ct0 its life, ct1 its delay */
+    { 275, 0xFFFF, 0,                                        0,        0,                          FXV_ANY, ANYF,    0, 63, { A, A, A, A } },  /* fire */
+    { 297,   6, 0,                                           0,        FXF_LINK_REQ,               3,       ANYF,    0, 63, { A, A, A, A } },  /* blood burst: TypeList[type], BloodCol[mdlver] */
+    { 298,  40, 0,                                           0,        FXF_LINK,                   FXV_ANY, ANYF,    0, 63, { A, A, A, A } },  /* acid generator: type its count */
+    { 303,   7, 0,                                           0,        0,                          3,       ANYF,    0, 63, { A, A, A, A } },  /* PrmTbl[type], ani_ct mdlver */
+    { 305,   3, 0,                                           0,        FXF_LINK,                   FXV_ANY, ANYF,    0, 63, { A, A, A, A } },  /* Eff305Prm[type] */
+    { 306,   7, 0,                                           0,        FXF_LINK_REQ,               FXV_ANY, ANYF,    0, 63, { A, A, A, A } },
+    { 350, 0xFFFF, 0,                                        0,        FXF_LKWK | FXF_TXP,         FXV_ANY, ANYF,    0, 63, { A, A, 150, 64 } },/* vomit: its zombie (sounds), ct3 a delay */
+    { 352, 0xFFFF, 0,                                        0,        FXF_LINK_REQ,               FXV_ANY, ANYF,    0, 63, { A, A, A, A } },
+    { 353,   0, 0,                                           0,        FXF_LINK_REQ | FXF_TXP,     FXV_ANY, ANYF,    0, 63, { A, 0, A, 64 } },
+    { 354,   3, 0,                                           0,        FXF_LINK | FXF_TXP,         FXV_ANY, ANYF,    0, 63, { A, 0, A, 64 } },  /* anim_tbl[type]; ct1 not reset */
+    { 355,   0, 0,                                           0,        FXF_EXP0,                   FXV_ANY, ANYF,    0, 63, { A, A, A, 64 } },
+    { 356, 0xFFFF, 0,                                        0,        FXF_LKWK,                   FXV_ANY, ANYF,    0, 63, { A, A, A, A } },  /* head burst: an en01 (apply_fx) */
+    { 362,   4, 0,                                           0,        FXF_TXP,                    FXV_ANY, ANYF,    0, 63, { A, A, A, A } },
+    { 363, 0xFFFF, 0,                                        0,        FXF_TXP,                    FXV_ANY, ANYF,    0, 63, { A, A, 150, 64 } },
+    { 364,   1, 0,                                           0,        FXF_TXP | FXF_MLW,          FXV_ANY,  0, 1,   0, 63, { A, A, A, A } },  /* a part of the owner's model: mdlver < its objects */
+    { 369,   1, 0,                                           0,        FXF_TXP,                    FXV_ANY, ANYF,    0, 63, { A, A, A, 64 } },
+    { 370,  10, 0,                                           0,        FXF_LINK | FXF_TXP,         FXV_ANY, ANYF,    0, 63, { 16, 16, A, A } },/* blood emitter: eff370_tbl[type]; types 3 5 6 7 follow (coop_check_event) */
+    { 396,   0, 0,                                           0,        FXF_TXP,                    FXV_ANY, ANYF,    0, 63, { A, A, A, A } },
+    { 397,   4, 0,                                           0,        FXF_LINK | FXF_TXP | FXF_EXP0, FXV_ANY, ANYF, 0, 63, { A, A, A, A } },  /* poison: eff_info[type], exp0 its en15 (apply_fx) */
+    { 399,   3, 0,                                           0,        FXF_TXP,                    FXV_ANY, ANYF,    0, 63, { A, A, A, A } },  /* pat_tbl[type] */
+};
+#undef A
+#undef ANYF
+
+const FxRule* coop_fx_rule(int id)
+{
+    unsigned i;
+    for (i = 0; i < sizeof(fx_rules) / sizeof(fx_rules[0]); i++)
+        if (fx_rules[i].id == id) return &fx_rules[i];
+    return NULL;
+}
+
+/* a generic EV_FX against its rule (coop_proto.h FxRule) */
+static int fx_entry_ok(const Event* e)
+{
+    const FxRule* r = coop_fx_rule(e->u.fx.id);
+    int link = coop_fx_get(e->idx, e->u.fx.refs, FXR_IDX), own = coop_fx_get(e->u.fx.owner, e->u.fx.refs, FXR_OWNER),
+        ex = coop_fx_get(e->u.fx.exp0, e->u.fx.refs, FXR_EXP0), t = e->u.fx.type, k, lf;
+    uint32_t allow;
+    if (!r) return 0;
+    if (t > r->type_max || (r->types && (t >= 32 || !(r->types >> t & 1)))) return 0;
+    if (r->mdlver_max != FXV_ANY && e->u.fx.mdlver > r->mdlver_max) return 0;
+    if (e->u.fx.flr_no < r->flr_min || e->u.fx.flr_no > r->flr_max || e->u.fx.lkono < r->lk_min || e->u.fx.lkono > r->lk_max) return 0;
+    if (e->u.fx.mode[0] | e->u.fx.mode[1] | e->u.fx.mode[2] | e->u.fx.mode[3]) return 0;   /* a fresh entry: its own init runs */
+    for (k = 0; k < 4; k++)
+        if (r->ct_max[k] != FXC_ANY && (e->u.fx.ct[k] < 0 || e->u.fx.ct[k] > r->ct_max[k])) return 0;
+    /* what it follows: flg 0x80 exactly when a link is there (FXF_LKWK: a link without it) */
+    lf = (e->u.fx.flg & 0x80) != 0;
+    if (r->refs & FXF_LKWK) { if (lf || link == FX_NONE) return 0; }
+    else if (r->refs & (FXF_LINK | FXF_LINK_REQ)) { if (lf != (link != FX_NONE) || ((r->refs & FXF_LINK_REQ) && !lf)) return 0; }
+    else if (lf || link != FX_NONE) return 0;
+    if (e->u.fx.id == 370 && (t == 3 || t == 5 || t == 6 || t == 7) && !lf) return 0;   /* lmode 1: reads its link's nodes */
+    allow = 0x1 | 0x80 | r->flg;
+    if (!(e->u.fx.flg & 0x1) || (e->u.fx.flg & ~allow)) return 0;
+    /* textures and models: the owner's (txp, mlw), or none */
+    if (r->refs & FXF_TXP) { if (e->u.fx.stflg != 0x20 || e->u.fx.txp < 0 || e->u.fx.tex_id < 0) return 0; }
+    else if (e->u.fx.stflg || e->u.fx.txp != -1 || e->u.fx.tex_id != -1) return 0;
+    if ((r->refs & FXF_MLW) ? e->u.fx.mlw < 0 : e->u.fx.mlw != -1) return 0;
+    if ((e->u.fx.txp >= 0 || e->u.fx.mlw >= 0) && own == FX_NONE) return 0;
+    if ((r->refs & FXF_EXP0) ? ex == FX_NONE : ex != FX_NONE) return 0;
+    if (e->u.fx.id == 11 && !(e->u.fx.mdlver ? (t == 1 || t == 2 || t == 5) : (t <= 2 || t == 10 || t == 11))) return 0;   /* the others leave its UV table unset */
+    if (e->u.fx.id == 108 && e->u.fx.lkono != 10 && e->u.fx.lkono != 12 && e->u.fx.lkono != 13 && e->u.fx.lkono != 15 && e->u.fx.lkono != 20) return 0;
+    return 1;
+}
 /* objects: slots 4..31 (sys->obwp, coop_glue.c OBJ_N); fins also keeps their angles within the int they become */
 static int atr_ok(const AtrRec* r, int kind, int ix) { return fins(r->p, 6) && (kind != ATR_WAL || r->type < 8) && (kind != ATR_OBJ || (ix >= 4 && ix < 32)); }
 
@@ -150,7 +250,8 @@ int coop_check_event(const Event* e, int from_host)
         return fin(e->u.sp.px) && fin(e->u.sp.py) && fin(e->u.sp.pz) ? COOP_OK : COOP_BAD_FLOAT;
     case EV_EOPTS:
         return e->u.eo.extra >= 0 && e->u.eo.extra <= 3 && (unsigned)e->u.eo.place <= 1 && (unsigned)e->u.eo.rand <= 1 && e->u.eo.seed >= 0 &&
-               (unsigned)e->u.eo.variety <= 1 && (unsigned)e->u.eo.events <= 1 ? COOP_OK : COOP_BAD_FIELD;
+               (unsigned)e->u.eo.variety <= 1 && (unsigned)e->u.eo.events <= 1 && (unsigned)e->u.eo.cast <= 1 && (unsigned)e->u.eo.cast_all <= 1 &&
+               (unsigned)e->u.eo.cast_assign <= 1 && (unsigned)e->u.eo.cast_imports <= 1 ? COOP_OK : COOP_BAD_FIELD;
     case EV_FX:   /* (a burst: Event.idx is not read) */
         if (e->u.fx.id == FX_BURST) {   /* counts and times bounded (the effect loops over them), floats finite */
             const uint32_t* w = e->u.fxr.w;
@@ -165,6 +266,8 @@ int coop_check_event(const Event* e, int from_host)
         if (e->u.fx.id >= 400 || e->u.fx.lkono >= 64 || (e->u.fx.refs & ~(FXR_IDX | FXR_OWNER | FXR_EXP0)) || !fx_ref(coop_fx_get(e->idx, e->u.fx.refs, FXR_IDX)) ||
             !fx_ref(coop_fx_get(e->u.fx.owner, e->u.fx.refs, FXR_OWNER)) || !fx_ref(coop_fx_get(e->u.fx.exp0, e->u.fx.refs, FXR_EXP0))) return COOP_BAD_FIELD;
         if (e->u.fx.txp < -1 || e->u.fx.txp >= 16 || e->u.fx.mlw < -1 || e->u.fx.mlw >= 16) return COOP_BAD_FIELD;
+        if (!fx_entry_ok(e)) return COOP_BAD_FIELD;   /* only the effects co-op sends, each as its creators make it */
+        if (e->u.fx.id == 108 && (fabsf(e->u.fx.p[0]) > 10000 || fabsf(e->u.fx.p[2]) > 10000)) return COOP_BAD_FIELD;   /* its ripple map index (apply_fx: near the water) */
         return fins(e->u.fx.p, 3) && fins(e->u.fx.o, 3) && fins(e->u.fx.n, 3) ? COOP_OK : COOP_BAD_FLOAT;
     case EV_GRANT:
         if (e->u.gt.item < 1 || e->u.gt.item >= 156 || e->u.gt.flr_no < 0 || e->u.gt.flr_no >= 64 || e->u.gt.count > 999 ||
@@ -189,12 +292,12 @@ int coop_check_event(const Event* e, int from_host)
     return COOP_BAD_TYPE;
 }
 
-int coop_check_all(const void* buf, int n, const char* code, int from_host, int* nev, int* nene, int* ext)
+int coop_check_all(const void* buf, int n, int from_host, int* nev, int* nene, int* ext)
 {
     const unsigned char* b = buf;
     Event e;
     EneSnap s;
-    int r = coop_check_dgram(buf, n, code, nev, nene, ext), k;
+    int r = coop_check_dgram(buf, n, nev, nene, ext), k;
     if (r) return r;
     for (k = 0; k < *nev; k++) {   /* copies: the buffer need not be aligned */
         memcpy(&e, b + sizeof(Pose) + k * sizeof(Event), sizeof(e));
@@ -228,23 +331,248 @@ const Event* coop_ring_get(const CoopRing* r, uint32_t id)
     return (int32_t)(id - r->head) >= 0 && (int32_t)(id - r->next) < 0 ? &r->ev[id % COOP_RING] : NULL;
 }
 
-/* ---------------------------------------------------------------- join code */
-/* Not cryptography: it keeps strangers who find the open port out (they would need the code to
-   make a valid proof for their session), not someone who can read the traffic. */
-static uint64_t mix(uint64_t x)
+/* ---------------------------------------------------------------- direct sessions (coop_proto.h) */
+static int guard_find(const CoopGuard* g, uint32_t ip)
 {
-    x ^= x >> 30; x *= 0xbf58476d1ce4e5b9ull;
-    x ^= x >> 27; x *= 0x94d049bb133111ebull;
-    return x ^ (x >> 31);
+    int i;
+    for (i = 0; i < COOP_GUARD_N; i++)
+        if (g->e[i].fails && g->e[i].ip == ip) return i;
+    return -1;
 }
 
-uint32_t coop_auth(const char* code, uint32_t sid)
+int coop_guard_wait(const CoopGuard* g, uint32_t ip, uint32_t now)
 {
-    uint64_t h = 0x7265637678636f6full;   /* "recvxcoo" */
-    const unsigned char* c;
-    for (c = (const unsigned char*)code; *c; c++) h = mix(h ^ *c);
-    h = mix(h ^ ((uint64_t)sid << 8 | 0xA5));
-    return (uint32_t)(h ^ (h >> 32));
+    int i = guard_find(g, ip);
+    return i < 0 || (int32_t)(g->e[i].until - now) <= 0 ? 0 : (int)(g->e[i].until - now);
+}
+
+uint32_t coop_guard_fail(CoopGuard* g, uint32_t ip, uint32_t now)
+{
+    int i = guard_find(g, ip), k;
+    uint32_t w = COOP_GUARD_MIN;
+    if (i >= 0 && now - g->e[i].last > COOP_GUARD_FORGET) g->e[i].fails = 0;   /* long ago: a fresh start */
+    if (i < 0) {   /* a free entry, else the one whose last failure is oldest */
+        for (i = 0, k = 1; k < COOP_GUARD_N && g->e[i].fails; k++)
+            if (!g->e[k].fails || now - g->e[k].last > now - g->e[i].last) i = k;
+        memset(&g->e[i], 0, sizeof(g->e[i]));
+        g->e[i].ip = ip;
+    }
+    if (g->e[i].fails < 0xFFFF) g->e[i].fails++;
+    for (k = 1; k < g->e[i].fails && w < COOP_GUARD_MAX; k++) w *= 2;
+    if (w > COOP_GUARD_MAX) w = COOP_GUARD_MAX;
+    g->e[i].last = now;
+    g->e[i].until = now + w;
+    return w;
+}
+
+int coop_guard_take(CoopGuard* g, uint32_t now)
+{
+    uint32_t dt;
+    if (!g->tok_init) { g->tok_init = 1; g->tok = COOP_HS_RATE * 1000; g->tok_ms = now; }
+    dt = now - g->tok_ms;
+    g->tok_ms = now;
+    g->tok += (int32_t)(dt > 1000 ? 1000 : dt) * COOP_HS_RATE;   /* COOP_HS_RATE tokens a second, in thousandths */
+    if (g->tok > COOP_HS_RATE * 1000) g->tok = COOP_HS_RATE * 1000;
+    if (g->tok < 1000) return 0;
+    g->tok -= 1000;
+    return 1;
+}
+
+/* the code's generator: a point of the curve no one knows the logarithm of (Elligator 2 of its hash) */
+static void hs_gen(const char* code, uint8_t g[32])
+{
+    uint8_t h[32];
+    crypto_blake2b_ctx c;
+    crypto_blake2b_init(&c, 32);
+    crypto_blake2b_update(&c, (const uint8_t*)"recvx direct v1 G", 17);
+    crypto_blake2b_update(&c, (const uint8_t*)code, strlen(code));
+    crypto_blake2b_final(&c, h);
+    crypto_elligator_map(g, h);
+    crypto_wipe(h, sizeof(h));
+}
+
+/* the session's keys from our secret, the other side's value and the transcript (both values, the code) */
+static int hs_keys(CoopHs* h, int host, const uint8_t sk[32], const uint8_t other[32], const char* code)
+{
+    static const uint8_t zero[32];
+    uint8_t k[32], base[64];
+    crypto_blake2b_ctx c;
+    crypto_x25519(k, sk, other);
+    if (!crypto_verify32(k, zero)) { crypto_wipe(k, sizeof(k)); return 0; }   /* a low-order value: no secret */
+    crypto_blake2b_init(&c, 64);
+    crypto_blake2b_update(&c, (const uint8_t*)"recvx direct v1 K", 17);
+    crypto_blake2b_update(&c, k, 32);
+    crypto_blake2b_update(&c, h->yj, 32);
+    crypto_blake2b_update(&c, h->yh, 32);
+    crypto_blake2b_update(&c, (const uint8_t*)code, strlen(code));
+    crypto_blake2b_final(&c, base);
+    memset(&h->ses, 0, sizeof(h->ses));
+    memcpy(host ? h->ses.tx : h->ses.rx, base, 32);   /* host to joiner */
+    memcpy(host ? h->ses.rx : h->ses.tx, base + 32, 32);
+    crypto_wipe(k, sizeof(k));
+    crypto_wipe(base, sizeof(base));
+    return 1;
+}
+
+static int hs_is(const CoopHs* h, uint32_t ip, uint16_t port) { return h->state != HS_FREE && h->ip == ip && h->port == port; }
+static void hs_drop(CoopHs* h) { crypto_wipe(h, sizeof(*h)); }
+
+void coop_direct_init(CoopDirect* d, int host, const char* code)
+{
+    CoopGuard g = d->guard;   /* the failures stay (a host may stop and host again in one run) */
+    crypto_wipe(d, sizeof(*d));
+    d->guard = g;
+    d->host = host;
+    snprintf(d->code, sizeof(d->code), "%s", code);
+    hs_gen(d->code, d->g);
+}
+
+void coop_direct_wipe(CoopDirect* d)
+{
+    CoopGuard g = d->guard;
+    crypto_wipe(d, sizeof(*d));
+    d->guard = g;
+}
+
+static void hello(CoopHello* m, int type, const uint8_t key[32])
+{
+    memset(m, 0, sizeof(*m));
+    m->magic = COOP_MAGIC;
+    m->version = COOP_VERSION;
+    m->type = (uint8_t)type;
+    memcpy(m->key, key, 32);
+}
+
+int coop_direct_hello(CoopDirect* d, uint32_t ip, uint16_t port, CoopHello* out)
+{
+    CoopHs* h = &d->hs[0];
+    if (!hs_is(h, ip, port)) {
+        hs_drop(h);
+        if (!rdv_random(h->sk, 32)) return 0;
+        crypto_x25519(h->yj, h->sk, d->g);
+        h->ip = ip; h->port = port; h->state = HS_HELLO;
+    }
+    hello(out, PKT_HELLO, h->yj);
+    return 1;
+}
+
+/* host: an entry for a new handshake - a free one, an unproven one past its time, else the oldest
+   unproven one (a flood of handshakes pushes out only its own), else the oldest */
+static CoopHs* hs_slot(CoopDirect* d, uint32_t now)
+{
+    CoopHs* best = NULL;
+    int i;
+    for (i = 0; i < COOP_HS_N; i++) {
+        CoopHs* h = &d->hs[i];
+        if (h->state == HS_FREE || (h->state != HS_PROVEN && now - h->t > COOP_HS_TTL)) { best = h; break; }
+        if (!best || (best->state == HS_PROVEN && h->state != HS_PROVEN) ||
+            ((best->state == HS_PROVEN) == (h->state == HS_PROVEN) && now - h->t > now - best->t)) best = h;
+    }
+    hs_drop(best);
+    return best;
+}
+
+int coop_direct_in(CoopDirect* d, uint32_t ip, uint16_t port, uint32_t now, uint8_t* buf, int n, int cap, CoopHello* reply, int* reply_n)
+{
+    uint32_t magic;
+    uint16_t version;
+    CoopHello m;
+    int i, k;
+    *reply_n = 0;
+    if (n < 8) return 0;
+    memcpy(&magic, buf, 4);
+    if (magic == RDV_E2E_MAGIC) {
+        uint8_t tmp[RDV_DGRAM_MAX + 64];
+        int unproven = 0;
+        if (n - RDV_E2E_OVER > (int)sizeof(tmp)) return 0;
+        for (i = 0; i < COOP_HS_N; i++) {
+            CoopHs* h = &d->hs[i];
+            if (h->state < HS_KEYED || !hs_is(h, ip, port)) continue;
+            if ((k = rdv_open(&h->ses, tmp, sizeof(tmp), buf, n)) >= 0) {
+                if (k > cap) return 0;
+                if (h->state != HS_PROVEN) {   /* the code is proven: older keys of this address go */
+                    int j;
+                    h->state = HS_PROVEN;
+                    for (j = 0; j < COOP_HS_N; j++)
+                        if (j != i && hs_is(&d->hs[j], ip, port)) hs_drop(&d->hs[j]);
+                }
+                h->t = now;
+                memcpy(buf, tmp, k);
+                crypto_wipe(tmp, k);
+                return k;
+            }
+            if (h->state == HS_KEYED && d->host) unproven = 1;
+        }
+        if (!unproven) return 0;   /* forged, replayed, or keys we do not have (any more) */
+        for (i = 0; i < COOP_HS_N; i++)   /* the guess is spent: another one needs another handshake */
+            if (d->hs[i].state == HS_KEYED && hs_is(&d->hs[i], ip, port)) hs_drop(&d->hs[i]);
+        coop_guard_fail(&d->guard, ip, now);
+        return COOP_DIN_WRONG;
+    }
+    if (magic != COOP_MAGIC) return 0;
+    memcpy(&version, buf + 4, 2);
+    if (version != COOP_VERSION || buf[6] == PKT_REJECT) return COOP_DIN_RAW;
+    if (n != (int)sizeof(m)) return 0;
+    memcpy(&m, buf, sizeof(m));
+    for (i = k = 0; i < (int)sizeof(m.zero); i++) k |= m.zero[i];
+    if (k || m.zero8) return 0;
+    if (m.type == PKT_HELLO && d->host) {
+        uint8_t sk[32];
+        CoopHs* h;
+        if (coop_guard_wait(&d->guard, ip, now)) return 0;   /* it failed: it waits (no answer at all) */
+        for (i = 0; i < COOP_HS_N; i++)   /* a repeat (our answer was lost): the same answer */
+            if (d->hs[i].state >= HS_KEYED && hs_is(&d->hs[i], ip, port) && !memcmp(d->hs[i].yj, m.key, 32)) {
+                hello(reply, PKT_HELLO_ACK, d->hs[i].yh);
+                *reply_n = sizeof(*reply);
+                return 0;
+            }
+        if (!coop_guard_take(&d->guard, now) || !rdv_random(sk, 32)) return 0;
+        for (i = 0; i < COOP_HS_N; i++)   /* one open guess per address: a new handshake replaces its unproven one (any port) */
+            if (d->hs[i].state == HS_KEYED && d->hs[i].ip == ip) hs_drop(&d->hs[i]);
+        h = hs_slot(d, now);
+        h->ip = ip; h->port = port;
+        memcpy(h->yj, m.key, 32);
+        crypto_x25519(h->yh, sk, d->g);
+        if (!hs_keys(h, 1, sk, h->yj, d->code)) { hs_drop(h); crypto_wipe(sk, sizeof(sk)); coop_guard_fail(&d->guard, ip, now); return 0; }
+        crypto_wipe(sk, sizeof(sk));
+        h->state = HS_KEYED;
+        h->t = now;
+        hello(reply, PKT_HELLO_ACK, h->yh);
+        *reply_n = sizeof(*reply);
+        return 0;
+    }
+    if (m.type == PKT_HELLO_ACK && !d->host) {
+        CoopHs* h = &d->hs[0];
+        if (h->state != HS_HELLO || !hs_is(h, ip, port)) return 0;
+        memcpy(h->yh, m.key, 32);
+        if (!hs_keys(h, 0, h->sk, h->yh, d->code)) return 0;   /* unusable: the real answer may still come */
+        crypto_wipe(h->sk, sizeof(h->sk));
+        h->state = HS_KEYED;
+        h->t = now;
+    }
+    return 0;
+}
+
+static CoopHs* hs_out(CoopDirect* d, uint32_t ip, uint16_t port)   /* the keys we send with: the joiner's, the host's proven ones */
+{
+    int i;
+    for (i = 0; i < COOP_HS_N; i++)
+        if (hs_is(&d->hs[i], ip, port) && d->hs[i].state >= (d->host ? HS_PROVEN : HS_KEYED)) return &d->hs[i];
+    return NULL;
+}
+int coop_direct_ready(const CoopDirect* d, uint32_t ip, uint16_t port) { return hs_out((CoopDirect*)d, ip, port) != NULL; }
+
+int coop_direct_seal(CoopDirect* d, uint32_t ip, uint16_t port, const void* in, int n, uint8_t* out, int cap)
+{
+    CoopHs* h = hs_out(d, ip, port);
+    return h ? rdv_seal(&h->ses, out, cap, in, n) : 0;
+}
+
+void coop_direct_forget(CoopDirect* d, uint32_t ip, uint16_t port)
+{
+    int i;
+    for (i = 0; i < COOP_HS_N; i++)
+        if (hs_is(&d->hs[i], ip, port)) hs_drop(&d->hs[i]);
 }
 
 int coop_parse_join(const char* s, char* host, int host_cap, int* port, char code[COOP_CODE_LEN + 1])

@@ -36,7 +36,7 @@ void RequestEnemySe(int EnemyNo, NJS_POINT3* pPos, int SeNo);   /* sdfunc.c */
 int snd_xbank_load(int key);
 extern int enemy_room_gen;              /* enemyopt_glue.c */
 
-#define VSLOTS (ACTOR_SLOTS - ACTOR_VARIANT)
+#define VSLOTS (ACTOR_CAST - ACTOR_VARIANT)
 #define VSETS 4                         /* variants with their own motion set in one room */
 
 int pc_variant_n;                       /* variant enemies in this room */

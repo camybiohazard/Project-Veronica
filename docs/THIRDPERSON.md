@@ -110,7 +110,7 @@ the left stick), aims while the weapon is raised, at the stick aiming speed as i
 stick and the d-pad also move the crosshair (left / right turn it, up / down raise and lower it, as
 they turn and tilt the original aim); in the scope the game turns by them itself and only the right
 stick is added. Modern, as the RE2/RE4 remakes (button map:
-[USER_GUIDE.md](USER_GUIDE.md#third-person-with-a-gamepad)):
+[USER_GUIDE.md](USER_GUIDE.md#third-person)):
 
 * **Left stick**: walks towards its direction seen from the camera (`modern_target` with the
   camera's right axis, as the fixed cameras' modern controls), past its dead zone; pushed 70% or

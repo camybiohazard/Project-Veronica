@@ -169,6 +169,9 @@ int   pc_no_ink_ribbon(void);                 /* typewriters save without an ink
 int   pc_detector_skipped(void);              /* co-op rule "Metal detector: Skipped" (pc/glue/detector_glue.c): event.c bhPlItemCheck in 0/9 finds no metal */
 void  pc_detector_scd1(void);                 /* ... event.c bhControlEvent before scd1: the empty security boxes rest */
 void  pc_quick_start(void);                   /* co-op rule "Quick start" (pc/glue/coop_glue.c): system.c bhSysCallMonitor after a new game's AllItemInit */
+int   pc_biorand_save_differs(const void* save);   /* BioRand (pc/glue/biorand_glue.c): ps2_LoadScreen.c, a save made with another pack asks */
+void  pc_biorand_save_accept(void* save);          /* ... loaded anyway */
+void  pc_biorand_load_text(void);                  /* ... the question's lines */
 int   pc_battle_unlocked(void);               /* host.c: setting "Battle Game unlocked" (event.c bhCk: every Battle Game character) */
 int   pc_difficulty_select(void);             /* host.c: setting "Difficulty select" (adv.c CheckButton: NEW GAME opens the difficulty menu) */
 void  coop_fx_particle(struct BH_PWORK* ewP, int lnk, const void* offP, const void* dirP, unsigned int col, unsigned int dst, int typ, int mk2);   /* effsub3.c bhSetEffParticle(Mk2) */
@@ -218,6 +221,8 @@ void  actor_hands_back(void);                 /* game.c, before bhControlPlayer:
 struct BH_PWORK;
 int   pc_slope_ground(struct BH_PWORK* pw, void* pos, float ah);   /* hitchk.c: 1 = on a slope, pos y + floor set */
 void  host_fatal(const char* fmt, ...);
+int   pc_prs_decode(const unsigned char* s, uint32_t n, unsigned char* d, uint32_t cap);   /* pc_parse.h: bounded Expand */
+int   pc_room_from_disc(const char* name, unsigned char* memp, unsigned char* endp, int err);   /* actor_glue.c */
 void  host_log(const char* fmt, ...);
 void  pc_et_lp_clear(void);   /* room.c: sys->et_lp rows of model versions >= 16 */
 /* F2 enemy spawner (pc/glue/spawn_glue.c): its textures go with the room's / with everything */
@@ -226,11 +231,13 @@ void  spawn_textures_released(void);
 void  spawn_room_setup(void);      /* room.c bhSetRoom: the spawned types' data go with the room */
 extern int pc_enemy_added;         /* eneset.c: the room got enemies its file does not have (helper code per type) */
 void  pc_enemy_mark_added(void);   /* eneset.c: sets it, the shared helper functions as they are then kept for the room's earlier children */
+extern int pc_enemy_refused;       /* eneset.c: the enemy's code runs on a player another enemy holds (its changes are undone) */
 void  enemy_room_finished(void);   /* room.c bhFinishRoom: enemy options (pc/glue/enemyopt_glue.c) */
 
 /* title menu MULTIPLAYER entry and the co-op lobby screen (pc/glue/lobby_glue.c) */
 void  pc_title_menu_init(void);                  /* Adv_BioCvTitle mode 0: the MULTIPLAYER row */
 void  pc_title_plates(int cursor, int n, float fade, int flag);   /* DisplayGameModePlate */
+int   pc_newgame_plates(int cursor, float fade, int flag);   /* DisplayNewGamePlate with the BIORAND row (1: drawn) */
 void  pc_title_mouse(int level, int flag);       /* CheckButton: hover moves the cursor, a click confirms */
 void  pc_title_mouse_active(int on);             /* a title menu or the lobby is up: the OS cursor is shown */
 int   pc_lobby(void);                            /* Adv_BioCvTitle mode 30: 1 back, 2 new game, 3 load the chosen save */

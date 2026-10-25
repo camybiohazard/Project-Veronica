@@ -311,8 +311,14 @@ py, pz, s16 ax, az, ay, aspd, s8 hide[4]`.
 * Objects: records 0..3 are placeholders (player weapons and hair); 4.. are `sys->obwp[i]`.
 * Items: record *i* -> `sys->itwp[i]`: `id` = item id (as in the inventory), `type`, `flr_no`,
   `mdlver`, `prm1` = draw type, position, angles, `aspd` (rotation speed). Model = the record's
-  MLB; textures shared per item id. Pickup is a type 4 trigger with `prm0 = i`; persistence is an
-  `it_flg` bit named by script ops 14 `ItmCk` / 35 `ItmSetCk`.
+  MLB; textures shared per item id. Pickup is a type 4 trigger with `prm0 = i` (`attr & 1`: picked
+  up crouching); persistence is an `it_flg` bit named by script ops 14 `ItmCk` / 35 `ItmSetCk`.
+* Generated pickups (PC only; BioRand writes rooms this way, every retail record has `type` 0 and
+  `wrk_no` 0): a non-zero `type` below 156 is the item the pickup gives, while `id` stays the
+  model shown (`hitchk.c bhCheckExmAtari`: `type ? type : id`); `wrk_no` is that pickup's amount
+  (0: the game's table `getbulletmax`, as retail), for standing and crouching pickups alike
+  (`sub1.c GetItem`). `objitm.c` takes the low byte of the u16 `type` field; BioRand writes
+  `type = id` for records it leaves alone.
 
 ### Effects and lights
 
@@ -394,6 +400,14 @@ set on pickup/death but tested as another bit on re-entry.
 | 123/124 | WalAtariSet2/FlrAtariSet2 | 10 | as 37 for walls/floors |
 | 149 | BgmOn2 | 4 | track, ... |
 | 182 | RoomSoundCase | 2 | case of the next room sound bank |
+| 199 (0xC7) | PlItemChangeM | 4 | old item, new item, count: the first inventory cell holding the old item (0: the first empty one) gets the new item, count 0. PC: old item 0xFF puts new item and count into the STANDARD slot (`sys->itm[ply*16 + 1]`, the lighter's) |
+| 201 (0xC9) | PlItemTamaSet | 4 | item, u16 count: the first cell holding the item gets that count |
+
+BioRand's start inventory is a block of room 0/0's entry script (`scd0` of `RM_0000.RDX`) run
+before the retail one: `IfelCk`, `Ck ev_flg 1 clear` (a new game), then `C7 145 X 0` (the Playing
+Manual's cell becomes X), `C7 0 X 0` (more items into empty cells), `C9 X n 0` (their counts) and
+`C7 0xFF X n` (the STANDARD slot), `Endif`. A co-op guest that joins without a game of its own runs
+the C7/C9 actions of that block itself (`pc/glue/biorand_glue.c`).
 
 ## Rooms, stages and the world
 

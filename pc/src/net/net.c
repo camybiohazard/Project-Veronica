@@ -30,6 +30,7 @@ static int net_startup(void)
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <time.h>
 #include <unistd.h>
@@ -212,6 +213,57 @@ int net_resolve_poll(NetResolve* r, NetAddr* out)
 }
 
 void net_resolve_cancel(NetResolve* r) { if (r) resolve_release(r); }
+
+/* ready to write (wr) or read within ms */
+static int sock_wait(sock_t s, int wr, int ms)
+{
+    fd_set f, e;
+    struct timeval tv = { ms / 1000, ms % 1000 * 1000 };
+    FD_ZERO(&f);
+    FD_ZERO(&e);
+    FD_SET(s, &f);
+    FD_SET(s, &e);   /* (Windows reports a failed connect here) */
+    return select((int)s + 1, wr ? NULL : &f, wr ? &f : NULL, &e, &tv) > 0;
+}
+
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0   /* (Windows has no SIGPIPE) */
+#endif
+
+int net_tcp_fetch(const NetAddr* to, const char* req, int len, char* buf, int cap, int connect_ms, int total_ms, const char** why)
+{
+    struct sockaddr_in a;
+    uint32_t t0 = net_ms();
+    int n = 0, r, err = 0;
+    socklen_t el = sizeof(err);
+    sock_t s;
+    *why = NULL;
+    if (!net_startup() || (s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == BAD_SOCK) { *why = "no socket"; return -1; }
+    set_nonblock(s);
+    memset(&a, 0, sizeof(a));
+    a.sin_family = AF_INET;
+    a.sin_addr.s_addr = to->ip;
+    a.sin_port = to->port;
+    if (connect(s, (struct sockaddr*)&a, sizeof(a)) != 0) {
+#ifdef _WIN32
+        int pending = WSAGetLastError() == WSAEWOULDBLOCK;
+#else
+        int pending = errno == EINPROGRESS;
+#endif
+        if (!pending) *why = "cannot connect";
+        else if (!sock_wait(s, 1, connect_ms)) *why = "connect timed out";
+        else if (getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&err, &el) != 0 || err) *why = "connection refused or unreachable";
+    }
+    if (!*why && send(s, req, len, MSG_NOSIGNAL) != len) *why = "cannot send";
+    while (!*why && n < cap) {
+        int left = total_ms - (int)(net_ms() - t0);
+        if (left <= 0 || !sock_wait(s, 0, left)) { if (!n) *why = "no answer in time"; break; }
+        if ((r = recv(s, buf + n, cap - n, 0)) <= 0) { if (r < 0 && !n) *why = "connection reset"; break; }
+        n += r;
+    }
+    closesock(s);
+    return *why ? -1 : n;
+}
 
 int net_send(const NetAddr* to, const void* buf, int len)
 {

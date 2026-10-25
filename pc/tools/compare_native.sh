@@ -19,7 +19,7 @@ HERE=$(dirname "$(realpath "$0")")
 rm -rf "$OUT"; mkdir -p "$OUT"/{orig,native,save0,save1}
 run() { # $1 = $VAR value, $2 = name
   SDL_AUDIO_DRIVER=dummy SDL_VIDEO_DRIVER=offscreen env "$VAR=$1" \
-  RECVX_FAST_DEMO=1 RECVX_SKIP_MOVIES=1 RECVX_INPUT="${RECVX_INPUT:-200:start,206:-}" \
+  RECVX_FAST_DEMO=1 RECVX_SKIP_MOVIES=1 RECVX_UPDATE_CHECK=0 RECVX_INPUT="${RECVX_INPUT:-200:start,206:-}" \
   RECVX_DUMP_FRAMES="$OUT/$2" timeout "$RUN_SECS" "$BIN" --size 320x240 --vanilla \
   --quiet --save-dir "$OUT/save$1" "$ISO" >"$OUT/$2.log" 2>&1
 }

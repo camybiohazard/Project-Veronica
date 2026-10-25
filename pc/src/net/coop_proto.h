@@ -1,4 +1,4 @@
-/* Online co-op wire format (protocol 24, docs/COOP.md "Protocol 24" and "Security") and
+/* Online co-op wire format (protocol 29, docs/COOP.md "Protocol 29" and "Security") and
    the checks every received packet passes before it may change anything. No game state here:
    pc/glue/coop_glue.c applies what passes; pc/tests/test_coop.c feeds malformed packets. */
 #ifndef RECVX_COOP_PROTO_H
@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 #define COOP_MAGIC 0x504F4F43u          /* "COOP" */
-#define COOP_VERSION 26                 /* 11: join code, datagrams <= 1200 bytes, checked events, EV_ATR; 12: EV_FX; 13: EV_GRANT;
+#define COOP_VERSION 29                /* 11: join code, datagrams <= 1200 bytes, checked events, EV_ATR; 12: EV_FX; 13: EV_GRANT;
                                            14: EV_TSCREEN, BUSY_TRADE, OPT_TRADE_FREEZE; 15: EV_GONE;
                                            16: player id and rejoin tag in PoseExt, EV_OWN, saved inventories (EV_BLOB pad);
                                            17: TS_WANT, TS_DECLINE (trade screen item requests);
@@ -25,7 +25,12 @@ extern "C" {
                                            23: OPT_QUICK_START (Pose.opts is full: a further rule needs a field of its own);
                                            24: enemy slots 0..254 (COOP_ENE_SLOTS), EV_FX's FX_* references marked in `refs`;
                                            25: Pose.use (the trigger the sender is using: one player at a puzzle at a time);
-                                           26: EneSnap.id (the enemy type in the slot: a snapshot only for the same type) */
+                                           26: EneSnap.id (the enemy type in the slot: a snapshot only for the same type);
+                                           27: PoseExt.br, br_seed, br_id (BioRand: the host's choice, each side's pack);
+                                           28: direct sessions encrypted after a handshake bound to the whole join code
+                                               (PKT_HELLO, CoopDirect); Pose.auth gone (rsv, zero); COOP_REJ_STATE;
+                                               generic EV_FX only for the effects in coop_fx_rules, each field checked;
+                                           29: EV_EOPTS cast, cast_all, cast_assign, cast_imports (the cutscene cast), PoseExt.imp_id */
 #define COOP_DGRAM_MAX 1200             /* bytes per datagram (below every internet path MTU) */
 #define COOP_EV_FRAME 16                /* events per frame (over the frame's datagrams) */
 #define COOP_SNAP_FRAME 48              /* enemy snapshots per frame */
@@ -34,7 +39,8 @@ extern "C" {
 #define COOP_TRIG_OPS 48                /* actions of one world event block (retail: at most 33) */
 #define COOP_CODE_LEN 8                 /* join code: 8 of the 32 characters below (40 bits) */
 
-enum { PKT_POSE = 1, PKT_BYE = 2, PKT_REJECT = 3 };
+enum { PKT_POSE = 1, PKT_BYE = 2, PKT_REJECT = 3,
+       PKT_HELLO = 4, PKT_HELLO_ACK = 5 };   /* direct sessions' handshake (CoopHello, protocol 28): never inside a session */
 enum { PF_IN_GAME = 1, PF_VISIBLE = 2, PF_ROOM_MTN = 4, PF_WANT_BLOB = 8, PF_EXT = 16,
        PF_CINE = 32,                    /* in a cutscene its skip button could skip now */
        PF_SKIP = 64,                    /* ... and we pressed it: we wait for the partner (synchronized skip) */
@@ -55,15 +61,15 @@ enum { MSET_OWN = -1, MSET_ROOM = -2, MSET_NONE = -3 };
 #define COOP_MNW_MAX 512                /* motions in a set */
 
 /* Every datagram starts with this pose (little-endian, packed by the compiler as on all supported
-   hosts: x86). The first 16 bytes are the frame a relay needs: magic, version, type, sender session
-   and the join-code proof `auth` (coop_auth). A frame's events and snapshots are spread over as many
-   datagrams as needed; each carries the pose, so each is useful on its own. */
+   hosts: x86). A frame's events and snapshots are spread over as many datagrams as needed; each
+   carries the pose, so each is useful on its own. In a session every datagram but PKT_REJECT is
+   sealed (XChaCha20-Poly1305): directly with CoopDirect's keys, through a server with rdv_session's. */
 typedef struct Pose {
     uint32_t magic;
     uint16_t version;
     uint8_t type, flags;
     uint32_t sid;                       /* sender's session: a new one restarts the event streams */
-    uint32_t auth;                      /* coop_auth(join code, sid) */
+    uint32_t rsv;                       /* zero (protocol 27 and before: a 32-bit join-code proof) */
     uint32_t seq;                       /* sender's frame counter: older poses are dropped */
     uint32_t t_ms, echo_ms, echo_age;   /* ping: our clock, last clock seen from the peer, ms held */
     int8_t chr, costume, stg, rom;
@@ -96,7 +102,9 @@ typedef struct Pose {
 #define COOP_PITCH_STEP (1.0471976f / COOP_PITCH_MAX)   /* free aim's limit, 60 degrees */
 static inline int coop_pitch_get(uint8_t pflg) { return ((int8_t)(pflg & 0xF8) >> 2) | (pflg & 1); }
 static inline uint8_t coop_pitch_bits(int v) { return (uint8_t)((v & 1) | (v >> 1 & 0x1F) << 3); }
-enum { COOP_REJ_CODE = 1, COOP_REJ_BUSY = 2, COOP_REJ_REMOVED = 3 };   /* REMOVED: in a goodbye, the host removed us */
+enum { COOP_REJ_CODE = 1, COOP_REJ_BUSY = 2, COOP_REJ_REMOVED = 3,   /* REMOVED: in a goodbye, the host removed us */
+       COOP_REJ_BIORAND = 4,            /* in a guest's goodbye: its BioRand pack is not the host's (protocol 27) */
+       COOP_REJ_STATE = 5 };            /* in a guest's goodbye: the host's game state failed its checks (protocol 28) */
 
 typedef struct PoseExt {                /* lobby extension: in the first datagram of a frame (PF_EXT) */
     char name[16];
@@ -107,6 +115,12 @@ typedef struct PoseExt {                /* lobby extension: in the first datagra
     char note[40];
     uint8_t pid[16];                    /* guest: its player id (recvx.ini coop_player_id; zero: none) */
     uint8_t tag[16];                    /* guest: rdv_rejoin_tag of its secret over the session's code: the same player again */
+    uint8_t br;                         /* BioRand (protocol 27): host 1 = it plays its pack; guest 1 = it has a pack */
+    uint8_t br_pad[3];                  /* zero */
+    uint32_t br_seed;                   /* the sender's pack: BioRand's seed number (0xFFFFFFFF unknown) and identity */
+    uint32_t br_id;                     /*   (biorand.h biorand_id; 0: no pack). A guest whose pack differs leaves. */
+    uint32_t imp_id;                    /* the sender's imported models (cast.h cast_import_id, 0: none): the cutscene cast
+                                           uses them only while both sides send the same (protocol 29) */
 } PoseExt;
 enum { ITEMS_NEW, ITEMS_SAVE, ITEMS_HOST, ITEMS_CURRENT };   /* PoseExt.items */
 enum { REC_UNKNOWN, REC_NONE, REC_HAVE, REC_OFF };   /* PoseExt.rec: not known yet (or a guest), no saved items for you, some,
@@ -144,6 +158,28 @@ static inline int coop_fx_get(uint8_t b, uint8_t refs, int bit) { return refs & 
 #define FX_PTCL_TYPES 19                /* its table (effsub3.c PtclTbl) */
 #define FX_ARM 1000                     /* not an effect: a Bandersnatch's arm length (its AI sets node offsets) */
 #define FX_RAW_WORDS 18
+/* EV_FX's generic entries (protocol 28): only the effects a sender's window can start (an enemy's step,
+   our player's, our projectiles': docs/COOP.md "Effects"), each with what its creators set and what its
+   step and drawing stay safe with (the decomp's effect steps read type, mdlver, counters and textures as
+   table indices). Every entry is fresh (modes 0, the step's own init runs here). Anything else is refused. */
+enum { FXF_LINK = 1,                    /* may follow a work (flg 0x80 iff Event.idx names one; lkono < its nodes) */
+       FXF_LINK_REQ = 2,                /* must */
+       FXF_LKWK = 4,                    /* follows Event.idx's work without flg 0x80 (its step reads lkwkp): required */
+       FXF_TXP = 8,                     /* stflg 0x20: txp a texture of the owner's model, tex_id one of that list */
+       FXF_MLW = 16,                    /* mlw: its model is one of the owner's, mdlver < its objects */
+       FXF_EXP0 = 32 };                 /* exp0: the work it belongs to (required) */
+#define FXV_ANY 255                     /* FxRule.mdlver_max: any (the step does not read it) */
+#define FXC_ANY (-1)                    /* FxRule.ct_max: any (the step sets it before reading it) */
+typedef struct FxRule {
+    uint16_t id, type_max;              /* type <= type_max (0xFFFF: any; not read) */
+    uint32_t types;                     /* and, if not 0, bit `type` set (type < 32) */
+    uint32_t flg;                       /* flg bits it may have besides 0x1 (always) and 0x80 (FXF_LINK*) */
+    uint8_t refs, mdlver_max;           /* FXF_*; mdlver <= max */
+    int8_t flr_min, flr_max;            /* flr_no */
+    uint8_t lk_min, lk_max;             /* lkono */
+    int16_t ct_max[4];                  /* ct0..ct3 within 0..max, or FXC_ANY */
+} FxRule;
+const FxRule* coop_fx_rule(int id);     /* NULL: not an effect co-op sends */
 
 typedef struct AtrRec {                 /* a room record (ATR_WORK, 0x24 bytes) or an object's placement */
     uint8_t flg, type, id;
@@ -231,7 +267,7 @@ typedef struct Event {
         } at;
         struct {                        /* an effect the sender's game started (an enemy's attack, a shot's hit or
                                            projectile); Event.idx: what it follows - FX_* or an enemy slot */
-            uint16_t id, type;          /* effect number (< 400, not FX_BURST), its type */
+            uint16_t id, type;          /* effect number (coop_fx_rule), its type */
             uint32_t flg;
             uint16_t stflg;
             int16_t tex_id;
@@ -295,12 +331,12 @@ typedef struct EneSnap {
 } EneSnap;
 
 /* ---------------------------------------------------------------- checks (0 = fine) */
-enum { COOP_OK, COOP_BAD_SIZE, COOP_BAD_HDR, COOP_BAD_VERSION, COOP_BAD_AUTH, COOP_BAD_COUNT,
+enum { COOP_OK, COOP_BAD_SIZE, COOP_BAD_HDR, COOP_BAD_VERSION, COOP_BAD_COUNT,
        COOP_BAD_TYPE, COOP_BAD_DIR, COOP_BAD_FIELD, COOP_BAD_FLOAT };
 
-/* a datagram: header, version, counts and exact size; with `code`, also the proof. Writes the
-   counts (nev, nene, whether a PoseExt follows). */
-int coop_check_dgram(const void* buf, int n, const char* code, int* nev, int* nene, int* ext);
+/* a datagram (already opened: CoopDirect or rendezvous.c authenticated it): header, version, counts
+   and exact size. Writes the counts (nev, nene, whether a PoseExt follows). */
+int coop_check_dgram(const void* buf, int n, int* nev, int* nene, int* ext);
 int coop_check_event(const Event* e, int from_host);   /* fields within their ranges, sent the right way */
 int coop_check_snap(const EneSnap* s);
 int coop_check_pose(const Pose* p);                    /* the pose's own fields (numbers, not their meaning) */
@@ -309,7 +345,7 @@ int coop_flag_bits(int set);                           /* bits of a world flag s
 
 /* a datagram as receive() takes it: coop_check_dgram, then every event (sent by the host when
    `from_host`) and every snapshot; 0 = all of it may be used */
-int coop_check_all(const void* buf, int n, const char* code, int from_host, int* nev, int* nene, int* ext);
+int coop_check_all(const void* buf, int n, int from_host, int* nev, int* nene, int* ext);
 
 /* the reliable event stream, sender side: ids from 1, kept until acknowledged. Full: nothing is
    dropped; the push fails and `overflow` is set (the caller resynchronises). */
@@ -324,8 +360,74 @@ int coop_ring_push(CoopRing* r, Event* e);          /* sets e->id; 0 when full *
 void coop_ring_ack(CoopRing* r, uint32_t ack);      /* the peer applied everything up to `ack` */
 const Event* coop_ring_get(const CoopRing* r, uint32_t id);   /* NULL unless id is unacknowledged */
 
-/* join code */
-uint32_t coop_auth(const char* code, uint32_t sid);    /* code: normalized (rdv_code_norm: the same 8 of 32 characters as room codes) */
+/* ---------------------------------------------------------------- direct sessions (protocol 28)
+   The join code is a password both players know; the handshake is CPace (a PAKE) on X25519:
+   G = Elligator2(BLAKE2b(code)), each side sends Y = X25519(y, G) for a fresh secret y (PKT_HELLO
+   joiner -> host, PKT_HELLO_ACK back), and both take K = X25519(y, Y') into the session keys with
+   both Y and the code. Only the same code gives the same keys; nothing on the wire (not even the
+   whole handshake) lets anyone test a code offline - an active attacker gets one guess per
+   handshake, and the host answers handshakes at COOP_HS_RATE a second and backs off from each
+   address that failed (CoopGuard). From then on every datagram is sealed (rdv_seal: XChaCha20-
+   Poly1305, a 64-bit counter, the replay window): the host takes a partner, and the joiner a host,
+   only when its datagrams open with the keys - the proof of the code. PKT_REJECT stays plaintext
+   (it has to reach a joiner whose code was wrong). */
+typedef struct CoopHello {              /* PKT_HELLO / PKT_HELLO_ACK: as large as a Pose, so a build before
+                                           protocol 28 reads our version from it and says so */
+    uint32_t magic;
+    uint16_t version;
+    uint8_t type, zero8;
+    uint8_t key[32];                    /* Y */
+    uint8_t zero[72];
+} CoopHello;
+#define COOP_HS_N 64                    /* handshakes a host keeps (answered, or a session); oldest unproven first out: at
+                                           COOP_HS_RATE an answered one stays at least 3 s, however many come */
+#define COOP_HS_RATE 20                 /* host: new handshakes a second (the budget's refill, also its burst) */
+#define COOP_HS_TTL 10000               /* ms an unproven handshake is kept */
+#define COOP_GUARD_N 32                 /* addresses whose failures are remembered (oldest first out) */
+#define COOP_GUARD_MIN 250              /* ms a failed address waits after its first failure, doubled per failure ... */
+#define COOP_GUARD_MAX 60000            /* ... up to a minute */
+#define COOP_GUARD_FORGET 600000        /* 10 minutes without a failure: forgotten */
+typedef struct CoopGuard {
+    struct { uint32_t ip, last, until; uint16_t fails; } e[COOP_GUARD_N];
+    uint32_t tok_ms;                    /* the budget: tokens (x1000) and when it was refilled */
+    int32_t tok;
+    int tok_init;
+} CoopGuard;
+int coop_guard_wait(const CoopGuard* g, uint32_t ip, uint32_t now);   /* ms this address must still wait (0: may try) */
+uint32_t coop_guard_fail(CoopGuard* g, uint32_t ip, uint32_t now);    /* it failed: how long it waits now */
+int coop_guard_take(CoopGuard* g, uint32_t now);                      /* 1: a new handshake fits the budget (and is counted) */
+
+enum { HS_FREE, HS_HELLO, HS_KEYED, HS_PROVEN };   /* joiner: sent HELLO; both: keys; a datagram opened with them */
+typedef struct __attribute__((aligned(8))) CoopHs {
+    RdvSession ses;                     /* first, 8-aligned: rdv_seal counts tx_ctr atomically (no split lock on 32-bit x86) */
+    uint32_t ip; uint16_t port;         /* network byte order (NetAddr) */
+    uint8_t state;
+    uint8_t sk[32];                     /* joiner, HS_HELLO: our secret until the answer */
+    uint8_t yj[32], yh[32];             /* both public values (the host answers a repeated HELLO with the same yh) */
+    uint32_t t;                         /* made / last opened datagram (ms) */
+} CoopHs;
+typedef struct CoopDirect {
+    int host;
+    uint8_t g[32];                      /* the code's generator */
+    char code[COOP_CODE_LEN + 1];
+    CoopHs hs[COOP_HS_N];               /* a joiner uses hs[0]: the host */
+    CoopGuard guard;
+} CoopDirect;
+enum { COOP_DIN_RAW = -1, COOP_DIN_WRONG = -2 };
+void coop_direct_init(CoopDirect* d, int host, const char* code);   /* code normalized (rdv_code_norm) */
+void coop_direct_wipe(CoopDirect* d);                               /* every key gone */
+/* joiner: the HELLO for the host at ip:port (the same key until it answers); 0 without randomness */
+int coop_direct_hello(CoopDirect* d, uint32_t ip, uint16_t port, CoopHello* out);
+/* a datagram from ip:port, in place (cap bytes in buf): > 0 a game datagram opened with its keys, its
+   length; 0 nothing more (a handshake answered: reply/reply_n to send back, or dropped);
+   COOP_DIN_RAW the datagram as it came (another protocol version, a PKT_REJECT: unauthenticated);
+   COOP_DIN_WRONG a sender with keys of another code (the host rejects it; it waits, CoopGuard). */
+int coop_direct_in(CoopDirect* d, uint32_t ip, uint16_t port, uint32_t now, uint8_t* buf, int n, int cap, CoopHello* reply, int* reply_n);
+int coop_direct_ready(const CoopDirect* d, uint32_t ip, uint16_t port);   /* keys for this address (we may send) */
+int coop_direct_seal(CoopDirect* d, uint32_t ip, uint16_t port, const void* in, int n, uint8_t* out, int cap);   /* length, 0: no keys */
+void coop_direct_forget(CoopDirect* d, uint32_t ip, uint16_t port);   /* its keys gone (a removed partner) */
+#define COOP_DIRECT_OVER RDV_E2E_OVER   /* bytes a sealed datagram adds */
+
 /* "host:port#CODE" (or "host:port CODE"): 1 when host and port are there; code "" when none */
 int coop_parse_join(const char* s, char* host, int host_cap, int* port, char code[COOP_CODE_LEN + 1]);
 

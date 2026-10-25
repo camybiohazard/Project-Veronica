@@ -36,6 +36,12 @@ Related: [../ACTORS.md](../ACTORS.md) (models, skeletons, motions, enemy records
   upper-case names.
 * The log shows `mods: <path> replaces the disc file (<size> bytes)` for every file it uses.
 * Files are read as from the disc (whole 2048-byte sectors, zero padded).
+* `mods/biorand/` is BioRand's pack (`pc/src/host/biorand.h`): while BioRand is on, a disc file is
+  looked up there first, then in `mods/`; off, that folder is never read. BioRand writes room files,
+  `SYSTEM.AFS/10`, `SYSTEM.AFS/11`, `ADV.AFS/2` and `log_pl0.txt` there and replaces the folder
+  whole on each generation, so other mods belong in `mods/` itself. Its title picture (`ADV.AFS/2`)
+  is not used (its colours come out broken): the title stays the disc's, or the HD pack's. Its room conventions (item
+  `type` and `wrk_no`, the start inventory): [ROOM_FORMAT.md](ROOM_FORMAT.md#enemies-objects-items).
 
 | Mods file | Replaces | Notes |
 |---|---|---|
@@ -120,3 +126,24 @@ Run from the repository root. The disc image is taken from `--iso`, `$RECVX_ISO`
 * `pc/tools/re4/`: NumPy; the previews, contact sheets and several surveys also need Pillow;
   `slope_engine.py` needs a C compiler (`cc`).
 * `compare_frames.py` / `compare_native.sh`: OpenCV (`cv2`) and NumPy.
+
+## Randomizer (BioRand)
+
+For now only with the `--dev` launch option: without it the BioRand settings, the BIORAND row and
+the lobby rule are hidden and `mods/biorand/` is not read.
+
+[BioRand](https://github.com/biorand/classic) randomizes items, the start inventory, enemies and,
+optionally, doors. It reads your disc image and writes a pack for this game.
+
+1. In BioRand choose Code: Veronica, the PC version, your `.iso` as game data and this game's
+   folder (with `recvx.exe` and `mods`) as the PC folder. Generate. The pack goes to
+   `mods/biorand/`, with the spoiler log `log_pl0.txt`.
+2. On NEW GAME's difficulty screen, the row **BIORAND ON / OFF** switches it.
+   Without Difficulty select, use **BioRand** (GAMEPLAY) at the title.
+
+- It can only be switched at the title. Off, the pack is ignored.
+- Each generation replaces `mods/biorand/` completely; keep nothing else there.
+- A save remembers its pack. Loading it with BioRand off, another seed, or BioRand on for a normal
+  save asks first.
+- **Co-op**: the host switches BIORAND in GAME RULES. The partner needs the same pack (same seed and
+  options) to join.

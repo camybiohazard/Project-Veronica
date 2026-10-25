@@ -78,7 +78,7 @@ int rdv_relay_ok(const uint8_t* b, int n, const uint8_t token[16]);   /* 1: the 
 
 typedef struct RdvSession {
     uint8_t tx[32], rx[32], punch[32]; /* directional keys, the punch MAC key */
-    char code[9];                       /* the protocol-11 join code both sides derive */
+    char code[9];                       /* a code both sides derive (co-op protocols 11..27 took it for their join-code proof) */
     char verify[7];                     /* shown to the players to compare by voice: equal only with the same keys (no man in the middle) */
     uint64_t tx_ctr, rx_top, rx_win;    /* nonce counter; replay window (highest seen, 64 below it) */
 } RdvSession;

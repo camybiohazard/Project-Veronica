@@ -31,6 +31,7 @@ int spawn_base_count(void);
 const char* spawn_refused(int id);
 const ActorModel* variant_base(const EnemyVariant* v);   /* variant_glue.c */
 void variant_room(void);
+void cast_room(const EnemyOpts* o);   /* cast_glue.c */
 void spawn_keep_texlist(const NJS_TEXLIST* l);
 void bhCheckEneWorkNum(void);   /* eneset.h */
 
@@ -49,6 +50,10 @@ __attribute__((constructor)) static void opts_env(void)
     if ((e = getenv("RECVX_ENEMY_SEED"))) g_enemy_opts.seed = atoi(e);
     if ((e = getenv("RECVX_ENEMY_VARIETY"))) g_enemy_opts.variety = atoi(e);
     if ((e = getenv("RECVX_ENEMY_EVENTS"))) g_enemy_opts.events = atoi(e);
+    if ((e = getenv("RECVX_CAST"))) g_enemy_opts.cast = atoi(e) != 0;   /* the cutscene cast: 0/1, then ":all" / ":random" / ":imports" */
+    if (e && strstr(e, "all")) g_enemy_opts.cast_all = 1;
+    if (e && strstr(e, "random")) g_enemy_opts.cast_assign = 1;
+    if (e && strstr(e, "imports")) g_enemy_opts.cast_imports = 1;
 }
 
 const EnemyOpts* enemy_opts(void)
@@ -65,8 +70,9 @@ void enemy_opts_from_host(const EnemyOpts* o)
     if (!o) kept_n = 0;   /* (enemy_rand_kept: the host's kept records go with its session) */
     if (o) {
         host_opts = *o;
-        host_log("enemies: the host's options: extra %d, placements %d, randomizer %d (%s%s), seed %d\n", o->extra, o->place, o->rand,
-                 o->variety ? "wild" : "mild", o->events ? ", event enemies" : "", o->seed);
+        host_log("enemies: the host's options: extra %d, placements %d, randomizer %d (%s%s), seed %d, cutscene cast %d (%s, %s%s)\n", o->extra, o->place, o->rand,
+                 o->variety ? "wild" : "mild", o->events ? ", event enemies" : "", o->seed, o->cast, o->cast_all ? "all models" : "cutscene models",
+                 o->cast_assign ? "random" : "fixed", o->cast_imports ? ", imported models" : "");
     }
 }
 
@@ -450,6 +456,7 @@ void enemy_room_finished(void)
     variant_room();   /* (the slots' enemy variants) */
     if (!rom || !sys) return;
     o = enemy_opts();
+    cast_room(o);   /* the cutscene cast's models (cast_glue.c; it touches no record) */
     if (!o->place && !o->rand && !o->extra) return;
     scan_script();
     memset(rand_src, 0, sizeof(rand_src));

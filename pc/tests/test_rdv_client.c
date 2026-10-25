@@ -336,7 +336,7 @@ static void test_host(void)
         client_gets(fb, fn);
         s = rdv_session_state();
         CHECK(s && memcmp(s->tx, tx_before, 32) && s->tx_ctr == 0);
-        CHECK(peer_send(&p1, 0, "COOP old keys") < 0);   /* the partner's old keys no longer fit */
+        CHECK(peer_send(&p1, 0, "COOP old keys") == 0);   /* the partner's old keys no longer fit (0: not ours, left to a direct session's keys: coop_glue.c CoopDirect) */
         {   /* a partner really introduced at that epoch matches */
             RdvIntro in = { m.room_id, f.seq, m.flags, "" };
             memcpy(in.code, room, sizeof(in.code));
@@ -372,7 +372,7 @@ static void test_host(void)
         CHECK(peer_join(&p2, room, NULL) == RDV_INTRO);
         pump();
         CHECK(peer_send(&p2, 0, "COOP second") > 0);
-        CHECK(peer_send(&p1, 0, "COOP old") < 0);   /* the old partner's keys are gone */
+        CHECK(peer_send(&p1, 0, "COOP old") == 0);   /* the old partner's keys are gone (not opened: 0, as above) */
     }
     /* "Remove stuck player": the server frees the place, the session's keys go, the room and its
        code stay; the next partner joins with the same code (protocol 3) */

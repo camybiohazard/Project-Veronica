@@ -20,6 +20,10 @@ typedef struct NetResolve NetResolve;
 NetResolve* net_resolve_start(const char* host, int port);
 int  net_resolve_poll(NetResolve* r, NetAddr* out);
 void net_resolve_cancel(NetResolve* r);
+/* TCP, blocking (a background thread's: the update check, update.c): connect within connect_ms,
+   send req, read until the peer closes, cap bytes are in or total_ms have passed. The bytes read,
+   or -1 with *why saying what failed. */
+int  net_tcp_fetch(const NetAddr* to, const char* req, int len, char* buf, int cap, int connect_ms, int total_ms, const char** why);
 int  net_send(const NetAddr* to, const void* buf, int len);
 int  net_recv(NetAddr* from, void* buf, int cap);       /* bytes, or -1 when nothing is queued */
 /* when the datagram net_recv returned last arrived (net_us clock): the kernel's receive time on

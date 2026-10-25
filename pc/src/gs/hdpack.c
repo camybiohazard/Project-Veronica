@@ -30,6 +30,7 @@
 #include "textures.h"
 #include "../render/gl_loader.h"
 #include "../ps2_platform.h"
+#include "../../include/pc_parse.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -331,50 +332,31 @@ void hdpack_forget(unsigned int t)
 #define GL_TEXTURE_SWIZZLE_A 0x8E45
 typedef void (GLAPIENTRY* PFN_CompressedTexImage2D)(GLenum, GLint, GLenum, GLsizei, GLsizei, GLint, GLsizei, const void*);
 
-typedef struct { uint32_t w, h, mips, off, dxgi, block, fmt, bgra; } Dds;
-
-static int dds_parse(const uint8_t* d, size_t n, Dds* x)
+/* DDS headers: pc_parse.h pc_dds_parse (the size limits, the mipmap chain) */
+static GLenum dds_fmt(uint32_t dxgi)
 {
-    uint32_t fourcc, flags;
-    memset(x, 0, sizeof(*x));
-    if (n < 128 || memcmp(d, "DDS ", 4)) return 0;
-    memcpy(&x->h, d + 12, 4); memcpy(&x->w, d + 16, 4); memcpy(&x->mips, d + 28, 4); memcpy(&flags, d + 80, 4); memcpy(&fourcc, d + 84, 4);
-    if (!x->mips) x->mips = 1;
-    x->off = 128;
-    if ((flags & 4) && !memcmp(&fourcc, "DX10", 4)) { if (n < 148) return 0; memcpy(&x->dxgi, d + 128, 4); x->off = 148; }
-    else if (flags & 4) x->dxgi = !memcmp(&fourcc, "DXT1", 4) ? 71 : !memcmp(&fourcc, "DXT3", 4) ? 74 : !memcmp(&fourcc, "DXT5", 4) ? 77 : 0;
-    else if (flags & 0x40) { uint32_t bpp, rmask; memcpy(&bpp, d + 88, 4); memcpy(&rmask, d + 92, 4); if (bpp == 32) x->dxgi = rmask == 0xFF ? 28 : 87; }
-    switch (x->dxgi) {
-    case 71: case 72: x->fmt = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT; x->block = 8; break;
-    case 74: case 75: x->fmt = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT; x->block = 16; break;
-    case 77: case 78: x->fmt = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT; x->block = 16; break;
-    case 98: case 99: x->fmt = GL_COMPRESSED_RGBA_BPTC_UNORM; x->block = 16; break;
-    case 28: case 29: break;
-    case 87: case 88: case 91: x->bgra = 1; break;
-    default: return 0;
-    }
-    return x->w && x->h && x->w <= 16384 && x->h <= 16384 &&
-           x->off + (x->block ? ((x->w + 3) / 4) * ((x->h + 3) / 4) * x->block : x->w * x->h * 4) <= n;
+    return dxgi == 71 || dxgi == 72 ? GL_COMPRESSED_RGBA_S3TC_DXT1_EXT : dxgi == 74 || dxgi == 75 ? GL_COMPRESSED_RGBA_S3TC_DXT3_EXT
+         : dxgi == 77 || dxgi == 78 ? GL_COMPRESSED_RGBA_S3TC_DXT5_EXT : GL_COMPRESSED_RGBA_BPTC_UNORM;
 }
 
 static GLuint upload_dds(const uint8_t* d, size_t n, uint32_t* out_bytes)
 {
     static PFN_CompressedTexImage2D cti;
-    Dds x;
+    PcDds x;
     uint32_t off, total = 0, mips;
     GLuint t;
-    if (!dds_parse(d, n, &x)) return 0;
+    if (!pc_dds_parse(d, n, n, &x)) return 0;
     if (x.block && !cti && !(cti = (PFN_CompressedTexImage2D)SDL_GL_GetProcAddress("glCompressedTexImage2D"))) return 0;
     glGenTextures(1, &t);
     glBindTexture(GL_TEXTURE_2D, t);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    for (off = x.off, mips = 0; mips < x.mips; mips++) {
+    for (off = x.off, mips = 0; mips < x.mips; mips++) {   /* (the levels the file has: level 0 does, pc_dds_parse) */
         uint32_t mw = x.w >> mips ? x.w >> mips : 1, mh = x.h >> mips ? x.h >> mips : 1;
-        uint32_t sz = x.block ? ((mw + 3) / 4) * ((mh + 3) / 4) * x.block : mw * mh * 4;
-        if (off + sz > n) break;
-        if (x.block) cti(GL_TEXTURE_2D, (GLint)mips, x.fmt, (GLsizei)mw, (GLsizei)mh, 0, (GLsizei)sz, d + off);
+        uint64_t sz = pc_dds_level(&x, mips);
+        if (!pc_range_ok(off, sz, n)) break;
+        if (x.block) cti(GL_TEXTURE_2D, (GLint)mips, dds_fmt(x.dxgi), (GLsizei)mw, (GLsizei)mh, 0, (GLsizei)sz, d + off);
         else glTexImage2D(GL_TEXTURE_2D, (GLint)mips, GL_RGBA8, (GLsizei)mw, (GLsizei)mh, 0, x.bgra ? GL_BGRA : GL_RGBA, GL_UNSIGNED_BYTE, d + off);
-        off += sz; total += sz;
+        off += (uint32_t)sz; total += (uint32_t)sz;
     }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (GLint)mips - 1);
     *out_bytes = total;
@@ -398,14 +380,14 @@ static GLuint upload_rgba(SDL_Surface* c, uint32_t* out_bytes)
 /* ---------------- the content check ---------------- */
 
 /* the replacement's pixels: a decoded 4x4 block (DDS) or the PNG surface */
-typedef struct { const uint8_t* d; Dds x; SDL_Surface* png; int w, h; int cbx, cby; uint8_t blk[16 * 4]; } Img;
+typedef struct { const uint8_t* d; PcDds x; SDL_Surface* png; int w, h; int cbx, cby; uint8_t blk[16 * 4]; } Img;
 
 static const uint8_t* img_px(Img* m, int px, int py)
 {
     int bx = px >> 2, by = py >> 2;
     if (m->png) return (const uint8_t*)m->png->pixels + py * m->png->pitch + px * 4;
     if (bx != m->cbx || by != m->cby) {   /* decode the block (one block cached) */
-        const Dds* x = &m->x;
+        const PcDds* x = &m->x;
         if (!x->block)
             for (int i = 0; i < 16; i++) {
                 uint32_t sx = SDL_min((uint32_t)bx * 4 + (i & 3), x->w - 1), sy = SDL_min((uint32_t)by * 4 + (i >> 2), x->h - 1);
@@ -441,7 +423,7 @@ static int check_grid(Entry* e, const void* data, size_t n_, int grid, int* bord
     int sx = grid ? SDL_max(1, e->ow / grid) : 1, sy = grid ? SDL_max(1, e->oh / grid) : 1;
     double ad[3] = { 0, 0, 0 }, mad = 0;
     if (!SDL_strcasecmp(strrchr(names + e->name, '.'), ".png")) { m.png = (SDL_Surface*)data; m.w = m.png->w; m.h = m.png->h; }
-    else { if (!dds_parse(data, n_, &m.x)) return -1; m.d = data; m.w = (int)m.x.w; m.h = (int)m.x.h; }
+    else { if (!pc_dds_parse(data, n_, n_, &m.x)) return -1; m.d = data; m.w = (int)m.x.w; m.h = (int)m.x.h; }
     for (int i = 0; i < e->ow * e->oh; i++) { int a = (int)(e->orig[i] >> 24); amin = SDL_min(amin, a); amax = SDL_max(amax, a); }
     for (int y = sy / 2; y < e->oh; y += sy)
         for (int x = sx / 2; x < e->ow; x += sx) {
@@ -496,12 +478,13 @@ static int content_check(Entry* e, const void* data, size_t n)
    visible frame; under a black screen the files are read in the meantime. Textures first drawn
    later (another camera cut, an enemy, an effect) show the original until their file is in. */
 #define UPLOAD_BUDGET_NS 3000000   /* render-thread time for finishing loads per executed frame */
-#define READY_MAX (128u << 20)     /* files read but not uploaded yet (a 32-bit process) */
+#define READY_MAX (128u << 20)     /* files read but not uploaded yet and being read (a 32-bit process; one larger file is read alone) */
 #define LOADERS 3                  /* loader threads: reads overlap, checks run in parallel */
 static SDL_Mutex* qm;
 static SDL_Condition* qc;          /* a job done, queued, or ready bytes freed */
 static int* queue_; static int qh, qn;
 static uint64_t ready;             /* bytes read, not uploaded */
+static uint64_t running;           /* bytes the loader threads reserved for the files they read (need_bytes) */
 static int fade;                   /* hdpack_frame: 1 the picture shows through a fade */
 static uint64_t spent;             /* this frame's time in finish */
 static int nloading;               /* entries in st 1 */
@@ -516,14 +499,42 @@ static int usable(const Entry* e, uint32_t flags)
     return flags & NTEX_FONT ? g_config.hd_textures_font : g_config.hd_textures_ui && !(flags & NTEX_KEEP);
 }
 
+/* the memory loading the file takes (the DDS file read; a PNG's file, its decoded surface and the RGBA
+   copy), from its size and header, before it is read; 0: not usable (not a DDS of the formats used or
+   a PNG, larger than PC_HD_MAX_DIM a side or PC_HD_MAX_BYTES, a DDS with more mipmap levels than its
+   size has) */
+static uint64_t need_bytes(const Entry* e)
+{
+    const char* path = names + e->name;
+    uint8_t h[148];
+    size_t got;
+    Sint64 size;
+    SDL_IOStream* f = SDL_IOFromFile(path, "rb");
+    if (!f) return 0;
+    size = SDL_GetIOSize(f);
+    got = SDL_ReadIO(f, h, sizeof(h));
+    SDL_CloseIO(f);
+    if (size <= 0) return 0;
+    if (!SDL_strcasecmp(strrchr(path, '.'), ".png")) {
+        uint32_t w, hh;
+        uint64_t px;
+        if (!pc_png_size(h, got, &w, &hh) || !w || !hh || w > PC_HD_MAX_DIM || hh > PC_HD_MAX_DIM || (px = (uint64_t)w * hh * 4) > PC_HD_MAX_BYTES) return 0;
+        return (uint64_t)size + 2 * px;
+    } else {
+        PcDds x;
+        return (uint64_t)size <= PC_HD_MAX_BYTES && pc_dds_parse(h, got, (uint64_t)size, &x) ? (uint64_t)size : 0;
+    }
+}
+
 /* read the file and check it the first time (a loader thread, or the render thread when it
-   waits); touches only the entry */
-static void read_check(Entry* e)
+   waits); touches only the entry. need: need_bytes (0: not read) */
+static void read_check(Entry* e, uint64_t need)
 {
     const char* path = names + e->name;
     uint64_t t0 = SDL_GetTicksNS(), t1;
-    e->n = 0; e->r = -1;
-    if (!SDL_strcasecmp(strrchr(path, '.'), ".png")) {
+    e->n = 0; e->r = -1; e->data = NULL; e->why[0] = 0;
+    if (!need) SDL_strlcpy(e->why, "too large, or not a DDS / PNG of the formats used", sizeof(e->why));
+    else if (!SDL_strcasecmp(strrchr(path, '.'), ".png")) {
         SDL_Surface* s = SDL_LoadPNG(path);
         e->data = s ? SDL_ConvertSurface(s, SDL_PIXELFORMAT_ABGR8888) : NULL;   /* RGBA bytes */
         SDL_DestroySurface(s);
@@ -537,17 +548,28 @@ static void read_check(Entry* e)
 static int SDLCALL loader(void* unused)
 {
     (void)unused;
+    crash_thread_init();
     SDL_LockMutex(qm);
     for (;;) {
         Entry* e;
-        while (!qn || ready > READY_MAX) SDL_WaitCondition(qc, qm);
+        uint64_t need;
+        while (!qn) SDL_WaitCondition(qc, qm);
         e = &ents[queue_[qh]]; qh = (qh + 1) % nents; qn--;
         e->inq = 0;
         if (e->job != J_QUEUED) continue;   /* the render thread took it over */
-        e->job = J_RUNNING;
         SDL_UnlockMutex(qm);
-        read_check(e);
+        need = need_bytes(e);
         SDL_LockMutex(qm);
+        /* its memory reserved before it starts, within READY_MAX with the files read but not uploaded
+           and the other jobs' (one alone always runs); until then the render thread may take it over */
+        while (e->job == J_QUEUED && (ready || running) && ready + running + need > READY_MAX) SDL_WaitCondition(qc, qm);
+        if (e->job != J_QUEUED) continue;
+        e->job = J_RUNNING;
+        running += need;
+        SDL_UnlockMutex(qm);
+        read_check(e, need);
+        SDL_LockMutex(qm);
+        running -= need;
         e->job = J_DONE;
         ready += e->n;
         SDL_BroadcastCondition(qc);
@@ -590,7 +612,7 @@ static void finish(Entry* e)
     if (png) SDL_DestroySurface(e->data); else SDL_free(e->data);
     if (!e->gl) {   /* unreadable or not uploadable: never tried again (bind would on every draw) */
         e->st = e->data && e->verdict != V_UNKNOWN && !usable(e, flags) ? 3 : 4;
-        if (e->st == 4) host_log("hd textures: cannot load %s\n", rel(e));
+        if (e->st == 4) host_log("hd textures: cannot load %s%s%s\n", rel(e), e->why[0] ? ": " : "", e->why);
     } else {
         if (e->amode == A_CONST) glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_ONE);
         e->st = 2;
@@ -617,7 +639,7 @@ static void start(Entry* e, uint32_t flags)
 {
     e->st = 1; e->flags = (uint8_t)flags;
     nloading++;
-    if (!qm) { read_check(e); finish(e); return; }
+    if (!qm) { read_check(e, need_bytes(e)); finish(e); return; }
     SDL_LockMutex(qm);
     e->job = J_QUEUED;
     if (!e->inq) { e->inq = 1; queue_[(qh + qn++) % nents] = (int)(e - ents); }
@@ -637,7 +659,7 @@ static void poll(Entry* e, int wait)
     job = e->job;
     if (job == J_DONE) { ready -= e->n; e->job = J_NONE; SDL_BroadcastCondition(qc); }
     SDL_UnlockMutex(qm);
-    if (job == J_NONE) read_check(e);
+    if (job == J_NONE) read_check(e, need_bytes(e));
     if (job == J_NONE || job == J_DONE) finish(e);
 }
 

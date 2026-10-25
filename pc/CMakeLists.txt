@@ -146,7 +146,7 @@ FetchContent_Declare(xxhash GIT_REPOSITORY https://github.com/Cyan4973/xxHash.gi
 FetchContent_Declare(bcdec GIT_REPOSITORY https://github.com/iOrange/bcdec.git GIT_TAG 80859ed3b7afb1c527a2a99d70c61457bea72d0c SOURCE_SUBDIR none)
 FetchContent_MakeAvailable(xxhash bcdec)
 target_include_directories(recvx_platform PRIVATE ${xxhash_SOURCE_DIR} ${bcdec_SOURCE_DIR})
-set_property(SOURCE src/host/host.c src/host/overlay.cpp APPEND PROPERTY COMPILE_DEFINITIONS "RECVX_VERSION=\"${RECVX_VERSION}\"")
+set_property(SOURCE src/host/host.c src/host/overlay.cpp src/net/update.c APPEND PROPERTY COMPILE_DEFINITIONS "RECVX_VERSION=\"${RECVX_VERSION}\"")
 target_include_directories(recvx_platform PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/sdk
@@ -255,15 +255,34 @@ add_test(NAME ntex COMMAND test_ntex)
 add_executable(test_appear tests/test_appear.c src/host/actors.c)
 add_test(NAME appear COMMAND test_appear)
 
+# imports (src/import): SLD, TIM2, the glTF and .cvxm writers on a synthetic model
+add_executable(test_import tests/test_import.c src/import/impmodel.c src/import/ob2.c src/import/import.c src/host/actors.c src/host/fileio.c src/host/parse.c)
+target_link_libraries(test_import PRIVATE SDL3::SDL3 m)
+add_test(NAME import COMMAND test_import ${CMAKE_CURRENT_BINARY_DIR})
+
+# checked file reading (include/pc_parse.h): PRS against the game's decoder, crafted AFS tables, .cvxm
+# models, DDS / PNG headers and BioRand start-kit scripts
+add_executable(test_parsers tests/test_parsers.c src/host/parse.c src/net/coop_proto.c src/net/rdv_proto.c)
+target_compile_options(test_parsers PRIVATE -std=gnu11)
+target_link_libraries(test_parsers PRIVATE monocypher m)
+add_test(NAME parsers COMMAND test_parsers)
+
 # enemy variants (pc/src/host/variants.c): the built-in table, the mods/enemies.ini reader
 add_executable(test_variants tests/test_variants.c src/host/variants.c src/host/actors.c src/host/fileio.c)
 add_test(NAME variants COMMAND test_variants)
+# the cutscene cast randomizer's picks (pc/src/host/cast.c): deterministic, never the model itself, distinct per room
+add_executable(test_cast tests/test_cast.c src/host/cast.c src/host/actors.c)
+add_test(NAME cast COMMAND test_cast)
 
 # co-op networking (pc/src/net): a busy port, the port mapping started and stopped again
 add_executable(test_net tests/test_net.c src/net/net.c src/net/portmap.c)
 target_compile_options(test_net PRIVATE $<$<COMPILE_LANGUAGE:C>:-std=gnu11>)
 target_link_libraries(test_net PRIVATE SDL3::SDL3 miniupnpc::miniupnpc natpmp $<$<BOOL:${WIN32}>:ws2_32>)
 add_test(NAME net COMMAND test_net)
+
+# update check (pc/src/net/update.h): the URL, the server's answer (status, body, junk), version comparison
+add_executable(test_update tests/test_update.c)
+add_test(NAME update COMMAND test_update)
 
 # co-op packets (pc/src/net/coop_proto.c): malformed events of every type, transfers, the event
 # ring, the join code, world event actions, and a fuzz loop

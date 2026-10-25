@@ -67,6 +67,7 @@ unsigned int pc_noclip(void)
      this room, as pc_rules.h pc_unlock_rule says.
    No item is added; the scripts' PlItemLost/PlItemLostEx of a key the player does not have find nothing. */
 void host_log(const char* fmt, ...);
+int Event_exec(unsigned int task_level, unsigned int evt_id);   /* event.c */
 static int key_item(int id) { return id > 0 && id < 156 && (itemdata[id].type & 0x40); }
 static int carried(int id)
 {
@@ -611,6 +612,17 @@ static void scripted(unsigned int* inv)
             sys->cb_flg |= 0x400000;
             printf("test: computer %d in %d/%d at game frame %d\n", a, sys->stg_no, sys->rom_no, clock);
             ct = ct[n] == ',' ? ct + n + 1 : NULL;
+        }
+    }
+    {   /* RECVX_TEST_EVENT="frame:level:ev,...": the room script's event ev at that task level from that game frame (as its
+           EvtOn: a cutscene without walking to its trigger; entries of the same frame start together, as a script starts them) */
+        static const char* te = (const char*)-1;
+        int lv;
+        if (te == (const char*)-1) te = getenv("RECVX_TEST_EVENT");
+        while (te && sscanf(te, "%d:%d:%d%n", &f, &lv, &a, &n) == 3 && clock >= f && !(sys->cb_flg & 0x1)) {
+            Event_exec((unsigned)lv, (unsigned)a);
+            printf("test: event %d at task level %d in %d/%d at game frame %d\n", a, lv, sys->stg_no, sys->rom_no, clock);
+            te = te[n] == ',' ? te + n + 1 : NULL;
         }
     }
     {   /* RECVX_TEST_ROOMFLAGS="frame:mask,...": rm_flg |= mask at that game frame (bit n of the scripts is 0x80000000 >> n):
