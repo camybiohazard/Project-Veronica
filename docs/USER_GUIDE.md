@@ -207,7 +207,8 @@ side, mouse sensitivity, invert Y, crosshair, the game's auto-aim and the gamepa
 - **Gamepad controls** (`tps_pad_controls`): **Modern (twin-stick)** (default) or Classic (tank
   controls through the game's buttons, the camera behind). In Classic the weapon is raised with the
   game's aim button (R1); the right stick, the left stick and the d-pad then move the crosshair
-  (with "Game auto-aim" on, the game's lock-on instead).
+  (with "Game auto-aim" on, the game's lock-on instead). Letting go of aim puts the camera back
+  behind the character.
 - **Precise hits** (`tps_precise_hits`, on by default): with free aim a shot hits an enemy only where
   the crosshair meets its body (head, torso, arms, legs as it moves, crawls or lies); a shot beside it
   misses. A head hit does half again the damage (zombies, Cerberus, Bandersnatch, Tyrant, Alexia's
@@ -283,7 +284,7 @@ Xbox / PlayStation; keyboard in brackets.
 | Run | B / Circle held (X) | Shift | B / Circle | X / Square, or the stick pushed far |
 | Quick turn | back + run; Modern: the Quick turn row (unbound) | S + Shift | back + run | d-pad down, or stick back + run |
 | Aim | RB / R1 (W) | right mouse | RB / R1 | LT / L2 |
-| Aim while aiming | d-pad, left stick (arrows): turn, up / down | the mouse | right stick, left stick, d-pad | right stick, left stick, d-pad |
+| Aim while aiming | d-pad, left stick (arrows): turn, up / down | the mouse | right stick, left stick, d-pad | right stick |
 | Fire | A / Cross (Z) while aiming | left mouse | A / Cross | RT / R2 |
 | Reload | RB + Y (R) | R | RB + Y | RB / R1 |
 | Quick knife (hold) | RT / R2 (Space) | Space | RT / R2 | LB / L1 |

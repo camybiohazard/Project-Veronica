@@ -251,6 +251,7 @@ void tps_camera(void)
     tps_cam_active = g_tps.cam_active = 1;
 
     aim = aiming() && !lock_aim();
+    if (g_tps.aiming && !aiming() && !g_tps.pad_modern) recenter = 20;   /* Classic gamepad: lowering the weapon recenters */
     g_tps.aiming = aiming();
     if (!(sys->sp_flg & 0x40)) mouse_dx = mouse_dy = stick_yaw = stick_pitch = 0;   /* frozen (above): no mouse look */
     if (recenter > 0 && !aiming()) {   /* gamepad: the camera eases behind the character */
@@ -657,14 +658,14 @@ static int pad_sticks(unsigned int* pad)
     stick_moved = pad_move = 0;
     {   /* the right stick turns the camera (Modern) and aims. Classic keeps the game's buttons, whose turn while aiming
            cannot move free aim's crosshair (the shot follows the crosshair), so there the right stick (free in every key
-           type: the game reads only the left one) aims too. In both, while aiming freely, the left stick and the d-pad
-           also move the crosshair, as they turn and tilt the original aim; not in the scope, which the game turns by
-           them itself. */
+           type: the game reads only the left one) aims too. In Classic only, while aiming freely, the left stick and the
+           d-pad also move the crosshair, as they turn and tilt the original aim (not in the scope, which the game turns
+           by them itself); Modern aims with the right stick alone. */
         int aim_free = plp->mode0 == 1 && plp->mode1 == 1 && !lock_aim() && pc_in_play(plp, 1);
         if (g_tps.pad_modern ? stick && pad_cam : aim_free && tps_pad_sticks(&lx, &ly, &rx, &ry)) {
             float ax = lx, ay = ly, dx, dy;
             if (modern_stick(&rx, &ry, g_tps.pad_dead_look / 100.0f, 2.0f) > 0) recenter = 0, stick_moved = 1;
-            if (aim_free && tps_cam_active) {
+            if (aim_free && tps_cam_active && !g_tps.pad_modern) {
                 modern_stick(&ax, &ay, g_tps.pad_dead_move / 100.0f, 2.0f);
                 tps_pad_dpad(&dx, &dy);
                 rx += ax + dx; ry += ay + dy;
@@ -740,8 +741,9 @@ unsigned int tps_pad(unsigned int pad)
     if (sys->ss_flg & 0x400000) return pad;   /* attract demo playback */
     pad |= toggle_closes();
     k = tps_input_keys(plp && pad_sticks(&pad));
-    pad_steer = (pad & 0xF) != 0 && !pad_cam;   /* (the gamepad: its stick, or a d-pad turn: the camera stays) */
     scope = in_scope();
+    if (scope && pad_cam) pad &= ~0x6F;   /* Modern: the scope turns by the right stick alone, not the game's directions */
+    pad_steer = (pad & 0xF) != 0 && !pad_cam;   /* (the gamepad: its stick, or a d-pad turn: the camera stays) */
     {   /* the scope: the recenter row (right stick click) switches the zoom (the game's "change aim" bit 0x80,
            held: L1, the quick knife's button here); run (Shift) zooms while held */
         static unsigned was;

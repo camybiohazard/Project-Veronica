@@ -83,8 +83,8 @@ from the same point along the same angles, so it goes where the scope's centre i
   and an input held through that change counts for neither set until let go (`bindings.c
   pad_row_reads`): the held LT was no aim any more and the scope closed as it opened. The right
   stick turns the scope as the mouse does (`scope_look`: `stick_yaw` / `stick_pitch` from
-  `pad_sticks`, with the stick speed, invert Y and "Stick aiming speed", scaled by the zoom); the
-  left stick and d-pad up / left / right still turn it the game's way. The right stick click
+  `pad_sticks`, with the stick speed, invert Y and "Stick aiming speed", scaled by the zoom), and
+  only the right stick: `tps_pad` drops the left stick's and d-pad's directions in the scope. The right stick click
   (`pad_tps_recenter`, which has nothing to recenter there) switches the zoom on and off: the
   stick that aims holds no button well, and LB, the game's zoom (L1), is the quick knife here. The
   zoom ends with the scope. Run (X) held zooms too, as Shift does.
@@ -106,10 +106,12 @@ the default, or Classic (the gamepad as a DualShock 2 through the game rows: tan
 camera behind, no camera stick). The game's own turn while aiming cannot move free aim's crosshair
 (the shot follows it), so in Classic the right stick, which no key type uses (the game reads only
 the left stick), aims while the weapon is raised, at the stick aiming speed as in Modern; with
-"Game auto-aim" Classic keeps the game's lock-on. In both schemes, while aiming freely, the left
-stick and the d-pad also move the crosshair (left / right turn it, up / down raise and lower it, as
-they turn and tilt the original aim); in the scope the game turns by them itself and only the right
-stick is added. Modern, as the RE2/RE4 remakes (button map:
+"Game auto-aim" Classic keeps the game's lock-on. In Classic, while aiming freely, the left stick
+and the d-pad also move the crosshair (left / right turn it, up / down raise and lower it, as they
+turn and tilt the original aim); in the scope the game turns by them itself and only the right stick
+is added. Lowering the weapon in Classic eases the camera back behind the character and to its
+normal pitch, as Modern's right stick click does (`tps_camera`: `recenter`). Modern aims with the
+right stick only, in the scope too. Modern, as the RE2/RE4 remakes (button map:
 [USER_GUIDE.md](USER_GUIDE.md#third-person-with-a-gamepad)):
 
 * **Left stick**: walks towards its direction seen from the camera (`modern_target` with the
@@ -160,7 +162,7 @@ Hooks: `tps_pad` (`pad_sticks`: device, right stick as `stick_yaw`/`stick_pitch`
 the virtual bits; the quick-turn gesture into `tps_input_keys`), `tps_camera` (orbit, recenter),
 `tps_player` (the turn towards the stick; the right stick and the assist while aiming), `knife_pad`
 (`pad_quick_knife` also reads `pad_tps_knife`). Classic keeps `pad_play` 0 and the game rows; only
-while aiming freely `pad_sticks` turns the right stick (and the left stick and d-pad, both schemes)
+while aiming freely `pad_sticks` turns the right stick (and in Classic the left stick and d-pad)
 into `stick_yaw` / `stick_pitch`.
 
 ### Settings
