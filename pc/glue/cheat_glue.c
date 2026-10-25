@@ -10,14 +10,16 @@
 #include "../../decomp/include/ps2/veronica/prog/item.h"
 #include "../../decomp/include/ps2/veronica/prog/hitchk.h"
 #include "../src/host/cheat.h"
-#include "../src/host/coop.h"
-#include "../src/net/coop_proto.h"
+#include "../src/host/script.h"
+#include "../src/host/actors.h"
 #include "pc_rules.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 CheatState g_cheat = { .give_count = 1 };
+
+static int room_key(void) { return sys->stg_no * 256 + sys->rom_no; }   /* the room we are in (any case) */
 
 /* infinite ammo: every shot goes through bhCheckBullet/bhCountBullet (weapon.c), which then take
    the path of the game's own unlimited weapons (no count check, no decrement) */
@@ -30,8 +32,7 @@ int pc_inf_ammo(void) { return g_cheat.inf_ammo; }
    per floor) in step. Turning noclip off after flying puts the player back on the floor level
    it took off from (the height levels say nothing about where there is ground, so a level
    between is no safer); walls push it out as usual - in the room it took off in (another room's
-   level means nothing here: there it stays where it is). Only our player: co-op runs the partner
-   through plp too. */
+   level means nothing here: there it stays where it is). */
 int pad_noclip_vertical(void);
 unsigned int pc_noclip(void)
 {
@@ -39,12 +40,12 @@ unsigned int pc_noclip(void)
     int mode = g_cheat.noclip, v;
     if (plp != &ply) return 0;
     if (mode == 2 && plp->mode0 == 1 && (v = pad_noclip_vertical())) {
-        if (!flew) { flew = 1; base = plp->flr_no; room = coop_room_key(); }
+        if (!flew) { flew = 1; base = plp->flr_no; room = room_key(); }
         plp->py += v;   /* a unit per frame; the player is about 17 tall */
         bhSetFloorNum(plp);
     }
     if (!mode && flew) {
-        if (room == coop_room_key()) {
+        if (room == room_key()) {
             plp->py = rom->grand[base + 2];
             bhSetFloorNum(plp);
         }
@@ -149,7 +150,7 @@ static int parse_part(Site* s, const unsigned char* d, unsigned int o, unsigned 
 {
     while (o < e) {
         const unsigned char* p = d + o;
-        int len = coop_insn_len_raw(p), kind, ix, j;
+        int len = script_insn_len(p), kind, ix, j;
         Val v = { 0, 0, 0 };
         if (len <= 0 || o + len > e) return 0;
         switch (p[0]) {
@@ -161,8 +162,8 @@ static int parse_part(Site* s, const unsigned char* d, unsigned int o, unsigned 
             kind = p[0] == 11 ? W_ETC_ON : W_FLR_ON; ix = p[1]; v.attr = !p[2];
             break;
         case 37: case 124: {   /* EtcAtariSet2, FlrAtariSet2: type, attr, prm */
-            AtrSet a;
-            coop_atr_set(p, &a);
+            ScriptAtrSet a;
+            script_atr_set(p, &a);
             kind = p[0] == 37 ? W_ETC : W_FLR; ix = a.ix;
             v.attr = a.attr; v.type = a.type; v.prm = a.prm[0] | a.prm[1] << 8 | a.prm[2] << 16 | (unsigned int)a.prm[3] << 24;
             break;
@@ -210,13 +211,13 @@ static void note_site(int item)
         if (site[i].ifel < q && site[i].then0 > q) return;   /* (the block's second check) */
     for (o = q; o >= 2 && o + 64 > q; o--) {   /* its IfelCk: tests only from there to the check */
         if (d[o - 2] != 1 || o + d[o - 1] != f) continue;
-        for (p = o; p < q && coop_op_cond(d[p]) && coop_insn_len_raw(d + p) > 0; p += coop_insn_len_raw(d + p)) {}
+        for (p = o; p < q && script_op_cond(d[p]) && script_insn_len(d + p) > 0; p += script_insn_len(d + p)) {}
         if (p == q) break;
     }
     if (o < 2 || o + 64 <= q) return;
     memset(s, 0, sizeof(*s));
     s->ifel = o - 2;
-    for (p = q; coop_op_cond(d[p]) && coop_insn_len_raw(d + p) > 0; p += coop_insn_len_raw(d + p)) {}
+    for (p = q; script_op_cond(d[p]) && script_insn_len(d + p) > 0; p += script_insn_len(d + p)) {}
     s->then0 = p;
     if (d[f - 2] == 2) { s->els = f; s->end = f - 2 + d[f - 1]; }
     else if (d[f - 2] == 3 && !d[f - 1]) s->end = f;
@@ -290,10 +291,10 @@ void pc_unlock_item_tested(void)
     int ok = 1;
     if (!unlock_live || evaluating || sys->sb_id != unlock_item) return;
     evaluating = 1;
-    while (ok && coop_op_cond(*bhScePtr)) {
+    while (ok && script_op_cond(*bhScePtr)) {
         unsigned char op = *bhScePtr;
         if (op == 4 || op == 6 || op == 7 || op == 16 || op == 17) ok = bhScenarioJmpT[op]() != 0;   /* Ck CmpB CmpW UseItemCheck PlItemCheck */
-        else if (coop_insn_len_raw(bhScePtr) > 0) bhScePtr += coop_insn_len_raw(bhScePtr);   /* (others, e.g. RandTest, not run twice: as holding) */
+        else if (script_insn_len(bhScePtr) > 0) bhScePtr += script_insn_len(bhScePtr);   /* (others, e.g. RandTest, not run twice: as holding) */
         else break;
     }
     evaluating = 0;
@@ -390,17 +391,17 @@ void cheat_warp_sound(int after)
 }
 
 /* a warp that never reached its room's entry script (the game ended in the transition: game over, the
-   title, a co-op session closing) must not make the next ordinary door take the warp's music rule; a
+   title) must not make the next ordinary door take the warp's music rule; a
    quick knife drawn when the game ended gives nothing back in the next one (knife_glue.c); the third-person
    camera of the game that ended no longer counts as on (tps_glue.c) */
 void cheat_game_exit(void) { warp_sound = 0; nsite = recording = 0; knife_game_exit(); tps_game_exit(); }
 
-/* the game's own door transition (door type 255: no animation), for the teleport, the co-op
-   follow and test aids. An enemy grab plays the player on the enemy's motion set (en01sub.c);
+/* the game's own door transition (door type 255: no animation), for the teleport and
+   test aids. An enemy grab plays the player on the enemy's motion set (en01sub.c);
    the new room frees it, and the room change would animate from it (crash in bhSetMotion), so
    take the player's own set back first, as the game does when a grab ends.
    The room file is RM_<stage><room><case>: a door's script picks the case (RoomCaseNo) before it calls the
-   door, a warp has none of its own. It loads `rcase` (the co-op host's), or our case as it is, as the room
+   door, a warp has none of its own. It loads `rcase`, or our case as it is, as the room
    has it; else the room's first case. A case only another room has (the prison yard 0/3 has two, 0/10 one)
    was a file the loader waited for for good: stuck in the load screen. */
 int GetFileSize(char* FileName);   /* gdlib.c: 0 when neither the disc nor the mods folder has it */
@@ -442,8 +443,7 @@ static void teleport(int stg, int rom, int pos)
    kind, e.g. 4102 = 0x1006 grenade launcher with acid rounds; further entries fill the next
    slots; after a ';' another "frame:item:count" equips again later: a weapon switch).
    RECVX_WARP="stage:room:frame:x:z:angle,..." puts the player at x/z facing `angle` once it has
-   been `frame` game frames in that room (independent of how the room was reached, e.g. a
-   co-op join).
+   been `frame` game frames in that room (independent of how the room was reached).
    RECVX_INF_AMMO=1 turns the infinite ammo cheat on, RECVX_UNLOCK=1 "Unlock all" (RECVX_UNLOCK="frame:0/1,..." switches
    it at those game frames); RECVX_NOCLIP="frame:mode,..." sets the
    noclip mode (0/1/2) at that game frame; it also logs the position every 15 game frames and any jump
@@ -453,7 +453,7 @@ static void teleport(int stg, int rom, int pos)
    bhEff110, which reads the frame buffer back every frame - StoreRenderTex).
    RECVX_PLAYER=n: the first RECVX_TELEPORT also switches the character played to n (0 Claire,
    1 Chris, 2 Steve, 3 Wesker) as the story's character switch does.
-   RECVX_APPEAR="frame:chr,..." sets "You appear as" (g_coop.chr, the ini's coop_char) at that
+   RECVX_APPEAR="frame:chr,..." sets "You appear as" (g_appear_chr, the ini's appear_char) at that
    game frame.
    RECVX_SKIP_CINE=n skips each cutscene (as its skip button: cb_flg 0x10000000) after n game frames.
    RECVX_FLAGS="set:bit,..." sets these story flags at the first game frame (set as in the room
@@ -480,10 +480,10 @@ static void scripted(unsigned int* inv)
     if (nclog) {   /* and any jump of more than 2 units in one tick (the player moved by code, not by walking) */
         static float lx, lz;
         static int lroom = -1;
-        if (lroom == coop_room_key() && (plp->px - lx) * (plp->px - lx) + (plp->pz - lz) * (plp->pz - lz) > 4.0f)
+        if (lroom == room_key() && (plp->px - lx) * (plp->px - lx) + (plp->pz - lz) * (plp->pz - lz) > 4.0f)
             printf("test: JUMP at game frame %d room %d/%d from %.1f %.1f to %.1f %.1f %.1f floor %d\n", clock, sys->stg_no, sys->rom_no, lx, lz,
                    plp->px, plp->py, plp->pz, plp->flr_no);
-        lx = plp->px; lz = plp->pz; lroom = coop_room_key();
+        lx = plp->px; lz = plp->pz; lroom = room_key();
     }
     if (nc && sscanf(nc, "%d:%d%n", &f, &a, &n) == 2 && clock >= f) {
         printf("test: noclip %d at game frame %d (%.1f %.1f %.1f)\n", a, clock, plp->px, plp->py, plp->pz);
@@ -518,7 +518,7 @@ static void scripted(unsigned int* inv)
             if (sys->gfrm_ct != prev && ++cine == atoi(sk)) { sys->cb_flg |= 0x10000000; printf("test: cutscene skipped in %d/%d\n", sys->stg_no, sys->rom_no); }
         } else cine = 0;
     }
-    if (coop_room_key() != room) { room = coop_room_key(); in_room = 0; }
+    if (room_key() != room) { room = room_key(); in_room = 0; }
     if (sys->gfrm_ct != prev) { prev = sys->gfrm_ct; clock++; in_room++; }
     if (tp && sscanf(tp, "%d:%d:%d:%d%n", &f, &a, &b, &c, &n) == 4 && clock >= f + last &&
         !(sys->gm_flg & 0x9) && !(sys->cb_flg & 0x1)) {
@@ -622,7 +622,7 @@ static void scripted(unsigned int* inv)
     }
     if (ap && sscanf(ap, "%d:%d%n", &f, &a, &n) == 2 && clock >= f) {
         printf("test: appear as %d at game frame %d\n", a, clock);
-        g_coop.chr = a;
+        g_appear_chr = a;
         ap = ap[n] == ',' ? ap + n + 1 : NULL;
     }
     spawn_frame(clock);   /* RECVX_SPAWN (pc/glue/spawn_glue.c) */

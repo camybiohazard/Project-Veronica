@@ -1024,7 +1024,7 @@ def cmd_selftest(args):
 def cmd_grants(args):
     """items the room scripts hand over: Sv sb_id N with Set cb_flg bit 27 (0x10: the status screen's
     item get) - 'given' when bit 17 (0x4000: no question) is set too, else 'asked'; per script part,
-    with the conditions of the blocks that start that event (docs/COOP.md "Items from events")"""
+    with the conditions of the blocks that start that event"""
     afs = open_disc(args)
     for i, n in enumerate(room_names()):
         r = Room(expand(afs.get(i)), n)

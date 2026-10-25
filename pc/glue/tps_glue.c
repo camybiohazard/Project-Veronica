@@ -33,7 +33,6 @@ uint64_t gs_frame_count(void); /* the presented frame (RECVX_INPUT, frame dumps)
 int reload_at_rest(void);      /* reload_glue.c */
 int pc_in_play(const BH_PWORK* p, int scope);
 int pc_in_game(void);           /* options_glue.c */
-int pc_trade_screen(void);      /* trade_glue.c */
 int pc_options_up(void);        /* options_glue.c */
 
 static float yaw, pitch;          /* camera, game angle units (65536 = 360 deg); pitch > 0 looks up */
@@ -626,8 +625,8 @@ int tps_own_view(void)
 }
 
 /* system.c bhSysCallScreenSaver: the game's idle check only reads the PS2 pad (p1per), so the
-   input added on top of it - third-person keys and mouse, quick knife, inventory mouse, trade
-   screen, all ending up in sys->pad_on - would let the 6-minute idle dimming start during play
+   input added on top of it - third-person keys and mouse, quick knife, inventory mouse, all
+   ending up in sys->pad_on - would let the 6-minute idle dimming start during play
    and never end it (only a pad button or pausing did, not a door). Attract demo input is not
    the player's. */
 int pc_input_active(void)
@@ -812,7 +811,7 @@ static int aimable(const BH_PWORK* e) { return (e->flg & 0x1) && (e->flg & 0x20)
 #define SHOTGUN_R0 0.3f       /* the shotgun's cone: this wider at the muzzle, */
 #define SHOTGUN_K 0.06f       /* plus this per unit of distance (3.4 degrees either side), */
 #define SHOTGUN_MAX 3.0f      /* at most this */
-unsigned char tps_hit_precise[128];   /* per enemy slot: its last gun hit was precise, as weapon + 1 (0: not; coop_glue.c) */
+unsigned char tps_hit_precise[128];   /* per enemy slot: its last gun hit was precise, as weapon + 1 (0: not) */
 static float xr[7];                   /* the crosshair's ray (aim_at_crosshair): from, direction, length to its wall */
 static int dual_yaw;                  /* dual weapons, precise hits: the yaw of the gun turned to another enemy (dual_aim) */
 static int ticks, xr_tick = -1;      /* tps_player calls; the one in which it was cast (a shot in the mode handler before the next: the same) */
@@ -1542,14 +1541,14 @@ void tps_calc_model(void)
     }
 }
 
-/* the pitch our upper body is bent by this tick (radians, 0: none): the co-op pose sends it */
+/* the pitch our upper body is bent by this tick (radians, 0: none) */
 float tps_aim_pitch(void)
 {
     return tps_on ? bend_a * 2 : 0;
 }
 
 /* that bend (pitch radians) on another model posed this tick: a display copy of the player (actor_glue.c: a
-   gender-matched pose; its base matrix is the player's), the co-op partner with the pitch its pose sent */
+   gender-matched pose; its base matrix is the player's) */
 void tps_bend(BH_PWORK* p, float pitch)
 {
     if (pitch != 0 && p->mlwP->obj_num > 9) bend(p, pitch / 2);
@@ -1599,7 +1598,6 @@ void tps_frame(void)
        quick knife stays held) */
     g_tps.kb_play = on && pc_in_game() && !pc_options_up();
     g_tps.pad_play = on && g_tps.pad_modern && (tps_cam_active || in_scope()) && sys && (sys->sp_flg & 0x40) && !(sys->ss_flg & 0x400000);
-    /* with or without third person: the player has control, so no menu has the mouse (menu_mouse.c);
-       the co-op trade screen is open in play */
-    g_menu_mouse.play = pc_in_game() && plp && pc_in_play(plp, 1) && !pc_trade_screen();   /* (the scope too: its mouse aim) */
+    /* with or without third person: the player has control, so no menu has the mouse (menu_mouse.c) */
+    g_menu_mouse.play = pc_in_game() && plp && pc_in_play(plp, 1);   /* (the scope too: its mouse aim) */
 }

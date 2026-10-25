@@ -149,7 +149,7 @@ int main(void)
     }
 
     /* memory card import: valid slots keep their number if free, empty ones are skipped, the
-       partners file and the system file come along, the card keeps everything; again: nothing */
+       system file comes along, the card keeps everything; again: nothing */
     {
         char card[600];
         unsigned char cfg[SAVE_CONFIG_BYTES] = { 1, 2, 3 };
@@ -164,7 +164,6 @@ int main(void)
         card_save(e, 2, 2, 7, 6);
         snprintf(path, sizeof(path), "%s/SAVEDATA-02", card); write_raw(path, e, SAVE_DATA_BYTES);
         snprintf(path, sizeof(path), "%s/BASLUS-20184", card); write_raw(path, cfg, sizeof(cfg));
-        snprintf(path, sizeof(path), "%s/coop-partners-02.bin", save_dir); write_raw(path, "partners", 8);
         card_save(back, 1, 0, 4, 1);
         CHECK(savestore_write(dir, 1, back, NULL) == 1);   /* number 1 taken: slot 1's save goes after it */
         CHECK(savestore_import_card(save_dir, dir) == 2);
@@ -172,8 +171,6 @@ int main(void)
         CHECK(savestore_find(dir, 2, file, sizeof(file)) && !strcmp(file, "002_Claire_Prison-front.sav"));
         snprintf(path, sizeof(path), "%s/%s", dir, file);
         CHECK(savestore_read(path, back) && !memcmp(back, d, SAVE_DATA_BYTES));   /* card -> native: the same bytes */
-        snprintf(path, sizeof(path), "%s/003.coop-partners.bin", dir);
-        CHECK(file_size(path) == 8);
         snprintf(path, sizeof(path), "%s/system.dat", dir);
         CHECK(file_size(path) == SAVE_CONFIG_BYTES);
         snprintf(path, sizeof(path), "%s/SAVEDATA-00", card);

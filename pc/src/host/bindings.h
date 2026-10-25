@@ -17,14 +17,13 @@ enum {
     B_L2, B_R2, B_L1, B_R1, B_TRIANGLE, B_CIRCLE, B_CROSS, B_SQUARE,
     B_QUICKTURN,                       /* back, then the run button (the game's quick turn) */
     B_QUICKKNIFE,                      /* hold: knife drawn and readied, the weapon before back on release (knife_glue.c) */
-    B_TRADE,                           /* co-op: trade request / accept with the partner next to you (coop_glue.c, trade_glue.c) */
     B_RELOAD,                          /* reload the weapon from the inventory's ammo, as on an empty trigger pull (reload_glue.c); R, Aim + Triangle */
     /* third person: keyboard and mouse; the gamepad set has its own (modern scheme, g_tps.pad_modern:
        run .. quick turn, knife, options, recenter; the classic scheme drives it through the DS2 rows) */
     B_TPS_FWD, B_TPS_BACK, B_TPS_LEFT, B_TPS_RIGHT, B_TPS_RUN, B_TPS_ACTION, B_TPS_CANCEL,
     B_TPS_STATUS, B_TPS_MAP, B_TPS_AIM, B_TPS_FIRE, B_TPS_RELOAD, B_TPS_QUICKTURN, B_TPS_KNIFE, B_TPS_OPTIONS, B_TPS_RECENTER,
     /* port hotkeys (keyboard) */
-    B_TPS_TOGGLE, B_SETTINGS, B_CHEATS, B_COOP, B_FULLSCREEN, B_NOCLIP_UP, B_NOCLIP_DOWN,
+    B_TPS_TOGGLE, B_SETTINGS, B_CHEATS, B_FULLSCREEN, B_NOCLIP_UP, B_NOCLIP_DOWN,
     B_COUNT
 };
 enum { BIND_KB, BIND_PAD };            /* device sets */
@@ -70,7 +69,7 @@ int  pad_reload(void);                 /* a reload row is held (pad.c) */
 
 /* Input source of this window (F1 Controls, ENHANCED SETTINGS -> CONTROLS; ini input_source, input_pad;
    docs/USER_GUIDE.md "Input source (per window)"). Auto: keyboard/mouse and the gamepad, while focused. Gamepad only:
-   keyboard/mouse no longer play (hotkeys, F1/F2/F3 windows and lobby text fields still work) and
+   keyboard/mouse no longer play (hotkeys and the F1/F2 windows still work) and
    the gamepad keeps working in the background. */
 enum { INPUT_AUTO, INPUT_KBM, INPUT_PAD };
 extern int g_input_source;             /* INPUT_* */

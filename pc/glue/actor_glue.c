@@ -2,8 +2,8 @@
  * pc/src/host/actors.c).
  *
  * A model is read from the room file that carries it (or a player part file), into buffers of
- * our own, and drawn as a "display actor" in place of a source actor: our player, the co-op
- * partner, or in cutscenes the event double of the character played (the story cast's NPC
+ * our own, and drawn as a "display actor" in place of a source actor: our player, or in
+ * cutscenes the event double of the character played (the story cast's NPC
  * models that act for the player in in-engine cutscenes). The source stays what the game
  * animates, collides with and links weapons and effects to; only its drawing is replaced.
  *
@@ -999,7 +999,7 @@ typedef struct Shadow {
     NJS_CNK_OBJECT* of;                 /* the source's objects the copy was made from */
     int body;                           /* the source's own mesh is drawn with our matrices */
 } Shadow;
-static Shadow sh[2] __attribute__((aligned(64)));
+static Shadow sh[1] __attribute__((aligned(64)));   /* slot 0 (our player) */
 static int redraw;                      /* actor_put_player: pose again from this tick's copy */
 
 /* motions of a chunk list into mth[first..] (bhReadPlayerData / bhReadWeaponData) */
@@ -1062,7 +1062,7 @@ static int frame_kept(const BH_PWORK* p)
 
 /* the frame p shows: our player's from before its bhSetMotion advanced plp->frm_no (player.c
    bhControlPlayer, pc_plp_frm), so a copy playing it is not a frame ahead and does not show a motion's
-   first frame when the game leaves it on its last (the twitch after a shot); the partner's as received */
+   first frame when the game leaves it on its last (the twitch after a shot) */
 int actor_frame(const BH_PWORK* p)
 {
     return frame_kept(p) ? pc_plp_frm : p->frm_no;
@@ -1122,7 +1122,7 @@ static BH_PWORK* shadow_step(Shadow* s, BH_PWORK* src, int from)
     memcpy(s->w.mtxbuf, src->mtx, sizeof(float) * 16);
     bhCalcModel(&s->w);
     if ((sm->owP[7].flg & 0x2) && (sm->owP[9].flg & 0x2)) {   /* the source's arm is held by the lighter's IK (player.c
-        bhControlPlayer, coop_glue.c lighter_arm), which the other set's motions do not have: the same IK on the
+        bhControlPlayer), which the other set's motions do not have: the same IK on the
         copy, the arm towards a point in front of its chest, as the game does for the character played */
         NJS_POINT3 eff1 = { from == 0 ? 1.8f : 2.4f, -3.0f, from == 0 ? -3.0f : -3.5f }, eff0;
         BH_PWORK* keep = plp;
@@ -1139,7 +1139,7 @@ static BH_PWORK* shadow_step(Shadow* s, BH_PWORK* src, int from)
 
 void actor_source(int who, BH_PWORK* src, int mesh, int motion, float pitch)
 {
-    if (who < 0 || who > 1) return;
+    if (who != 0) return;
     sh[who].src = src;
     sh[who].mesh = mesh;
     sh[who].motion = motion;
@@ -1153,7 +1153,7 @@ static BH_PWORK* shadow(int who, BH_PWORK* src)
     Disguise* d = &dg[who];
     int anim, chr, k;
     s->body = 0;
-    if (s->src != src || s->motion < 0 || s->motion > 3) return NULL;   /* no actor_source this tick (a lobby preview) */
+    if (s->src != src || s->motion < 0 || s->motion > 3) return NULL;   /* no actor_source this tick */
     s->src = NULL;
     if (d->model >= 0) anim = !d->rig.ok ? ANIM_IDLE : d->model >= ACTOR_PART ? appear_part_anim(d->model - ACTOR_PART) : actor_models[d->model].anim;
     else anim = s->mesh >= 0 && s->mesh <= 3 ? appear_part_anim(s->mesh) : ANIM_IDLE;
@@ -1178,7 +1178,7 @@ int actor_put_body(int who, BH_PWORK* src)
 {
     static float keep[22][16];
     static Sint32 ang[22][3];
-    Shadow* s = &sh[who & 1];
+    Shadow* s = &sh[0];
     O_WORK* ow = src->mlwP ? src->mlwP->owP : NULL;
     NJS_CNK_OBJECT* o;
     int i;
@@ -1200,7 +1200,7 @@ int actor_put_body(int who, BH_PWORK* src)
    player control the game's own come back (actor_hands_back, game.c): bhControlPlayer reads the hand
    for the shot (the wall test of bhCheckGunAtari starts at the muzzle, owP[9]), the knife and sounds,
    so a taller model shot higher than the crosshair. */
-static struct { BH_PWORK* src; O_WORK* ow; float mtx[3][16]; } real[2];
+static struct { BH_PWORK* src; O_WORK* ow; float mtx[3][16]; } real[1];   /* slot 0 */
 static float aim_ofs[3];   /* our weapon hand as drawn minus the real one, in the frame of the real chest (node 3) */
 static float aim_rot[9];   /* the drawn weapon hand's rotation in that frame (the gender-matched pose's hand turns otherwise) */
 static int aim_set;        /* aim_rot is set */
@@ -1241,7 +1241,6 @@ void actor_hands_back(void)
     pc_plp_frm = -1;   /* (set again by this tick's bhControlPlayer) */
     if (!real[0].src) aim_ofs[0] = aim_ofs[1] = aim_ofs[2] = 0, aim_set = 0;
     hands_back(0);
-    hands_back(1);
 }
 
 void tps_trace_hands(const float* drawn, const float* real);
@@ -1303,7 +1302,7 @@ int actor_set(int who, int idx)
     unload(d);
     actor_on = 0;
     for (who = 0; who < ACTOR_SLOTS; who++) actor_on |= dg[who].model >= 0;
-    actor_on |= sh[0].body | sh[1].body;
+    actor_on |= sh[0].body;
     if (idx < 0 || (idx >= ACTOR_MODELS && idx < ACTOR_PART) || idx > ACTOR_PART + 9) return 0;
     if (!load(d, idx)) {
         d->fail = idx;
@@ -1321,16 +1320,16 @@ int actor_shown(int who) { return dg[who].model >= 0; }
 int actor_rigged(int who) { return dg[who].model >= 0 && dg[who].rig.ok; }
 
 /* pose slot `who` from `src` (after its bhSetMotion and bhCalcModel), in its gender-matched pose
-   if it has one (slots 0, 1: actor_source) */
+   if it has one (slot 0: actor_source) */
 void actor_pose(int who, BH_PWORK* src)
 {
     Disguise* d = &dg[who];
     ML_WORK* m = d->w.mlwP;
     BH_PWORK* drv;
     if (!src->mlwP || !src->mlwP->objP || !src->mlwP->owP || !src->mtx) return;
-    if (who < 2) hands_save(who, src);
-    if (who < 2 && !redraw) sh[who].drv = shadow(who, src);
-    drv = who < 2 && sh[who].drv ? sh[who].drv : src;
+    if (who == 0) hands_save(who, src);
+    if (who == 0 && !redraw) sh[who].drv = shadow(who, src);
+    drv = who == 0 && sh[who].drv ? sh[who].drv : src;
     if (d->model < 0) { trace_hands(who, src); return; }
     d->w.px = src->px; d->w.py = src->py; d->w.pz = src->pz;
     d->w.ax = src->ax; d->w.ay = src->ay; d->w.az = src->az;
@@ -1364,7 +1363,7 @@ void actor_pose(int who, BH_PWORK* src)
                 host_log("actor: feet motion %d frame %d: source %.2f model %.2f over the floor\n", (int)drv->mtn_no, (int)(drv->frm_no >> 16), fs, ft);
             }
             d->mapped = 1;
-            if (who < 2) {   /* the source's weapon hands where the model's hands are, turned as the pose's (the copy has the source's nodes) */
+            if (who == 0) {   /* the source's weapon hands where the model's hands are, turned as the pose's (the copy has the source's nodes) */
                 int k;
                 for (k = 9; k <= 13; k += 4)
                     if (d->rig.map[k] >= 0 && sr.map[k] >= 0) {
@@ -1504,7 +1503,7 @@ static void face_init(Disguise* d, int idx)
     else d->fail = idx;
 }
 
-/* the double's lip sync on our face (coop_control_remote, after the enemies' bhControlMask) */
+/* the double's lip sync on our face (appear_control, after the enemies' bhControlMask) */
 static void face_step(Disguise* d, const BH_PWORK* ep)
 {
     int* e = (int*)d->w.exp0;
@@ -1541,7 +1540,7 @@ int actor_double_acting(void)
     return 0;
 }
 
-/* coop_control_remote, every tick after the enemies moved and before the objects follow their links:
+/* appear_control, every tick after the enemies moved and before the objects follow their links:
    the double of the character played posed as our model, its face and hands with it */
 void actor_double_tick(void)
 {
@@ -1596,7 +1595,7 @@ __attribute__((constructor)) static void actor_init(void)
 {
     int i;
     for (i = 0; i < ACTOR_SLOTS; i++) dg[i].model = dg[i].fail = -1;
-    for (i = 0; i < 2; i++) sh[i].chr = sh[i].fail = sh[i].wpn_no = sh[i].motion = -1;
+    sh[0].chr = sh[0].fail = sh[0].wpn_no = sh[0].motion = -1;
     if (getenv("RECVX_RETARGET")) actor_retarget = atoi(getenv("RECVX_RETARGET")) != 0;
 }
 

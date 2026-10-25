@@ -1,6 +1,6 @@
 /* Auto-climb stairs (GAMEPLAY option, docs/USER_GUIDE.md): walking or running into a staircase
    climbs it as the action button would. player.c bhControlPlayer asks when the button was not
-   pressed; 1 = call bhCheckExmAtari as for a press, so the climb, its camera and co-op are the game's.
+   pressed; 1 = call bhCheckExmAtari as for a press, so the climb and its camera are the game's.
    Only when the trigger a press would answer first (bhCheckExmAtari's order and test points) is a
    free staircase (type 1, bhCPM2_act_kdu / kdd, not the unused ladder variant) and the player
    faces its climb direction within 45 degrees: doors, items, examine spots and steps on or off a

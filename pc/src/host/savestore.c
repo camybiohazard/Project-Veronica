@@ -256,9 +256,6 @@ int savestore_import_card(const char* save_dir, const char* dir)
         num = write_locked(dir, savestore_find(dir, i + 1, file, sizeof(file)) ? 0 : i + 1, d, NULL);
         if (!num) { SDL_Log("saves: cannot copy memory card save %d", i + 1); continue; }
         copied++;
-        snprintf(path, sizeof(path), "%s/coop-partners-%02d.bin", save_dir, i);
-        snprintf(to, sizeof(to), "%s/" SAVE_PARTNERS_FMT, dir, num);
-        copy_file(path, to, 1 << 20);
     }
     snprintf(to, sizeof(to), "%s/system.dat", dir);
     if (!SDL_GetPathInfo(to, NULL)) {

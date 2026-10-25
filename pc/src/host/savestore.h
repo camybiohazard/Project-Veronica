@@ -14,7 +14,6 @@ extern "C" {
 #define SAVE_DATA_BYTES 0x838     /* sizeof(SAVEFILE), a card save file */
 #define SAVE_HEADER_BYTES 64
 #define SAVE_CONFIG_BYTES 0x34    /* sizeof(CONFIGFILE), the card's system file BASLUS-20184 (system.dat here) */
-#define SAVE_PARTNERS_FMT "%03d.coop-partners.bin"   /* co-op: the host's saved partner inventories of save NNN */
 
 typedef struct SaveEntry {
     int number;
@@ -44,8 +43,7 @@ void savestore_label(char* out, int n, const unsigned char* data);
 int  savestore_card_valid(const unsigned char* data);
 /* copies the memory card's saves (<save_dir>/card0/BASLUS-20184/SAVEDATA-nn) into dir as native
    saves (number nn + 1 if free, else the next free one; saves already there with the same bytes are
-   skipped) with their co-op partners files (<save_dir>/coop-partners-nn.bin), and the system file
-   as dir/system.dat if dir has none. The card files are kept. Returns the saves copied. */
+   skipped), and the system file as dir/system.dat if dir has none. The card files are kept. Returns the saves copied. */
 int  savestore_import_card(const char* save_dir, const char* dir);
 
 #ifdef __cplusplus

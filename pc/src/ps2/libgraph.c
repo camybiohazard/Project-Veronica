@@ -7,10 +7,10 @@
 #include "../gs/stream.h"
 #include "../host/prof.h"
 #include "../host/cheat.h"
-#include "../host/coop.h"
 #include "../host/tps.h"
-#include "../host/lobby.h"
 #include <string.h>
+
+void appear_frame(void);   /* pc/glue/appear_glue.c: "You appear as" at the frame hand-off */
 
 static int field;
 
@@ -87,8 +87,7 @@ int sceGsSwapDBuffDc(sceGsDBuffDc* db, int id)
     stream_disp(d->dispfb.FBP, d->dispfb.FBW, d->dispfb.PSM);
     prof_frame_end();
     cheat_frame();
-    coop_frame();
-    lobby_frame();
+    appear_frame();
     tps_frame();
     stream_submit();
     /* then the draw environment for the next frame (+ optional clear) */

@@ -16,7 +16,7 @@
  *    (death: the donor's motions in turn, the last held), the donor's skeleton is posed in that motion at
  *    the enemy's place and the base's own model (or `model`) is drawn retargeted from it.
  * Its parts and children (linked to it) count as the variant. Everything is keyed by the variant id,
- * which co-op spawn notes carry, so a guest makes the same enemy.
+ * which the spawner and the randomizer carry.
  */
 #include "../../decomp/include/ps2/veronica/prog/types.h"
 #include "../../decomp/include/ps2/veronica/prog/main.h"
@@ -287,7 +287,7 @@ int pc_variant_pre(BH_PWORK* ep, int slot)
     return runs;
 }
 
-/* after its step (a co-op puppet's too: its death plays from the dead flag the host sends) */
+/* after its step */
 void pc_variant_post(BH_PWORK* ep, int slot)
 {
     const EnemyVariant* v = of(ep);

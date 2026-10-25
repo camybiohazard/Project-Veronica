@@ -1,10 +1,9 @@
 /* The settings table shared by the native OPTION menu (ENHANCED SETTINGS) and the F1 overlay.
    docs/ARCHITECTURE.md "Settings": to add a setting, add its variable's ini key in config.c and
-   one entry here; both menus show it (F1 on the CO-OP and EXTRAS pages only with SET_F1). Rows
+   one entry here; both menus show it (F1 on the EXTRAS page only with SET_F1). Rows
    are in menu order, .group starts a heading. */
 #include "../ps2_platform.h"
 #include "settings.h"
-#include "coop.h"
 #include "actors.h"
 #include "tps.h"
 #include "cheat.h"
@@ -12,7 +11,7 @@
 #include "bindings.h"
 #include "modern.h"
 #include "enemies.h"
-#include "lobby.h"
+#include "saves.h"
 #include "savestore.h"
 #include "../audio/audio.h"
 #include <SDL3/SDL.h>
@@ -22,7 +21,7 @@
 
 extern SDL_Window* g_window;
 
-const char* const settings_pages[SP_COUNT] = { "DISPLAY", "GAMEPLAY", "CONTROLS", "THIRD PERSON", "AUDIO", "APPEARANCE", "CO-OP", "EXTRAS" };
+const char* const settings_pages[SP_COUNT] = { "DISPLAY", "GAMEPLAY", "CONTROLS", "THIRD PERSON", "AUDIO", "APPEARANCE", "EXTRAS" };
 
 /* ---------------------------------------------------------------- appliers (main thread) */
 /* Display mode, F11, the start. Exclusive: SDL fullscreen with a display mode (that display switches
@@ -225,8 +224,8 @@ static const char* tenths(int v, char* b, int n) { snprintf(b, n, "%d.%d", v / 1
 const unsigned char settings_calib[2][CALIB_STEPS] = { { 5, 10, 16, 24, 32 }, { 223, 231, 239, 245, 250 } };
 static void picture_reset(void) { g_config.brightness = 0; g_config.contrast = 100; g_config.gamma = 10; settings_save_later(); }
 /* "You appear as": positions in the menus' list (actors.c, without event doubles) */
-static int chr_get(void) { return appear_pos(g_coop.chr); }
-static void chr_set(int v) { g_coop.chr = appear_at(v); }
+static int chr_get(void) { return appear_pos(g_appear_chr); }
+static void chr_set(int v) { g_appear_chr = appear_at(v); }
 static const char* chr_name(int v, char* b, int n) { snprintf(b, n, "%s", appear_name(appear_at(v))); return b; }
 /* saves: the memory card's copied into the native folder (as the first native start does) */
 static void import_card(void)
@@ -234,7 +233,6 @@ static void import_card(void)
     int n = savestore_import_card(g_config.save_dir, save_native_dir());
     host_log("saves: imported %d memory card save%s into %s (the card keeps them)\n", n, n == 1 ? "" : "s", save_native_dir());
 }
-static const char* in_session(void) { return g_coop.state != COOP_OFF ? "Not during a co-op session." : NULL; }
 
 /* cheats (F2): the request bits are taken by the game thread at the frame hand-off */
 static void heal(void) { __atomic_or_fetch(&g_cheat.request, CHEAT_HEAL, __ATOMIC_ACQ_REL); }
@@ -310,10 +308,6 @@ static const char* const modes3[] = { "Original (4:3)", "Stretch to width", "Off
 static const char* const fps_limits[] = { "Off (display rate)", "30", "60", "90", "120", "144" };   /* render.c present_hz */
 static const char* const aspects[] = { "4:3 (original)", "Stretch to window", "Widescreen (hor+)" };
 static const char* const save_systems[] = { "Native files", "Memory card (original)" };
-static const char* const loots[] = { "Shared", "Individual" };
-static const char* const gameovers[] = { "Each player", "Both" };
-static const char* const detectors[] = { "As original", "Skipped" };
-static const char* const conns[] = { "Automatic", "Direct (P2P)", "Via server" };
 static const char* const atmos_names[] = { "Per cut (original)", "Smooth" };
 static const char* const free_cam_names[] = { "B (behind character)", "A (free)" };
 static const char* const fixed_cam_names[] = { "Classic (tank)", "Modern (camera-relative)" };
@@ -365,7 +359,7 @@ const Setting g_settings[] = {
     { SP_GAMEPLAY, "Skip door animations", V(g_config.skip_doors), 0, 2, 1, (const char* const[]){ "Off", "Instant", "Skippable" },
       .help = "Door, stairs and ladder animations. Off: always played. Instant: the game's load screen instead. Skippable: played, any key or button ends it." },
     { SP_GAMEPLAY, "Fast loading", V(g_config.fast_loading), 0, 1, 1,
-      .help = "Room changes, new game and loading a save without the waits the PS2 needed for its disc and sound chip. Off: as the original. In co-op each player's own." },
+      .help = "Room changes, new game and loading a save without the waits the PS2 needed for its disc and sound chip. Off: as the original." },
     { SP_GAMEPLAY, "Battle Game unlocked", V(g_config.battle_unlocked), 0, 1, 1,
       .help = "The title menu offers BATTLE GAME without a finished playthrough, with all five characters. Saves and records stay as they are; off: as the original." },
     { SP_GAMEPLAY, "Difficulty select", V(g_config.difficulty_select), 0, 1, 1,
@@ -380,23 +374,22 @@ const Setting g_settings[] = {
     { SP_GAMEPLAY, "Import memory card saves", NULL, .flags = SET_ACTION, .apply = import_card,
       .help = "Copies the memory card's saves into the saves folder as new files (ones already there are skipped). The card keeps them." },
     { SP_GAMEPLAY, "No ink ribbons needed", V(g_config.no_ink_ribbon), 0, 1, 1,
-      .help = "Typewriters save without an ink ribbon and use none up. In co-op the host's setting counts (lobby GAME RULES)." },
-    { SP_GAMEPLAY, "Extra enemies", V(g_enemy_opts.extra), 0, 3, 1, extras, .help = "More enemies of the types a room already has (also in single player). In co-op the host's setting counts. Next room.", .group = "ENEMIES" },
+      .help = "Typewriters save without an ink ribbon and use none up." },
+    { SP_GAMEPLAY, "Extra enemies", V(g_enemy_opts.extra), 0, 3, 1, extras, .help = "More enemies of the types a room already has. Next room.", .group = "ENEMIES" },
     { SP_GAMEPLAY, "Rearranged enemies", V(g_enemy_opts.place), 0, 1, 1, .help = "Free-roaming enemies start elsewhere in their room (from the seed). Story, cutscene and boss enemies stay. Next room." },
     { SP_GAMEPLAY, "Enemy randomizer", V(g_enemy_opts.rand), 0, 1, 1, .help = "Enemies become other types (from the seed), from anywhere in the game, within each room's limits. Bosses stay. Next room." },
     { SP_GAMEPLAY, "Randomizer variety", V(g_enemy_opts.variety), 0, 1, 1, varieties,
       .help = "Wild: every kind that fits the room, a different one for each enemy where possible, Tyrants and bats included. Mild: two common kinds per room. Next room." },
     { SP_GAMEPLAY, "Randomize event enemies", V(g_enemy_opts.events), 0, 1, 1,
       .help = "Enemies that rooms show later or that events drive change too: the ones events animate get another look of their own kind, so the scenes still play. Next room." },
-    { SP_GAMEPLAY, "Enemy seed", V(g_enemy_opts.seed), 0, 99999, 1, .fmt = "%d", .help = "Placements and randomizer: the same seed gives the same rooms. In co-op both use the host's." },
+    { SP_GAMEPLAY, "Enemy seed", V(g_enemy_opts.seed), 0, 99999, 1, .fmt = "%d", .help = "Placements and randomizer: the same seed gives the same rooms." },
 
     { SP_CONTROLS, "Input source", V(g_input_source), 0, 2, 1, sources, .apply = bind_apply_source,
       .help = "Which devices play in this window. Auto: keyboard/mouse and gamepad, while the window has focus. Keyboard/mouse "
-              "only: no gamepads. Gamepad only: no keys or mouse (hotkeys still work), and the gamepad works without focus: two "
-              "windows side by side for local co-op." },
+              "only: no gamepads. Gamepad only: no keys or mouse (hotkeys still work), and the gamepad works without focus." },
     { SP_CONTROLS, "Gamepad", V(g_input_pad), 0, 4, 1, .name = bind_pad_choice,
       .help = "Any: the first one connected. 1-4: the gamepad the system numbers so (Xbox: its slot / light, PlayStation and "
-              "Switch pads show it on their player lights); give each window its own number for local co-op." },
+              "Switch pads show it on their player lights)." },
     { SP_CONTROLS, "Vibration strength", V(g_config.rumble), 0, 100, 10, .fmt = "%d%%",
       .help = "How strongly the gamepad rumbles. Turn vibration on or off in the game's OPTION menu (VIBRATION), which a gamepad with rumble makes available." },
     { SP_CONTROLS, "Mouse in menus", V(g_menu_mouse.on), 0, 1, 1, .help = "Inventory, item box, map, files and these menus: point, left click selects, right click goes back." },
@@ -437,34 +430,10 @@ const Setting g_settings[] = {
     { SP_AUDIO, "Music and voice", V(g_config.music_volume), 0, 100, 5, .fmt = "%d%%", .apply = apply_volume },
     { SP_AUDIO, "Sound effects", V(g_config.sfx_volume), 0, 100, 5, .fmt = "%d%%", .apply = apply_volume },
 
-    { SP_APPEAR, "You appear as", NULL, 0, 0, 1, .get = chr_get, .set = chr_set, .name = chr_name, .count = appear_count, .help = "Your model, also in single player and cutscenes; in co-op your partner sees it too." },
+    { SP_APPEAR, "You appear as", NULL, 0, 0, 1, .get = chr_get, .set = chr_set, .name = chr_name, .count = appear_count, .help = "Your model, also in cutscenes." },
     { SP_APPEAR, "Use gender-matched animations", V(g_appear_anim), 0, 1, 1, .help = "A man shown while you play Claire walks, aims and fights with Chris's motions; a woman shown while you play a man, with Claire's." },
     { SP_APPEAR, "Swapped model in cutscenes", V(g_appear_cutscene), 0, 1, 1, .help = "Off: cutscenes show the real Claire or Chris, with their own hands, faces and voice; the swapped model is back when you are in control again." },
     { SP_APPEAR, "Talking faces in cutscenes (experimental)", V(g_appear_face), 0, 1, 1, .help = "The swapped model moves its mouth with the lines, with the story cast's own faces (a player file shown there becomes the same character's cutscene model). From the next room with a cutscene on." },
-
-    { SP_COOP, "Partner's name tag", V(g_coop.nametag), 0, 1, 1, .help = "The partner's name above its head, or at the screen edge when it is out of view.", .group = "YOUR CHOICES" },
-    { SP_COOP, "Show ping", V(g_config.show_ping), 0, 1, 1, .flags = SET_F1, .help = "In co-op, while connected: the round trip to the partner next to the frame rate." },
-    { SP_COOP, "Hide IP addresses", V(g_coop.hide_ip), 0, 1, 1, .flags = SET_F1,
-      .help = "For streaming and screenshots: addresses in the lobby and F3 show as xxx.xxx.xxx.xxx, address fields as stars. Copying and joining still use the real ones." },
-    { SP_COOP, "Follow host (joining player)", V(g_coop.follow), 0, 1, 1, .help = "The joining player's choice. On: you go through every door the host takes. Off: you stay and may explore other rooms; story cutscenes and character switches still bring you to the host." },
-    { SP_COOP, "Loot (host)", V(g_coop.loot), 0, 1, 1, loots, .locked = in_session, .help = "Shared: each item lies there once, whoever takes it has it (split the supplies). Individual: each player takes their own copy. Key items go to both.", .group = "GAME RULES (HOST)" },
-    { SP_COOP, "Important items for both (host)", V(g_coop.important), 0, 1, 1, .locked = in_session,
-      .help = "Shared loot: weapons and ink ribbons lie there for each player (taking one leaves the partner's). Off: they are one pickup like ammo and herbs." },
-    { SP_COOP, "Synchronized cutscene skip (host)", V(g_coop.skip_sync), 0, 1, 1,
-      .help = "A cutscene both of you watch is skipped once both pressed skip; the partner sees that you want to." },
-    { SP_COOP, "Game over (host)", V(g_coop.gameover_both), 0, 1, 1, gameovers,
-      .help = "Each player: whoever dies retries alone. Both: one game over is both players' and the host answers Retry for both - Yes takes both back to the last continue point with the items each had there, No takes both to the title." },
-    { SP_COOP, "Metal detector (host)", V(g_coop.skip_detector), 0, 1, 1, detectors,
-      .help = "Skipped: the prison's metal detector lets you through with weapons and its security boxes stay shut (one holding your items still opens)." },
-    { SP_COOP, "Quick start (host)", V(g_coop.quick_start), 0, 1, 1,
-      .help = "A new game starts with the manual already read (it stays in FILE) and the combat knife in the bag instead of on the table, for both of you." },
-    { SP_COOP, "Freeze enemies while trading (host)", V(g_coop.trade_freeze), 0, 1, 1, .help = "While both players are in the trade screen the room's enemies stand still (the host's setting counts)." },
-    { SP_COOP, "Remember partner inventories (host)", V(g_coop.remember), 0, 1, 1, .flags = SET_F1,
-      .help = "Keep each partner's items when it leaves, kept with your saves: it can join again with them (ITEMS: Saved with the host), and gets them back after its game crashed." },
-    { SP_COOP, "Connection", V(g_coop.conn), 0, 2, 1, conns, .locked = in_session,
-      .help = "Automatic: with a co-op server set (F3 or the lobby), hosting also opens a room and joins by room code try a direct path first, then the server's relay; without a server, as Direct. Direct: address and join code only. Via server: always through the relay.", .group = "CONNECTION" },
-    { SP_COOP, "Host port", V(g_coop.port), 1, 65535, 1, .fmt = "%d", .locked = in_session, .help = "Hosting and joining: MULTIPLAYER in the title menu, or F3." },
-    { SP_COOP, "Open port (UPnP)", V(g_coop.upnp), 0, 1, 1, .locked = in_session, .help = "While you host, ask the router to forward the port so a friend can join over the internet." },
 
     { SP_EXTRAS, "Infinite health", V(g_cheat.inf_health), 0, 1, 1, .group = "CHEATS" },
     { SP_EXTRAS, "Infinite ammo", V(g_cheat.inf_ammo), 0, 1, 1 },

@@ -1,8 +1,8 @@
 /* Enemy variants (docs/ENEMIES.md "Enemy variants"): spawnable enemies made of parts the game has - a
    base type's AI, collision and motions, optionally another model drawn retargeted onto its skeleton,
    stat factors, motion and sound mappings - and randomizer metadata. Built in: a C table
-   (variants.c); more from mods/enemies.ini. Each has a stable id (the F2 spawner, the randomizer
-   and co-op notes carry it). No disc data and no game state here (pc/glue/variant_glue.c applies
+   (variants.c); more from mods/enemies.ini. Each has a stable id (the F2 spawner and the randomizer
+   carry it). No disc data and no game state here (pc/glue/variant_glue.c applies
    them); ctest `variants`. */
 #ifndef RECVX_VARIANTS_H
 #define RECVX_VARIANTS_H

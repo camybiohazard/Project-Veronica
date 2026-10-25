@@ -1,6 +1,6 @@
 /* F2 "Spawn enemy" (docs/ENEMIES.md): any enemy type, a short distance in front of the player,
  * facing it, with its own AI; also the realization used by the extra enemies and the randomizer
- * (enemyopt_glue.c) and by the co-op guest for the host's added enemies.
+ * (enemyopt_glue.c).
  *
  * A spawn is made the way the room loader makes a room record (room.c bhSetRoom / bhFinishRoom):
  * the type's model chunk list is read from a room file that carries it (the "You appear as"
@@ -38,7 +38,6 @@ void host_log(const char* fmt, ...);
 void _exit(int);
 NJS_TEXLIST** pc_et_lp(int id, int ver);   /* room.c: sys->et_lp[id][ver] */
 extern unsigned int Ps2_texmemlist_num;
-int coop_is_guest(void);
 void enemy_extras_frame(void);          /* enemyopt_glue.c */
 void variant_spawned(int slot, int id); /* variant_glue.c */
 void variant_release(void);
@@ -147,8 +146,6 @@ static int empty_set(const MN_WORK* m)
    largest model's textures (654 KB), whose size is only known after the upload (a full heap is exit(0)) */
 #define TEX_KEEP 16
 #define HEAP_KEEP (1 << 20)
-#define TEX_HARD 4                      /* SPAWN_DICTATED: the host's spawns, no reserve (a guest that refused them */
-#define HEAP_HARD (704 << 10)           /*   on its own reserve had other enemies than the host); the largest upload */
 static const char* tex_full(int entries, int heap)
 {
     static char m[96];
@@ -191,9 +188,8 @@ static int room_tex_push(void)
     return n;
 }
 
-/* (sys->rdtp: the room file, which room_tex_push reads while the room's textures are not all up; it is
-   still NULL when a guest that died rejoins and the host's EV_SPAWN arrives before its first room load -
-   that crashed the guest) */
+/* (sys->rdtp: the room file, which room_tex_push reads while the room's textures are not all up; NULL
+   before the first room load) */
 static int ready(void)
 {
     return sys && plp && rom && sys->rdtp && (sys->tk_flg & 0x80) && (sys->sp_flg & 0x2) && !(sys->gm_flg & 0x9) && !(sys->cb_flg & 0x1);
@@ -295,12 +291,10 @@ const char* spawn_refused(int id)
 /* Realize `am` the way the room loader realizes a record, at `n` (position, angle, floor, variant),
    into slot `want` (-1: the first free one; else free slots below it are skipped). `mode`:
    SPAWN_LOADING from the room load (the randomizer), no readiness checks, its new textures released
-   with the room record it replaces (bhReleaseMainTexture); SPAWN_DICTATED the host's (a co-op guest):
-   no texture reserve, only the upload's own need. NULL or why not. */
+   with the room record it replaces (bhReleaseMainTexture). NULL or why not. */
 const char* spawn_at(const ActorModel* am, const SpawnNote* n, int want, int mode, int* slot_out)
 {
-    const int loading = mode & SPAWN_LOADING, tkeep = mode & SPAWN_DICTATED ? TEX_HARD : TEX_KEEP,
-              hkeep = mode & SPAWN_DICTATED ? HEAP_HARD : HEAP_KEEP;
+    const int loading = mode & SPAWN_LOADING, tkeep = TEX_KEEP, hkeep = HEAP_KEEP;
     static char msg[160];
     ActorData a;
     ETTY_WORK rec;
@@ -394,89 +388,10 @@ const char* spawn_at(const ActorModel* am, const SpawnNote* n, int want, int mod
     return NULL;
 }
 
-/* ---------------------------------------------------------------- enemies added to the room (co-op) */
-/* Everything that exists here but not in the room file (the F2 spawner, extra enemies): the host
-   sends each to the guest, which realizes it into the same slot; a guest entering the room later
-   or rejoining gets all of them again (spawn_replay). */
-#define ADDED 64
-static SpawnNote added[ADDED];
-static unsigned char added_slot[ADDED];
-static int added_n, added_gen = -1;
-
-static void added_room(void) { if (added_gen != enemy_room_gen) { added_gen = enemy_room_gen; added_n = 0; } }
-
-/* host or single player: spawn and keep it in the room's list; NULL or why not */
+/* spawn into the first free slot; NULL or why not */
 const char* spawn_add(const ActorModel* am, const SpawnNote* n, int* slot_out)
 {
-    int slot;
-    const char* r = spawn_at(am, n, -1, 0, &slot);
-    if (r) return r;
-    added_room();
-    if (added_n < ADDED) { added[added_n] = *n; added_slot[added_n++] = (unsigned char)slot; }
-    coop_spawn_note(slot, n);
-    if (slot_out) *slot_out = slot;
-    return NULL;
-}
-
-void spawn_replay(void)
-{
-    int i;
-    added_room();
-    for (i = 0; i < added_n; i++) coop_spawn_note(added_slot[i], &added[i]);
-    if (added_n) host_log("spawn: %d added enemies sent to the partner (it entered the room)\n", added_n);
-}
-
-/* guest: the host's added enemy `n` into slot `slot` of room stg/rom, now */
-static void note_apply(int slot, const SpawnNote* n, int stg, int rom_no)
-{
-    ActorModel am = { "partner's enemy", n->room, n->rec, n->id, n->mdlver, 0, 0 };
-    const char* r;
-    int first;
-    if (stg != sys->stg_no || rom_no != sys->rom_no) return;   /* another room's: it went with that room */
-    if (slot < 128 && (ene[slot].flg & 0x1) && ene[slot].id == n->id) return;   /* already here (a replay) */
-    for (first = 0; first < 128 && (ene[first].flg & 0x1); first++);
-    r = spawn_at(&am, n, slot, SPAWN_DICTATED, NULL);
-    host_log("spawn: partner's enemy type %d model %d into slot %d (first free here: %d): %s\n", n->id, n->mdlver, slot, first, r ? r : "done");
-}
-
-/* Those that came while our room did not run (a door, an event, a menu) wait here and are placed
-   from coop_frame once it runs again (spawn_pending), in order; the event stream goes on meanwhile
-   (before, the stream stopped behind such a spawn for up to 30 s). Dropped after PEND_FRAMES. */
-#define PEND 64
-#define PEND_FRAMES 900
-static struct { SpawnNote n; int slot, stg, rom, t; } pend[PEND];
-static int pend_n;
-
-void spawn_pending(int run)
-{
-    int k;
-    if (!run || !sys || !plp || (sys->tk_flg & 0x8)) { pend_n = 0; return; }   /* session over, title: superseded by the next join */
-    if (!pend_n) return;
-    if (!ready()) {
-        for (k = 0; k < pend_n && ++pend[k].t < PEND_FRAMES; k++);
-        if (k == pend_n) return;
-        host_log("spawn: %d partner's enemies dropped (not in a room for too long)\n", pend_n);
-        pend_n = 0;
-        return;
-    }
-    for (k = 0; k < pend_n; k++) note_apply(pend[k].slot, &pend[k].n, pend[k].stg, pend[k].rom);
-    pend_n = 0;
-}
-
-/* guest: an EV_SPAWN of the host (always taken: 1) */
-int spawn_note_apply(int slot, const SpawnNote* n, int stg, int rom_no)
-{
-    if (n->pad == SPAWN_NOTE_KEPT) { enemy_rand_kept(n->room, slot, n->id); return 1; }   /* (also at the title: before the game state) */
-    if (!sys || !plp || (sys->tk_flg & 0x8)) return 1;   /* title: superseded by the next join */
-    if (!ready() || pend_n) {
-        if (pend_n == PEND) { host_log("spawn: too many partner's enemies waiting: the oldest dropped\n"); memmove(pend, pend + 1, sizeof(pend[0]) * --pend_n); }
-        pend[pend_n].n = *n; pend[pend_n].slot = slot; pend[pend_n].stg = stg; pend[pend_n].rom = rom_no; pend[pend_n++].t = 0;
-        if (!ready()) host_log("spawn: partner's enemy for slot %d waits until our room runs (%d waiting)\n", slot, pend_n);
-        if (ready()) spawn_pending(1);   /* (in order: the waiting ones first) */
-        return 1;
-    }
-    note_apply(slot, n, stg, rom_no);
-    return 1;
+    return spawn_at(am, n, -1, 0, slot_out);
 }
 
 /* the F2 entry `i` at distance `dist` in front of the player, facing it */
@@ -491,7 +406,6 @@ static const char* spawn(int i, float dist, int* slot_out)
     if (v && !(am = variant_base(v))) return "refused: its base is not in the spawner list";
     if (!v) am = entry(i);
     if (!ready()) return "can't spawn now (not in a room, a door or an event)";
-    if (coop_is_guest()) return "co-op: only the host spawns enemies (it runs them)";
     n.room = am->room; n.rec = am->rec; n.id = am->id; n.mdlver = am->mdlver;
     n.variant = v ? v->id : 0;
     /* variant 0, the free-roaming one: others wait for the room's enemy floor areas (Cerberus 1, 2),
@@ -640,7 +554,7 @@ void spawn_frame(int clock)
         ene_hp[k] = ep->hp;
     }
     if (clock - last_trace >= 30) {
-        if (clock / 30 % 3 == 0) {   /* every 90 game frames: all active slots (id, mode0), e.g. to compare co-op instances */
+        if (clock / 30 % 3 == 0) {   /* every 90 game frames: all active slots (id, mode0) */
             printf("test: game frame %d room %d/%d slots:", clock, sys->stg_no, sys->rom_no);
             for (k = 0; k < (int)sys->ewk_n && k < 128; k++)
                 if (ene[k].flg & 0x1) printf(" %d:%d/%d", k, ene[k].id, ene[k].mode0);

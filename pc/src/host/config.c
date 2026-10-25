@@ -1,13 +1,11 @@
 /* User settings: <save_dir>/recvx.ini, "key = value" lines. */
 #include "../ps2_platform.h"
-#include "coop.h"
 #include "actors.h"
 #include "tps.h"
 #include "menu_mouse.h"
 #include "enemies.h"
 #include "bindings.h"
 #include "modern.h"
-#include "../net/rdv_proto.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,7 +24,6 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "scale", &g_config.scale, 0, 8 },
     { "aspect", &g_config.aspect, 0, 2 },
     { "show_fps", &g_config.show_fps, 0, 1 },
-    { "show_ping", &g_config.show_ping, 0, 1 },
     { "music_volume", &g_config.music_volume, 0, 100 },
     { "sfx_volume", &g_config.sfx_volume, 0, 100 },
     { "rumble_strength", &g_config.rumble, 0, 100 },
@@ -47,7 +44,7 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "skip_intro", &g_config.skip_intro, 0, 1 },
     { "battle_unlocked", &g_config.battle_unlocked, 0, 1 },
     { "difficulty_select", &g_config.difficulty_select, 0, 1 },
-    { "no_ink_ribbon", &g_config.no_ink_ribbon, 0, 1 },   /* typewriters save without an ink ribbon (co-op: the host's) */
+    { "no_ink_ribbon", &g_config.no_ink_ribbon, 0, 1 },   /* typewriters save without an ink ribbon */
     { "save_system", &g_config.save_system, 0, 1 },     /* 0 native files, 1 memory card */
     { "native_3d", &g_config.native_3d, 0, 1 },
     { "native_tex", &g_config.native_tex, 0, 1 },
@@ -56,26 +53,10 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "hd_textures_ui", &g_config.hd_textures_ui, 0, 1 },
     { "interpolate", &g_config.interpolate, 0, 1 },
     { "frame_blend", &g_config.frame_blend, -1, 1 },
-    { "coop_port", &g_coop.port, 1, 65535 },
-    { "coop_char", &g_coop.chr, 0, COOP_CHR_MAX },
+    { "appear_char", &g_appear_chr, 0, APPEAR_CHR_MAX },   /* "You appear as" */
     { "appear_gender_anim", &g_appear_anim, 0, 1 },
     { "appear_cutscene_face", &g_appear_face, 0, 1 },
     { "appear_in_cutscenes", &g_appear_cutscene, 0, 1 },
-    { "coop_loot", &g_coop.loot, 0, 1 },
-    { "coop_follow", &g_coop.follow, 0, 1 },
-    { "coop_upnp", &g_coop.upnp, 0, 1 },
-    { "coop_conn", &g_coop.conn, 0, 2 },                 /* COOP_CONN_*: Automatic, Direct, Via server */
-    { "coop_nametag", &g_coop.nametag, 0, 1 },
-    { "coop_trade_freeze", &g_coop.trade_freeze, 0, 1 },  /* host: enemies stand still while both trade */
-    { "coop_items", &g_coop.items, COOP_ITEMS_CURRENT, 999999 },   /* COOP_ITEMS_*, else a save (lobby.h: card slot, native number - 1) */
-    { "coop_remember", &g_coop.remember, 0, 1 },          /* host: saved partner inventories */
-    { "coop_important", &g_coop.important, 0, 1 },        /* host, shared loot: weapons and ink ribbons for both */
-    { "coop_skip_sync", &g_coop.skip_sync, 0, 1 },        /* host: a cutscene is skipped when both press skip */
-    { "coop_gameover", &g_coop.gameover_both, 0, 1 },     /* host: 0 each player, 1 both (one game over is both players') */
-    { "coop_skip_detector", &g_coop.skip_detector, 0, 1 }, /* host: no metal detector in the prison (0/9) */
-    { "coop_quick_start", &g_coop.quick_start, 0, 1 },    /* host: a new game starts with the manual read and the knife */
-    { "hide_ip", &g_coop.hide_ip, 0, 1 },                /* Hide IP addresses: on screen masked (coop_shown) */
-    { "coop_start", &g_coop.start, 0, 1000002 },
     { "menu_mouse", (int*)&g_menu_mouse.on, 0, 1 },
     { "input_source", &g_input_source, 0, 2 },            /* INPUT_*: Auto, Keyboard/mouse only, Gamepad only */
     { "input_pad", &g_input_pad, 0, 4 },                  /* 0 any gamepad, n player n's (bindings.c) */
@@ -113,22 +94,6 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "tps_pad_dead_look", &g_tps.pad_dead_look, 0, 90 },
 };
 
-static void default_name(void);
-static int player_id(void);
-
-/* hex text <-> bytes (the player id and secret) */
-static int unhex(const char* s, unsigned char* out, int n)
-{
-    for (int i = 0; i < n; i++) {
-        unsigned v;
-        if (!SDL_isxdigit((unsigned char)s[2 * i]) || !SDL_isxdigit((unsigned char)s[2 * i + 1]) || sscanf(s + 2 * i, "%2x", &v) != 1) return 0;
-        out[i] = (unsigned char)v;
-    }
-    return 1;
-}
-static void hex(FILE* f, const unsigned char* b, int n) { for (int i = 0; i < n; i++) fprintf(f, "%02x", b[i]); }
-static int nonzero(const unsigned char* b, int n) { while (n--) if (*b++) return 1; return 0; }
-
 static char* trim(char* s)
 {
     size_t n = strlen(s);
@@ -146,59 +111,22 @@ void config_load(void)
     int v;
     FILE* f;
     path(p, sizeof(p));
-    if (!(f = pc_fopen(p, "r"))) { default_name(); player_id(); return; }
+    if (!(f = pc_fopen(p, "r"))) return;
     while (fgets(line, sizeof(line), f))
-        if (sscanf(line, " coop_join = %127s", g_coop.join) == 1) continue;
-        else if (sscanf(line, " coop_player_id = %127s", val) == 1) { if (!unhex(val, g_coop.pid, 16)) memset(g_coop.pid, 0, 16); continue; }
-        else if (sscanf(line, " coop_player_key = %127s", val) == 1) { if (!unhex(val, g_coop.pkey, 32)) memset(g_coop.pkey, 0, 32); continue; }
-        else if (!strncmp(line, "coop_server =", 13)) { if (sscanf(line + 13, " %127s", g_coop.server) != 1) g_coop.server[0] = 0; continue; }   /* empty: no server */
-        else if (sscanf(line, " coop_name = %15[^\r\n]", g_coop.name) == 1) continue;
-        else if (sscanf(line, " iso = %1023[^\r\n]", g_config.iso_path) == 1) continue;
+        if (sscanf(line, " iso = %1023[^\r\n]", g_config.iso_path) == 1) continue;
         else if (sscanf(line, " hd_textures_dir = %1023[^\r\n]", ini_hd_dir) == 1) { SDL_strlcpy(g_config.hd_textures_dir, ini_hd_dir, sizeof(ini_hd_dir)); continue; }
         else if (sscanf(line, " %63[a-z_0-9] = %127[^\r\n]", k, val) == 2 && bind_ini_line(k, trim(val))) continue;
         else if (sscanf(line, " %63[a-z_0-9] = %d", k, &v) == 2)
             for (size_t i = 0; i < SDL_arraysize(keys); i++)
                 if (!strcmp(k, keys[i].key) && v >= keys[i].lo && v <= keys[i].hi) *keys[i].val = v;
     fclose(f);
-    g_coop.chr = appear_canon(g_coop.chr);   /* an event double no longer listed: its listed twin (actors.c) */
-    default_name();
-    player_id();
-}
-
-/* Co-op: this installation's player id and secret (docs/COOP.md "Saved partner inventories"),
-   drawn once from the OS's randomness and written to recvx.ini at once. The host keeps a
-   partner's items under its id; the secret makes the rejoin tags (rdv_rejoin_tag) that let only
-   this player take its own place back. (Two copies of the game sharing a save folder are one player.) */
-static int player_id(void)
-{
-    if (nonzero(g_coop.pid, 16) && nonzero(g_coop.pkey, 32)) return 1;
-    if (!rdv_random(g_coop.pid, 16) || !rdv_random(g_coop.pkey, 32)) { host_log("config: no randomness for the co-op player id\n"); return 0; }
-    config_save();
-    return 1;
-}
-
-/* the co-op name before one is chosen: the login name; only what the game's font can show */
-static void default_name(void)
-{
-    const char* u = SDL_getenv("USER");
-    if (!u || !*u) u = SDL_getenv("USERNAME");
-    if (!g_coop.name[0]) SDL_snprintf(g_coop.name, sizeof(g_coop.name), "%s", u && *u ? u : "Player");
-    for (char* d = g_coop.name; *d; d++)
-        if (!(SDL_isalnum((unsigned char)*d) || strchr(" -_.!?'()+", *d))) *d = '_';
+    g_appear_chr = appear_canon(g_appear_chr);   /* an event double no longer listed: its listed twin (actors.c) */
 }
 
 static int write_ini(FILE* f, void* ud)
 {
     (void)ud;
     for (size_t i = 0; i < SDL_arraysize(keys); i++) fprintf(f, "%s = %d\n", keys[i].key, *keys[i].val);
-    fprintf(f, "coop_join = %s\n", g_coop.join);
-    fprintf(f, "coop_server = %s\n", g_coop.server);
-    if (g_coop.name[0]) fprintf(f, "coop_name = %s\n", g_coop.name);
-    if (nonzero(g_coop.pid, 16)) {   /* who we are in co-op: made once; the key never leaves this file */
-        fprintf(f, "coop_player_id = "); hex(f, g_coop.pid, 16);
-        fprintf(f, "\ncoop_player_key = "); hex(f, g_coop.pkey, 32);
-        fprintf(f, "\n");
-    }
     if (g_config.iso_path[0]) fprintf(f, "iso = %s\n", g_config.iso_path);
     if (ini_hd_dir[0]) fprintf(f, "hd_textures_dir = %s\n", ini_hd_dir);   /* not --hd-textures */
     bind_ini_write(f);

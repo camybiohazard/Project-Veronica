@@ -36,6 +36,8 @@ extern int g_appear_face;
    character played are shown as the chosen model; 0: as the game has them (the real Claire or
    Chris with their own hands, faces and voice), the chosen model only while the player is shown */
 extern int g_appear_cutscene;
+/* "You appear as" (ini appear_char): 0 the character played, else APPEAR_CHR_* below (pc/glue/appear_glue.c) */
+extern int g_appear_chr;
 /* the character (ply_id) whose motion set a model with `anim` (ANIM_*) moves with while character
    `played` (0 Claire, 1 Chris, 2 Steve, 3 Wesker) is played: Chris for a man while Claire is
    played, Claire for a woman while a man is played, else -1 (the played character's own) */
@@ -48,13 +50,13 @@ int appear_voice(int chr);
    enemy's motions while grabbed): the same motion of character `to`, or -1 if not known */
 int appear_grab_motion(int id, int mtn, int from, int to);
 
-/* "You appear as" (g_coop.chr): 0 the character played, 1..5 the player files, then these */
-#define COOP_CHR_ACTOR 6
-#define COOP_CHR_MAX (COOP_CHR_ACTOR + ACTOR_MODELS - 1)
+/* "You appear as" (g_appear_chr): 0 the character played, 1..5 the player files, then these */
+#define APPEAR_CHR_ACTOR 6
+#define APPEAR_CHR_MAX (APPEAR_CHR_ACTOR + ACTOR_MODELS - 1)
 
-/* The list the menus show (F3, the lobby, ENHANCED SETTINGS): one entry per distinct look, the player
+/* The list the menus show (F1, ENHANCED SETTINGS): one entry per distinct look, the player
    files first, the player characters' cutscene models last. Event doubles of a listed look are left
-   out of the list only: their chr values stay valid (co-op, recvx.ini) and appear_canon maps them to
+   out of the list only: their chr values stay valid (recvx.ini) and appear_canon maps them to
    the listed one. */
 int appear_count(void);
 int appear_at(int i);                 /* the chr listed at position i */
@@ -62,12 +64,12 @@ int appear_pos(int chr);              /* the position of chr (a hidden one: its 
 int appear_canon(int chr);            /* chr, or the listed twin of a hidden one */
 int appear_step(int chr, int dir);    /* the next (dir 1) or previous (-1) listed chr, wrapping */
 const char* appear_name(int chr);
-/* game thread (pc/glue/actor_glue.c). who: display slot 0 our player, 1 the co-op partner,
+/* game thread (pc/glue/actor_glue.c). who: display slot 0 our player,
    ACTOR_DOUBLE the cutscene double of the character played, ACTOR_VARIANT + k enemy variants. idx: catalogue entry, ACTOR_PART + n
    for player part file 10 + n, or -1. */
-#define ACTOR_SLOTS 5
-#define ACTOR_DOUBLE 2
-#define ACTOR_VARIANT 3                 /* 3, 4: enemy variants' models (pc/glue/variant_glue.c), each posed per enemy drawn */
+#define ACTOR_SLOTS 4
+#define ACTOR_DOUBLE 1
+#define ACTOR_VARIANT 2                 /* 2, 3: enemy variants' models (pc/glue/variant_glue.c), each posed per enemy drawn */
 #define ACTOR_PART 1000
 int  actor_set(int who, int idx);       /* 1 = shown (a failed entry is not retried) */
 int  actor_shown(int who);
@@ -83,7 +85,7 @@ void actor_doubles(int idx);            /* at the hand-off: the appearance for t
 void actor_double_tick(void);           /* every tick before the objects follow their links: the double's pose, hands, face */
 int  actor_double_acting(void);         /* a cutscene double of the character played is shown (a cutscene) */
 int  actor_double_kept(void);           /* the doubles stay the game's for the chosen model: the played character's own cutscene model */
-/* before actor_pose(who, src) (slots 0, 1): src shows the mesh of player character `mesh` (0..3, a
+/* before actor_pose(who, src) (slot 0): src shows the mesh of player character `mesh` (0..3, a
    part-file mesh on the real skeleton; -1: a catalogue model is shown) and plays the motions of
    character `motion`, its upper body bent by `pitch` (radians: the free-aim bend, tps_bend). Gender-matched
    animations need it; without it src's own motions are used. */
@@ -102,7 +104,7 @@ typedef struct ActorData {
 } ActorData;
 int actor_find(const ActorModel* am, ActorData* out);
 const unsigned char* actor_fx_tex(int room, int fx);   /* room file `room`'s texture data for room effect fx, NULL: none */
-/* game thread: player part files, for co-op (the partner, our own mesh), the lobby's previews and here.
+/* game thread: player part files, for "You appear as" (our own mesh, pc/glue/appear_glue.c) and here.
    afs_read: file `file` of AFS partition `part` into buf (cap bytes); 1 = read (more than 4096 bytes:
    unused costumes are 11-byte placeholders). player_model_read: bhReadPlayerData for `who` from part
    file data `file` into the given buffers (plp, sys->memp, the player buffers and freemem swapped for

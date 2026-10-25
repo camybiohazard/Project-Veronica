@@ -12,14 +12,6 @@
 static int last_cmd, last_result, pending;
 static char curdir[256] = "/";
 static FILE* fds[16];
-static signed char fd_save[16];   /* the game's save file SAVEDATA-nn open on it: nn, -1 another file */
-static unsigned char fd_wrote[16];
-void coop_save_written(int slot);   /* pc/glue/coop_glue.c: the host's saved partner inventories go with the save */
-static int save_slot(const char* name)
-{
-    const char* s = strstr(name, "SAVEDATA-");
-    return s && s[9] >= '0' && s[9] <= '9' && s[10] >= '0' && s[10] <= '9' && !s[11] ? (s[9] - '0') * 10 + s[10] - '0' : -1;
-}
 static int card_seen;
 
 static const char* trace_arg;   /* RECVX_TRACE_MC: log every card command */
@@ -52,7 +44,7 @@ static void ensure_card(void)
     SDL_CreateDirectory(p);   /* SDL: UTF-8 paths on Windows too, parents included */
 }
 
-int save_native(void);   /* lobby.h: native save files, the card folder is made only when the game uses it */
+int save_native(void);   /* saves.h: native save files, the card folder is made only when the game uses it */
 int sceMcInit(void) { if (!save_native()) ensure_card(); return 0; }
 
 int sceMcGetInfo(int port, int slot, int* type, int* free_, int* format)
@@ -77,8 +69,6 @@ int sceMcOpen(int port, int slot, const char* name, int mode)
     else m = (mode & 3) == 1 ? "rb" : "r+b";
     for (int fd = 0; fd < 16; fd++) if (!fds[fd])   /* libmc descriptors start at 0; the game relies on it */ {
         fds[fd] = pc_fopen(p, m);
-        fd_save[fd] = (signed char)save_slot(name);
-        fd_wrote[fd] = 0;
         done(2, fds[fd] ? fd : -4);
         return 0;
     }
@@ -90,7 +80,6 @@ int sceMcClose(int fd)
 { MC_BUSY();
     if (fd >= 0 && fd < 16 && fds[fd]) {
         fclose(fds[fd]); fds[fd] = NULL; done(3, 0);
-        if (fd_wrote[fd] && fd_save[fd] >= 0) coop_save_written(fd_save[fd]);   /* a save written */
     } else done(3, -4);
     return 0;
 }
@@ -98,7 +87,7 @@ int sceMcSeek(int fd, int off, int whence) { MC_BUSY(); if (fd >= 0 && fd < 16 &
 int sceMcRead(int fd, void* buf, int size)  { MC_BUSY(); done(5, (fd >= 0 && fd < 16 && fds[fd]) ? (int)fread(buf, 1, (size_t)size, fds[fd]) : -4); return 0; }
 int sceMcWrite(int fd, const void* buf, int size)
 { MC_BUSY();
-    if (fd >= 0 && fd < 16 && fds[fd]) { int n = (int)fwrite(buf, 1, (size_t)size, fds[fd]); fflush(fds[fd]); fd_wrote[fd] = 1; done(6, n); }
+    if (fd >= 0 && fd < 16 && fds[fd]) { int n = (int)fwrite(buf, 1, (size_t)size, fds[fd]); fflush(fds[fd]); done(6, n); }
     else done(6, -4);
     return 0;
 }

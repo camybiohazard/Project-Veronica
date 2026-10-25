@@ -445,12 +445,9 @@ void snd_synth_init(SDL_AudioDeviceID dev)
 
 /* ---------------------------------------------------------------- TQ layer */
 
-/* a slot's bank: the port's, extra enemy bank xb (1..31), or XB_PARTNER - co-op: arms programs
-   SND_PARTNER_TQ.. of port 1 play program tq - SND_PARTNER_TQ of the partner's weapon bank */
-#define XB_PARTNER 32
-static const SndBlob* slot_hd(int port, int xb) { return xb == XB_PARTNER ? &g_snd_banks.arms2_hd : xb ? &g_snd_banks.xhd[xb - 1] : &g_snd_banks.se_hd[port]; }
-static const SndBlob* slot_bd(int port, int xb) { return xb == XB_PARTNER ? &g_snd_banks.arms2_bd : xb ? &g_snd_banks.xbd[xb - 1] : &g_snd_banks.bd[se_bd_port[port]]; }
-static int slot_tq(const TqSlot* t) { return t->xb == XB_PARTNER ? t->tq - SND_PARTNER_TQ : t->tq; }
+/* a slot's bank: the port's, or extra enemy bank xb (1..31) */
+static const SndBlob* slot_hd(int port, int xb) { return xb ? &g_snd_banks.xhd[xb - 1] : &g_snd_banks.se_hd[port]; }
+static const SndBlob* slot_bd(int port, int xb) { return xb ? &g_snd_banks.xbd[xb - 1] : &g_snd_banks.bd[se_bd_port[port]]; }
 
 static uint32_t tq_length(const SndBlob* hd, int tq)
 {
@@ -499,9 +496,9 @@ static void tq_tick(void)
             }
             if (t->flags & 4) {
                 const SndBlob* hd = slot_hd(port, t->xb);
-                uint32_t prog = hd_entry(hd, HD_PROG, slot_tq(t)), idx, smp;
+                uint32_t prog = hd_entry(hd, HD_PROG, t->tq), idx, smp;
                 midi[port][ch].vol = t->mvol & 0x7F;
-                midi[port][ch].prog = slot_tq(t) & 0x7F;
+                midi[port][ch].prog = t->tq & 0x7F;
                 idx = prog ? rd16(hd, prog + rd32(hd, prog)) : 0;
                 smp = hd_entry(hd, HD_SMPL, idx);
                 key_on(hd, slot_bd(port, t->xb), &midi[port][ch], smp ? rd8(hd, smp + 11) : 60, 127);
@@ -723,14 +720,13 @@ void snd_synth_update(void)
 static void tq_request(int port, int tq, int ch, int vol, int pan, int pitch, int xb)
 {
     TqSlot* t;
-    if (port == 1 && !xb && tq >= SND_PARTNER_TQ && g_snd_banks.arms2_hd.size) xb = XB_PARTNER;
     if (port >= SE_PORTS || ch >= 16 || !slot_hd(port, xb)->size) {
         if (trace_snd()) printf("tsnd: SE port %d ch %d prog %d dropped (bank not loaded)\n", port, ch, tq);
         return;
     }
     t = &slot[port][ch];
     t->xb = (uint8_t)xb;
-    t->count = tq_length(slot_hd(port, xb), xb == XB_PARTNER ? tq - SND_PARTNER_TQ : tq);
+    t->count = tq_length(slot_hd(port, xb), tq);
     if (xb && trace_snd()) printf("tsnd: SE port %d ch %d prog %d from extra bank %d\n", port, ch, tq, xb);
     t->flags |= 0x20 | 0x40 | 0x80;
     t->tq = (uint8_t)tq; t->vol = (uint8_t)vol; t->pan = (uint8_t)pan; t->pitch = (uint16_t)pitch;
@@ -758,30 +754,6 @@ static void tq_change(int port, int tq, int ch, int vol, int pan, int pitch)
 
 void snd_synth_bank_changed(int kind, int index) { (void)kind; (void)index; }
 
-static int blob_set(SndBlob* b, const void* src, uint32_t n)
-{
-    if (n > b->cap) {
-        uint8_t* d = realloc(b->data, n);
-        if (!d) return 0;
-        b->data = d;
-        b->cap = n;
-    }
-    if (n) memcpy(b->data, src, n);
-    b->size = n;
-    return 1;
-}
-
-void snd_partner_arms(const void* hd, uint32_t hd_size, const void* bd, uint32_t bd_size)
-{
-    SndBlob *h = &g_snd_banks.arms2_hd, *b = &g_snd_banks.arms2_bd;
-    snd_synth_lock();
-    snd_synth_flush();   /* queued requests play from the bank they were sent for */
-    for (int i = 0; i < VOICES; i++) if (voice[i].bd == b) voice[i].on = 0;   /* playing the old bank */
-    for (int ch = 0; ch < 16; ch++) if (slot[1][ch].xb == XB_PARTNER) { slot[1][ch].flags = 0; slot[1][ch].xb = 0; active_bits[1] &= ~(1u << ch); }
-    if (!hd || !blob_set(h, hd, hd_size) || !blob_set(b, bd, bd_size)) h->size = b->size = 0;
-    snd_synth_unlock();
-}
-
 void snd_synth_xbanks_stop(void)
 {
     snd_synth_flush();
@@ -789,7 +761,7 @@ void snd_synth_xbanks_stop(void)
         if (voice[i].on && voice[i].bd >= g_snd_banks.xbd && voice[i].bd < g_snd_banks.xbd + 31) voice[i].on = 0;
     for (int p = 0; p < SE_PORTS; p++)
         for (int ch = 0; ch < 16; ch++)
-            if (slot[p][ch].xb && slot[p][ch].xb != XB_PARTNER) { slot[p][ch].flags = 0; slot[p][ch].xb = 0; active_bits[p] &= ~(1u << ch); }
+            if (slot[p][ch].xb) { slot[p][ch].flags = 0; slot[p][ch].xb = 0; active_bits[p] &= ~(1u << ch); }
 }
 
 void snd_synth_command(const uint8_t* c, int len)

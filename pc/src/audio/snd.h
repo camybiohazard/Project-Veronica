@@ -10,7 +10,6 @@ typedef struct {
     SndBlob bd[16];       /* bank bodies (BD, SPU2 ADPCM) by port */
     SndBlob sq[8];        /* MIDI sequences (SQ) by port */
     SndBlob xhd[31], xbd[31];   /* PC: extra enemy banks 1..31 (header, body), snd_xbank_load */
-    SndBlob arms2_hd, arms2_bd;   /* co-op: the partner's weapon bank (snd_partner_arms) */
 } SndBanks;
 extern SndBanks g_snd_banks;
 
@@ -31,7 +30,3 @@ void snd_synth_xbanks_stop(void);       /* (lock held) stop what plays from the 
    case), or a player voice bank CORE_00n bank 4 (key 0xFFF0 + n, docs/ACTORS.md "Voices"); 1..31 or 0 (none) */
 int  snd_xbank_load(int key);
 void snd_xbank_release(void);
-/* co-op (coop_glue.c): the partner's weapon bank - the shot bank of an ARMS_nnn.SPQ - beside our own
-   arms bank (SE bank 1): its programs play as arms programs SND_PARTNER_TQ + n. NULL / 0: none */
-#define SND_PARTNER_TQ 0x40
-void snd_partner_arms(const void* hd, uint32_t hd_size, const void* bd, uint32_t bd_size);

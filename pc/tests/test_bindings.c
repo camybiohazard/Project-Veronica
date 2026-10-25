@@ -165,7 +165,7 @@ int main(void)
     }
     bind_set(B_TPS_RUN, BIND_PAD, 0, 1 + SDL_GAMEPAD_BUTTON_WEST);
     CHECK(bind_ini_line("pad_l2", "-lefty") && bind_get(B_L2, BIND_PAD, 0) == BIND_AXIS + SDL_GAMEPAD_AXIS_LEFTY * 2 + 1);
-    CHECK(bind_ini_line("pad_l2", "+lefttrigger") && bind_ini_line("pad_cross", "south") && !bind_ini_line("coop_port", "7140"));
+    CHECK(bind_ini_line("pad_l2", "+lefttrigger") && bind_ini_line("pad_cross", "south") && !bind_ini_line("window_w", "1280"));
     /* input source (pure): keyboard/mouse in Auto and K/M only; a gamepad in Auto and Gamepad only, any or the chosen player */
     CHECK(input_accept(INPUT_AUTO, 0, BIND_KB, 0) && input_accept(INPUT_KBM, 0, BIND_KB, 0) && !input_accept(INPUT_PAD, 0, BIND_KB, 0));
     CHECK(input_accept(INPUT_AUTO, 0, BIND_PAD, 3) && !input_accept(INPUT_KBM, 0, BIND_PAD, 0) && input_accept(INPUT_PAD, 0, BIND_PAD, -1));

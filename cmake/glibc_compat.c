@@ -1,7 +1,7 @@
 /* RECVX_GLIBC_COMPAT (Linux): definitions in the executable for glibc symbols newer than 2.34,
    so it does not need them from the system's glibc (docs/BUILDING.md "Running on older distributions (glibc)").
    - __isoc23_*: glibc 2.38 headers redirect scanf/strtol to these under C23 or _GNU_SOURCE
-     (SDL, ImGui, miniupnpc); here they call the classic functions (no 0b prefix: unused).
+     (SDL, ImGui); here they call the classic functions (no 0b prefix: unused).
    - strlcpy & co. (2.38): SDL uses them when the build system has them.
    - _dl_find_object (2.35): the static libgcc unwinder; the system's if it has one.
    Compiled as C11 without _GNU_SOURCE, so the calls below are not redirected themselves. */

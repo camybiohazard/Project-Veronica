@@ -42,22 +42,6 @@ add_library(imgui STATIC
 target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
 target_link_libraries(imgui PUBLIC SDL3::SDL3)
 
-# Co-op host port mapping (src/net/portmap.c): miniupnpc (UPnP IGD) and libnatpmp (NAT-PMP),
-# both BSD, static, Winsock on Windows.
-set(UPNPC_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-set(UPNPC_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(UPNPC_BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
-set(UPNPC_NO_INSTALL ON CACHE BOOL "" FORCE)
-FetchContent_Declare(miniupnpc GIT_REPOSITORY https://github.com/miniupnp/miniupnp.git GIT_TAG miniupnpc_2_3_3
-                     GIT_SHALLOW TRUE SOURCE_SUBDIR miniupnpc EXCLUDE_FROM_ALL)
-FetchContent_Declare(libnatpmp GIT_REPOSITORY https://github.com/miniupnp/libnatpmp.git
-                     GIT_TAG 134fc89e2781e154e40042641f4d8bcbe42579f1 EXCLUDE_FROM_ALL)
-FetchContent_MakeAvailable(miniupnpc libnatpmp)
-
-# Co-op server (pc/server: recvx-server) and Monocypher, which the game shares for the
-# end-to-end encryption of server sessions (src/net/rdv_proto.c)
-add_subdirectory(server)
-
 # ---------------------------------------------------------------- headers
 # The Katana SDK headers are included with inconsistent case (SG_MWPLY.H vs
 # sg_mwply.h). Mirror them under both spellings for case-sensitive filesystems.
@@ -158,7 +142,7 @@ target_compile_options(recvx_platform PRIVATE
     -fno-strict-aliasing -fwrapv -ffp-contract=off -msse2 -mfpmath=sse
     -Wall -Wno-unused-function
 )
-target_link_libraries(recvx_platform PRIVATE SDL3::SDL3 imgui miniupnpc::miniupnpc natpmp monocypher)
+target_link_libraries(recvx_platform PRIVATE SDL3::SDL3 imgui)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_compile_options(recvx_platform PRIVATE -fno-pie)
 endif()
@@ -179,9 +163,9 @@ if(WIN32)
 endif()
 add_executable(recvx ${LAYOUT_PAD_SRC} ${RECVX_RES} $<TARGET_OBJECTS:recvx_game> $<TARGET_OBJECTS:recvx_platform>
                $<$<TARGET_EXISTS:glibc_compat>:$<TARGET_OBJECTS:glibc_compat>>)
-target_link_libraries(recvx PRIVATE imgui SDL3::SDL3 miniupnpc::miniupnpc natpmp monocypher m)
+target_link_libraries(recvx PRIVATE imgui SDL3::SDL3 m)
 if(WIN32)
-    target_link_libraries(recvx PRIVATE ws2_32 pthread shell32 dwmapi)   # co-op UDP (src/net); clock_gettime (winpthreads); borderless corners (settings.c)
+    target_link_libraries(recvx PRIVATE pthread shell32 dwmapi)   # clock_gettime (winpthreads); borderless corners (settings.c)
     # Same address window as Linux: fixed image base, no ASLR relocation; large-address-aware
     # gives the 32-bit exe 4 GB on 64-bit Windows (Linux already uses addresses above 2 GB). -static: libstdc++,
     # libgcc and winpthread go into the exe, only system DLLs (UCRT, opengl32, ...) remain.
@@ -232,7 +216,7 @@ target_link_libraries(test_modern PRIVATE m)
 add_test(NAME modern COMMAND test_modern)
 
 # pure rules of the PC hooks (pc/include/pc_rules.h, src/gs/native.h): added enemies' helper code and holders,
-# dual weapons' second target, hor+ margin meshes and clipping, warp music, "Unlock all", co-op inventory blocks;
+# dual weapons' second target, hor+ margin meshes and clipping, warp music, "Unlock all";
 # with the game's flags and types
 add_executable(test_rules tests/test_rules.c)
 target_include_directories(test_rules PRIVATE $<TARGET_PROPERTY:recvx_game,INCLUDE_DIRECTORIES>)
@@ -259,19 +243,6 @@ add_test(NAME appear COMMAND test_appear)
 add_executable(test_variants tests/test_variants.c src/host/variants.c src/host/actors.c src/host/fileio.c)
 add_test(NAME variants COMMAND test_variants)
 
-# co-op networking (pc/src/net): a busy port, the port mapping started and stopped again
-add_executable(test_net tests/test_net.c src/net/net.c src/net/portmap.c)
-target_compile_options(test_net PRIVATE $<$<COMPILE_LANGUAGE:C>:-std=gnu11>)
-target_link_libraries(test_net PRIVATE SDL3::SDL3 miniupnpc::miniupnpc natpmp $<$<BOOL:${WIN32}>:ws2_32>)
-add_test(NAME net COMMAND test_net)
-
-# co-op packets (pc/src/net/coop_proto.c): malformed events of every type, transfers, the event
-# ring, the join code, world event actions, and a fuzz loop
-add_executable(test_coop tests/test_coop.c src/net/coop_proto.c src/net/rdv_proto.c)
-target_compile_options(test_coop PRIVATE -std=gnu11)
-target_link_libraries(test_coop PRIVATE monocypher m)
-add_test(NAME coop COMMAND test_coop)
-
 # UTF-8 file paths and replace-on-rename saving (pc/src/host/fileio.c)
 add_executable(test_fileio tests/test_fileio.c src/host/fileio.c)
 target_compile_options(test_fileio PRIVATE -std=gnu11)
@@ -282,30 +253,3 @@ add_executable(test_savestore tests/test_savestore.c src/host/savestore.c src/ho
 target_compile_options(test_savestore PRIVATE -std=gnu11)
 target_link_libraries(test_savestore PRIVATE SDL3::SDL3)
 add_test(NAME savestore COMMAND test_savestore)
-
-# co-op server protocol and server core (src/net/rdv_proto.c, server/server.c): messages, malformed
-# input and fuzz, the end-to-end encryption, room codes (unique, collisions, grace period), hijacks,
-# CREATE retries, passwords, relay limits
-add_executable(test_rdv tests/test_rdv.c)
-target_compile_options(test_rdv PRIVATE -std=gnu11)
-target_link_libraries(test_rdv PRIVATE recvx_server_core)
-target_compile_definitions(test_rdv PRIVATE RECVX_TEST_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests")
-add_test(NAME rdv COMMAND test_rdv)
-# the rendezvous client state machine against the server core on a fake network (deterministic)
-add_executable(test_rdv_client tests/test_rdv_client.c src/net/rendezvous.c)
-target_compile_options(test_rdv_client PRIVATE -std=gnu11)
-target_link_libraries(test_rdv_client PRIVATE recvx_server_core)
-if(WIN32)
-    target_link_libraries(test_rdv_client PRIVATE ws2_32)
-endif()
-add_test(NAME rdv_client COMMAND test_rdv_client)
-# fuzzing under AddressSanitizer + UBSan: parser, server and client state machines (Linux, GCC/Clang)
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(RDV_SAN -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
-    add_executable(fuzz_rdv tests/fuzz_rdv.c src/net/rendezvous.c ${CMAKE_CURRENT_SOURCE_DIR}/server/server.c
-                   ${CMAKE_CURRENT_SOURCE_DIR}/server/config.c src/net/rdv_proto.c)
-    target_compile_options(fuzz_rdv PRIVATE -std=gnu11 -O1 -g ${RDV_SAN})
-    target_link_options(fuzz_rdv PRIVATE ${RDV_SAN})
-    target_link_libraries(fuzz_rdv PRIVATE monocypher)
-    add_test(NAME rdv_fuzz COMMAND fuzz_rdv 300000)
-endif()
