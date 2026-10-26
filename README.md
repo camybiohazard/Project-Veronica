@@ -1,24 +1,13 @@
 > [!IMPORTANT]
-> **AI-assisted project.** Most of the code, tools and documentation in this repository were written by AI coding agents (Anthropic's Claude models, plus OpenAI Codex for parts of the map tooling), directed and reviewed by hand by the maintainer, who also tested the results in-game. Treat it like any other early-stage community project: expect bugs, read the code before relying on it, and report problems via issues.
-> The underlying decompilation ([AshfordFamily/recvx-decomp](https://github.com/AshfordFamily/recvx-decomp)) is a separate, human-led project. Our changes to it live in a fork and are disclosed as AI-assisted, as that project asks.
 > No game data is included. You need your own legally obtained copy of *Resident Evil Code: Veronica X* (PS2, NTSC-U, SLUS-20184).
 
-Community Discordserver, thanks cristinathegamer056 for setting it up!
-https://discord.gg/ZpDn46yv2
-
-# recvx-enhanced-port
-
-[![build](https://github.com/aikatore/recvx-enhanced-port/actions/workflows/build.yml/badge.svg)](https://github.com/aikatore/recvx-enhanced-port/actions/workflows/build.yml)
+# Project Veronica
 
 A native PC port of *Resident Evil Code: Veronica X* (PS2) for Linux and Windows, built from the
 community decompilation [recvx-decomp](https://github.com/AshfordFamily/recvx-decomp). The
 original game code and its PS2 platform layer are compiled for the PC; the PS2 hardware
 underneath (GS, VU, DMA, sound driver, disc, memory card, pad) is emulated at its boundaries, and
 native paths replace the expensive parts. The game reads your own disc image in place.
-
-[![Resident Evil Code: Veronica X (PS2) | PC recompilation with Third-Person](https://img.youtube.com/vi/0sW1BHgIMXs/maxresdefault.jpg)](https://www.youtube.com/watch?v=0sW1BHgIMXs)
-
-*Click the image to watch the video on YouTube.*
 
 ## Features
 
@@ -36,13 +25,12 @@ native paths replace the expensive parts. The game reads your own disc image in 
 - **Save files**: every save its own file, as many as you like, in the game's own save screens
   without the memory card screens (the emulated memory card stays available).
 - **Enhanced settings** in the game's own OPTION menu and an F1 overlay; full rebinding of keyboard,
-  mouse and gamepad; per-window input source.
-- **Cheats and debug tools** (F2).
+  mouse and gamepad; per-window input source for local co-op on one PC.
+- **Cheats and debug tools** (F2), co-op window (F3).
 - **HD texture packs**: PCSX2 HD texture packs for the game load as they come, from
   `mods/textures/` (see [HD texture packs](#hd-texture-packs)).
 - **Mods**: replacement room files and archive entries from a `mods/` folder, plus tools to build
   new rooms.
-- **Tooling** for determinism checks, rendering comparisons and profiling.
 
 ## Requirements
 
@@ -54,8 +42,8 @@ native paths replace the expensive parts. The game reads your own disc image in 
 
 ## Download
 
-Prebuilt Linux and Windows builds are on the
-[Releases](https://github.com/aikatore/recvx-enhanced-port/releases) page (no game data
+Prebuilt Linux and Windows builds and the co-op server are on the
+[Releases](https://github.com/camybiohazard/Project-Veronica/releases) page (no game data
 included). Unpack and run `recvx.exe` (Windows) or `./recvx` (Linux); see
 [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
 
@@ -101,6 +89,8 @@ with mingw-w64: see [docs/BUILDING.md](docs/BUILDING.md).
 | Document | For |
 |---|---|
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | players: first start, settings, controls, cheats, saves, troubleshooting |
+| [docs/COOP.md](docs/COOP.md) | players and developers: online and local co-op, protocol reference |
+| [docs/SERVER.md](docs/SERVER.md) | running the co-op rendezvous/relay server |
 | [docs/BUILDING.md](docs/BUILDING.md) | building on Linux and for Windows, CMake options, tests |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | developers: how the port works, renderer, determinism, test aids |
 | [docs/THIRDPERSON.md](docs/THIRDPERSON.md) | third-person mode internals |
@@ -116,7 +106,9 @@ with mingw-w64: see [docs/BUILDING.md](docs/BUILDING.md).
 - **[recvx-decomp](https://github.com/AshfordFamily/recvx-decomp)** by AshfordFamily and its
   contributors: the decompilation this port is built on (MIT).
 - Libraries: [SDL 3](https://github.com/libsdl-org/SDL) (zlib),
-  [Dear ImGui](https://github.com/ocornut/imgui) (MIT). Versions and
+  [Dear ImGui](https://github.com/ocornut/imgui) (MIT),
+  [miniupnpc and libnatpmp](https://github.com/miniupnp) (BSD-3-Clause),
+  [Monocypher](https://github.com/LoupVaillant/Monocypher) (BSD-2-Clause or CC0). Versions and
   details: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License
