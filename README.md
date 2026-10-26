@@ -1,24 +1,13 @@
 > [!IMPORTANT]
-> **AI-assisted project.** Most of the code, tools and documentation in this repository were written by AI coding agents (Anthropic's Claude models, plus OpenAI Codex for parts of the map tooling), directed and reviewed by hand by the maintainer, who also tested the results in-game. Treat it like any other early-stage community project: expect bugs, read the code before relying on it, and report problems via issues.
-> The underlying decompilation ([AshfordFamily/recvx-decomp](https://github.com/AshfordFamily/recvx-decomp)) is a separate, human-led project. Our changes to it live in a fork and are disclosed as AI-assisted, as that project asks.
 > No game data is included. You need your own legally obtained copy of *Resident Evil Code: Veronica X* (PS2, NTSC-U, SLUS-20184).
 
-Community Discordserver, thanks cristinathegamer056 for setting it up!
-https://discord.gg/ZpDn46yv2
-
-# recvx-enhanced-port
-
-[![build](https://github.com/aikatore/recvx-enhanced-port/actions/workflows/build.yml/badge.svg)](https://github.com/aikatore/recvx-enhanced-port/actions/workflows/build.yml)
+# Project Veronica
 
 A native PC port of *Resident Evil Code: Veronica X* (PS2) for Linux and Windows, built from the
 community decompilation [recvx-decomp](https://github.com/AshfordFamily/recvx-decomp). The
 original game code and its PS2 platform layer are compiled for the PC; the PS2 hardware
 underneath (GS, VU, DMA, sound driver, disc, memory card, pad) is emulated at its boundaries, and
 native paths replace the expensive parts. The game reads your own disc image in place.
-
-[![Resident Evil Code: Veronica X (PS2) | PC recompilation with online co-op and Third-Person](https://img.youtube.com/vi/0sW1BHgIMXs/maxresdefault.jpg)](https://www.youtube.com/watch?v=0sW1BHgIMXs)
-
-*Click the image to watch the video on YouTube.*
 
 ## Features
 
@@ -58,7 +47,7 @@ native paths replace the expensive parts. The game reads your own disc image in 
 ## Download
 
 Prebuilt Linux and Windows builds and the co-op server are on the
-[Releases](https://github.com/aikatore/recvx-enhanced-port/releases) page (no game data
+[Releases](https://github.com/camybiohazard/Project-Veronica/releases) page (no game data
 included). Unpack and run `recvx.exe` (Windows) or `./recvx` (Linux); see
 [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
 
