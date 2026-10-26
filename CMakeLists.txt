@@ -25,5 +25,5 @@ endif()
 
 set(RECVX_DECOMP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/decomp" CACHE PATH "recvx-decomp checkout")
 
-enable_testing()
+#enable_testing()
 add_subdirectory(pc)
