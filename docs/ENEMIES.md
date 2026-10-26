@@ -128,7 +128,7 @@ With these budgets 25..30 foreign types fit in one room before the slots run out
 * **One enemy takes a player at a time** (`eneset.c pc_call_enemy`): the enemy whose code set the
   player's busy flag (`flg & 4`) owns the player until it clears; other enemies' changes to that
   player work meanwhile are undone (parts count as their parent; the co-op partner too). A zombie
-  refused this way lets go (`coop_glue.c pc_enemy_unhold`). The moth's and the Black Widow's
+  refused this way lets go (`eneset.c pc_enemy_unhold`). The moth's and the Black Widow's
   leader counts as the holding body's family (`pc_family`): the body starts the grab, the type's
   one leader (an unlinked enemy of the same id that the first body's Init makes) plays it and
   lets go (`bhEne06_PlayerControl`, `bhEne03_PlayerControl`); refused, the player stayed grabbed.

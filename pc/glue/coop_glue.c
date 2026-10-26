@@ -850,7 +850,7 @@ static void queue_event(Event* e);
 static int same_room(void);
 static int in_session_game(void);
 static int owned_room = -1;
-void pc_enemy_holds(BH_PWORK* pl, BH_PWORK* by);   /* eneset.c */
+void pc_enemy_unhold(BH_PWORK* ep);                /* eneset.c */
 
 static int ene_slot(void* p) { int k = (BH_PWORK*)p - ene; return p && k >= 0 && k < 128 ? k : 255; }
 /* motion sets travel as an entry offset from the enemy's own set (0..511), or "room set", or "keep" */
@@ -943,27 +943,6 @@ static unsigned short send_estate(int n)
 
 /* an en01 grab hold: set when the grab starts, cleared by every release (~0x24080, ~0xA4080) */
 static int holding(BH_PWORK* ep) { return ep->exp0 && (*(int*)(ep->exp0 + 0x40) & 0x20000); }
-
-/* neither side has the grab's state any more (the client left, timed out, rejected it), or the
-   grab was refused here (eneset.c's one-holder rule) or froze (the watchdog): the enemy goes back
-   to standing (en01 MV00: idle motion, then the chase), released, as at the end of a grab. Its
-   linked lower body runs the same modes (en01 copies them at every change): it goes along. */
-static void unhold(BH_PWORK* ep, int dead)
-{
-    if (!ep->exp0 || ep->id != 1) return;
-    *(int*)(ep->exp0 + 0x40) &= ~0xA4080;
-    if (!dead) {
-        *(int*)&ep->mode0 = 1;
-        ep->flg2 &= ~1;
-        ep->flg |= 0x40;   /* the player collides with it again (the grab cleared it, its end sets it) */
-    }
-    if (ene_slot(ep->exp1) < 128 && (((BH_PWORK*)ep->exp1)->flg & 0x80)) unhold((BH_PWORK*)ep->exp1, dead);
-}
-/* A dead one only lets go, its death goes on: put back to standing, a crawler killed by the player's
-   stomp at the end of its leg grab (en01 NG02 sets hp -1 while the player still plays the stomp) walked
-   again with hp -1 and grabbed again - one grab after another, for good (the failsafe released it, the
-   grab started again, the failsafe released it ...). */
-void pc_enemy_unhold(BH_PWORK* ep) { unhold(ep, ep->hp < 0); }
 
 /* host: a grab the guest runs comes back here when the guest, sending, has not sent a snapshot of it
    for OWN_LOST of its frames (~10 s): its game never took the grab, lost it, or is not running it (the
@@ -1122,7 +1101,6 @@ static void grab_in(const Event* e)
     x = *(unsigned int*)plp->exp1;
     *(unsigned int*)plp->exp1 = (x | (e->u.gr.exp1_a & ~e->u.gr.exp1_b)) & ~(e->u.gr.exp1_b & ~e->u.gr.exp1_a);
     plp->mnwP = (MN_WORK*)set;
-    pc_enemy_holds(plp, ep);   /* eneset.c: with added enemies one enemy at a time holds a player - this one */
     host_log("coop: enemy %d grabs us\n", i);
 }
 
