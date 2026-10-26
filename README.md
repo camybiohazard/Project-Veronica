@@ -14,9 +14,6 @@ native paths replace the expensive parts. The game reads your own disc image in 
 - **Enhanced renderer**: native 3D and textures on the GPU, widescreen (hor+, up to ultrawide),
   internal resolution up to 8x, in-between frames up to the display's refresh rate while the game
   logic stays at its original 30 FPS, a frame rate limit, optional PS2 motion trail.
-- **Online co-op for two players**: direct, automatic or server-relayed connections, a lobby in
-  the title menu, join codes and passwords, trading with item requests, shared or individual loot,
-  saved partner inventories, rejoin after a crash. Includes a small C rendezvous/relay server.
 - **Third-person mode** (optional): over-the-shoulder camera with mouse/keyboard controls, free
   aim and two camera styles.
 - **Modern controls** (optional) for the fixed cameras: the stick walks where it points on screen,
@@ -34,7 +31,6 @@ native paths replace the expensive parts. The game reads your own disc image in 
   `mods/textures/` (see [HD texture packs](#hd-texture-packs)).
 - **Mods**: replacement room files and archive entries from a `mods/` folder, plus tools to build
   new rooms.
-- **Tooling** for determinism checks, rendering comparisons and profiling.
 
 ## Requirements
 
