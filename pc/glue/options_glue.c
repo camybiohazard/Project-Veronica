@@ -556,6 +556,7 @@ static int input(int port)
     }
     if (st.wait_release) {
         if (bind_any_down() || g_menu_mouse.held) return 0;
+        if (bind_any_down() || pad_report_bits() || g_menu_mouse.held) return 0;
         st.wait_release = 0;
     }
     hit = row_at(mt.x, mt.y);

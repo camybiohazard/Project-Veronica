@@ -255,10 +255,14 @@ void tps_camera(void)
     g_tps.aiming = aiming();
     if (!(sys->sp_flg & 0x40)) mouse_dx = mouse_dy = stick_yaw = stick_pitch = 0;   /* frozen (above): no mouse look */
     if (recenter > 0 && !aiming()) {   /* gamepad: the camera eases behind the character */
-        recenter--;
-        yaw = wrap(yaw + wrap(plp->ay - yaw) * 0.35f);
-        pitch += (DEG(-8.0f) - pitch) * 0.35f;
+    recenter--;
+    yaw = wrap(yaw + wrap(plp->ay - yaw) * 0.35f);
+    if (g_tps.pad_modern)
+        pitch += (DEG(-8.0f) - pitch) * 0.35f;   /* Modern: normal pitch */
+    else
+        pitch += (DEG(-8.0f) - pitch) * 0.15f;   /* Classic: slower pitch */
     }
+
     if ((g_tps.free_cam || pad_cam) && !aiming()) {   /* camera A, the gamepad: mouse / right stick orbit the camera (aiming: tps_player) */
         yaw = wrap(yaw - mouse_dx * TURN_PER_PIXEL * g_tps.sens_x / 100.0f + stick_yaw);
         mouse_dx = stick_yaw = 0;

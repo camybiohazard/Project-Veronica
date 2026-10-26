@@ -853,7 +853,9 @@ int bind_any_down(void)
 {
     const bool* k = bind_keys();
     for (int i = 1; i < SDL_SCANCODE_COUNT; i++) if (k[i]) return 1;
-    if (gamepad)
+    if (gamepad) {
         for (int b = 0; b < SDL_GAMEPAD_BUTTON_COUNT; b++) if (SDL_GetGamepadButton(gamepad, (SDL_GamepadButton)b)) return 1;
+        for (int c = BIND_AXIS; c < BIND_AXIS + 2 * SDL_GAMEPAD_AXIS_COUNT; c++) if (pad_down(c)) return 1;   /* triggers and sticks too: a trigger just bound is still held */
+    }
     return 0;
 }

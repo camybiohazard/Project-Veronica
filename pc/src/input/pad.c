@@ -132,6 +132,9 @@ static void set_move_dir(uint32_t b, Sint16 sx, Sint16 sy)
     if (move_x != 0 && move_y != 0) { move_x *= 0.70710678f; move_y *= 0.70710678f; }
 }
 
+static uint32_t report_bits;
+int pad_report_bits(void) { return (int)report_bits; }
+
 static void build_report(unsigned char* r)
 {
     uint32_t b = 0, qbits = 0;
@@ -165,6 +168,7 @@ static void build_report(unsigned char* r)
     set_move_dir(b, slx, sly);
     quickturn_on = qbits != 0;
     b |= qbits;
+    report_bits = b;
     {   /* RECVX_PAD_TRACE=1: log the DS2 buttons when they change */
         static int trace = -1; static uint32_t last;
         if (trace < 0) trace = SDL_getenv("RECVX_PAD_TRACE") != NULL;

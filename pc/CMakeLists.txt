@@ -179,6 +179,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 # ---------------------------------------------------------------- tests
+if(CMAKE_TESTING_ENABLED)
 add_executable(test_vu tests/test_vu.c src/ps2/vu.c)
 target_compile_options(test_vu PRIVATE -std=gnu11 -msse2 -mfpmath=sse -ffp-contract=off)
 target_link_libraries(test_vu PRIVATE m)
@@ -253,3 +254,4 @@ add_executable(test_savestore tests/test_savestore.c src/host/savestore.c src/ho
 target_compile_options(test_savestore PRIVATE -std=gnu11)
 target_link_libraries(test_savestore PRIVATE SDL3::SDL3)
 add_test(NAME savestore COMMAND test_savestore)
+endif()
