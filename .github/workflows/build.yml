@@ -89,7 +89,7 @@ jobs:
         with:
           submodules: recursive
       - name: Install dependencies
-        timeout-minutes: 10   # a hung apt mirror fails the job instead of blocking it for hours
+        timeout-minutes: 20   # MinGW toolchain packages can take several minutes to download
         # Ubuntu's mingw-w64 (GCC 13, msvcrt) with POSIX threads; the local reference build uses
         # Arch's mingw-w64-gcc (GCC 16, UCRT): see docs/BUILDING.md "Continuous integration"
         run: |
