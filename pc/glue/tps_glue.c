@@ -652,7 +652,7 @@ static int swings;                /* quick turns and recenters (modern_hold's "c
 
 static int pad_sticks(unsigned int* pad)
 {
-    static int run_was, qt_hold, back_wait;
+    static int run_was, qt_hold, back_wait, reloaded;
     float lx, ly, rx, ry, m;
     int stick = g_tps.pad_play && tps_pad_sticks(&lx, &ly, &rx, &ry), run;
     if (tps_pad_touched()) pad_cam = g_tps.pad_modern;
@@ -662,14 +662,18 @@ static int pad_sticks(unsigned int* pad)
     stick_moved = pad_move = 0;
     {   /* the right stick turns the camera (Modern) and aims. Classic keeps the game's buttons, whose turn while aiming
            cannot move free aim's crosshair (the shot follows the crosshair), so there the right stick (free in every key
-           type: the game reads only the left one) aims too. In both, while aiming freely, the left stick and the d-pad
-           also move the crosshair, as they turn and tilt the original aim; not in the scope, which the game turns by
-           them itself. */
-        int aim_free = plp->mode0 == 1 && plp->mode1 == 1 && !lock_aim() && pc_in_play(plp, 1);
+           type: the game reads only the left one) aims too. In Classic only, while aiming freely, the left stick and the
+           d-pad also move the crosshair, as they turn and tilt the original aim (not in the scope, which the game turns
+           by them itself); Modern aims with the right stick alone. Classic's reload (mode 70) holds the aim still,
+           and so does the weapon going down after it (the aim not held), until it is lowered. */
+        int aim_free;
+        if (plp->mode1 != 1 || (plp->mode2 != 70 && (sys->pad_on & 0x10))) reloaded = 0;
+        else if (plp->mode2 == 70) reloaded = 1;
+        aim_free = plp->mode0 == 1 && plp->mode1 == 1 && !lock_aim() && pc_in_play(plp, 1) && (g_tps.pad_modern || !reloaded);
         if (g_tps.pad_modern ? stick && pad_cam : aim_free && tps_pad_sticks(&lx, &ly, &rx, &ry)) {
             float ax = lx, ay = ly, dx, dy;
             if (modern_stick(&rx, &ry, g_tps.pad_dead_look / 100.0f, 2.0f) > 0) recenter = 0, stick_moved = 1;
-            if (aim_free && tps_cam_active) {
+            if (aim_free && tps_cam_active && !g_tps.pad_modern) {
                 modern_stick(&ax, &ay, g_tps.pad_dead_move / 100.0f, 2.0f);
                 tps_pad_dpad(&dx, &dy);
                 rx += ax + dx; ry += ay + dy;
