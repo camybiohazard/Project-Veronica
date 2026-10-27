@@ -5,7 +5,7 @@
 
 A native PC port of *Resident Evil Code: Veronica X* (PS2) for Linux and Windows, built from the
 community decompilation [recvx-decomp](https://github.com/AshfordFamily/recvx-decomp). The
-original game code and its PS2 platform layer are compiled for the PC; the PS2 hardware
+original game code and its PS2 platform are compiled for the PC; the PS2 hardware
 underneath (GS, VU, DMA, sound driver, disc, memory card, pad) is emulated at its boundaries, and
 native paths replace the expensive parts. The game reads your own disc image in place.
 
