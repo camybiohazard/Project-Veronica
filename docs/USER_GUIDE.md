@@ -104,9 +104,11 @@ All PC settings are available in two places that edit the same values:
 
 - **OPTION -> ENHANCED SETTINGS**: in the game's own OPTION screen (title menu, or Select in
   game) next to EXIT: select EXIT and press right (or click it). Drawn in the game's style, with
-  the pages DISPLAY, GAMEPLAY, CONTROLS, THIRD PERSON, AUDIO, APPEARANCE and EXTRAS. L1/R1
-  (LB/RB, keyboard Q/W, as the page row names them) switch pages from anywhere, both ways round
-  the seven, as do left/right on the page row; up/down (or the mouse wheel) choose a setting, left/right
+  the pages DISPLAY, GAMEPLAY, CONTROLS, THIRD PERSON, AUDIO, APPEARANCE and EXTRAS. On the
+  gamepad, however it is remapped, the shoulder buttons (LB/RB, L1/R1) always switch pages, A
+  (Cross) always confirms and B (Circle) always goes back; on the keyboard the keys bound to
+  L1/R1 switch pages (Q/W by default). Pages switch from anywhere, both ways round the seven,
+  as do left/right on the page row; up/down (or the mouse wheel) choose a setting, left/right
   change it, cancel or a right click goes back. Long pages scroll; the bottom lines explain the
   selected setting, or why it cannot change right now. "(next start)" marks a setting that takes
   effect when the game starts again.

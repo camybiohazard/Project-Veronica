@@ -55,7 +55,8 @@ static unsigned int cancel_button(void) { return (sys->keytype & 3) < 3 ? AdvGet
 
 /* Adv_GameOptionScreen, every frame: the OS cursor shows while the option screen is up */
 static int options_up;
-void pc_options_frame(void) { g_menu_mouse.active = 1; options_up = 1; }
+static unsigned options_frames;         /* frames of the option screen, counted */
+void pc_options_frame(void) { g_menu_mouse.active = 1; options_up = 1; options_frames++; }
 /* tps_frame, once per game frame: the option screen ran in this frame (taken, so nothing is left over when it ends) */
 int pc_options_up(void) { int r = options_up; options_up = 0; return r; }
 void pc_tex_keep_original(int texno);   /* texture_glue.c: our entries are cut from the option textures */
@@ -269,15 +270,43 @@ static void build_rows(void)
     if (st.sel >= nrows) st.sel = nrows - 1;
 }
 
-/* what switches the page (L1 / R1) on the device in use: the gamepad's names (LB / RB on an Xbox pad), else the keys */
+/* what switches the page on the device in use: the gamepad's own shoulder buttons (LB / RB on an Xbox pad)
+   whatever they are bound to, else the keys bound to L1 / R1 */
 static const char* page_keys(char* buf, int n)
 {
     char a[32], b[32];
-    int dev = bind_gamepad() ? BIND_PAD : BIND_KB;
-    bind_code_name(dev, bind_get(B_L1, dev, 0), a, sizeof(a));
-    bind_code_name(dev, bind_get(B_R1, dev, 0), b, sizeof(b));
+    if (bind_gamepad()) {
+        bind_code_name(BIND_PAD, bind_pad_menu_button(0), a, sizeof(a));
+        bind_code_name(BIND_PAD, bind_pad_menu_button(1), b, sizeof(b));
+    } else {
+        bind_code_name(BIND_KB, bind_get(B_L1, BIND_KB, 0), a, sizeof(a));
+        bind_code_name(BIND_KB, bind_get(B_R1, BIND_KB, 0), b, sizeof(b));
+    }
     snprintf(buf, n, "%s/%s", a, b);
     return buf;
+}
+
+/* the gamepad's fixed buttons here, whatever they are bound to: LB / RB switch the page, A (the bottom
+   face button) confirms, B (the right one) goes back. Held now: 1 LB, 2 RB, 4 A, 8 B */
+static int menu_buttons_held(void)
+{
+    int m = 0;
+    for (int i = 0; i < 4; i++) m |= bind_pad_code_down(bind_pad_menu_button(i)) << i;
+    return m;
+}
+
+/* the Pad[] bits the fixed buttons must not press here: L1 / R1 when a gamepad input of theirs is held
+   (on the gamepad only the shoulders switch the page), and the DS2 buttons a held fixed button is bound to */
+static unsigned menu_buttons_mask(void)
+{
+    unsigned m = (bind_pad_raw(B_L1) ? P_L1 : 0) | (bind_pad_raw(B_R1) ? P_R1 : 0);
+    for (int r = B_SELECT; r <= B_SQUARE; r++)
+        for (int s = 0; s < BIND_SLOTS; s++) {
+            int c = bind_get(r, BIND_PAD, s);
+            for (int i = 0; i < 4; i++)
+                if (c == bind_pad_menu_button(i) && bind_pad_code_down(c)) m |= r < 8 ? 0x100u << r : 1u << (r - 8);   /* report bit order -> Pad[] bits */
+        }
+    return m;
 }
 
 static void say(const char* m) { snprintf(st.msg, sizeof(st.msg), "%s", m); st.msg_t = 120; }
@@ -547,7 +576,12 @@ static int input(int port)
 {
     unsigned int press = Pad[port].press, rept = Pad[port].Rept;
     unsigned int ok = ok_button() | P_START, cancel = cancel_button() | P_SELECT;
-    int hit;
+    static int held;                 /* menu_buttons_held last frame */
+    static unsigned last = (unsigned)-2;   /* options_frames at the last call: a gap (the screen just opened) presses nothing held */
+    int hit, now = menu_buttons_held(), fixed;
+    if (options_frames != last + 1) held = now;
+    fixed = now & ~held;
+    held = now; last = options_frames;
     menu_mouse_take(&mt);
     if (st.capture) {
         int c = bind_capture_poll();
@@ -559,6 +593,7 @@ static int input(int port)
         if (bind_any_down() || pad_report_bits() || g_menu_mouse.held) return 0;
         st.wait_release = 0;
     }
+    { unsigned m = menu_buttons_mask(); press &= ~m; rept &= ~m; }
     hit = row_at(mt.x, mt.y);
     if (hit >= 0 && (mt.moved || mt.left) && hit != st.sel) { st.sel = hit; CallSystemSe(0, 2); }
     if (rows[st.sel].kind == K_BIND && hit == st.sel && (mt.moved || mt.left)) st.slot = mt.x >= 360 + 120;
@@ -573,14 +608,14 @@ static int input(int port)
         return 0;
     }
     if (mt.right) { CallSystemSe(0, 0); return 1; }
-    if (press & P_L1) set_page(st.page - 1);
-    else if (press & P_R1) set_page(st.page + 1);
+    if ((fixed & 1) || (press & P_L1)) set_page(st.page - 1);
+    else if ((fixed & 2) || (press & P_R1)) set_page(st.page + 1);
     else if (rept & P_UP) move_sel(-1);
     else if (rept & P_DOWN) move_sel(1);
     else if (rept & P_LEFT) change(&rows[st.sel], -1);
     else if (rept & P_RIGHT) change(&rows[st.sel], 1);
-    else if (press & ok) return activate(&rows[st.sel]);
-    else if (press & cancel) { CallSystemSe(0, 0); return 1; }
+    else if ((fixed & 4) || (press & ok)) return activate(&rows[st.sel]);
+    else if ((fixed & 8) || (press & cancel)) { CallSystemSe(0, 0); return 1; }
     return 0;
 }
 

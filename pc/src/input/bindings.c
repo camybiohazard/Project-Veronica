@@ -618,6 +618,13 @@ int bind_pad_raw(int row)
     return 0;
 }
 
+int bind_pad_menu_button(int which)
+{
+    static const SDL_GamepadButton b[4] = { SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, SDL_GAMEPAD_BUTTON_SOUTH, SDL_GAMEPAD_BUTTON_EAST };
+    return 1 + b[which];
+}
+int bind_pad_code_down(int code) { return code && gamepad && pad_down(code); }
+
 int bind_hotkey(const void* e, int row)
 {
     const SDL_Event* ev = (const SDL_Event*)e;
