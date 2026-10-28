@@ -45,7 +45,7 @@ int  bind_conflict(int row, int dev);                   /* another row of the sa
 int  bind_row_shown(int row, int dev);                  /* the row exists for this device */
 const char* bind_code_name(int dev, int code, char* buf, int n);   /* for menus, by the connected pad's type */
 const char* bind_row_label(int row, char* buf, int n);  /* game rows: the actions of the button under the key type */
-const char* bind_pad_desc(void);                        /* the connected gamepad, or "No gamepad" */
+const char* bind_pad_desc(char* buf, int n);            /* the connected gamepad (its name in buf), or "No gamepad"; any thread */
 const char* bind_swapped(void);                         /* the row the last bind_set moved a code from, or NULL */
 
 /* capture ("press a key"): main-thread events; any thread starts/polls */
@@ -62,8 +62,8 @@ int  bind_pad_raw(int row);                                     /* the gamepad h
 int  bind_pad_menu_button(int which);                           /* the code of the gamepad's own button, whatever it is bound to: 0 LB, 1 RB, 2 A (bottom face), 3 B (right face) */
 int  bind_pad_code_down(int code);                              /* the gamepad holds this input */
 int  bind_hotkey(const void* sdl_event, int row);               /* a press event of this hotkey (key, mouse button; a gamepad input for one with a gamepad set) */
-void* bind_gamepad(void);              /* the open SDL_Gamepad (pad.c) */
-void bind_set_gamepad(void* gamepad);
+void* bind_gamepad(void);              /* the open SDL_Gamepad (pad.c): game thread only */
+void bind_set_gamepad(void* gamepad);  /* game thread: pad.c opened or closed it */
 const bool* bind_keys(void);           /* SDL keyboard state plus scripted keys (RECVX_KEYS) */
 int  bind_quickturn(int which, int held);   /* which 0 game, 1 third person: 0 off, 1 hold back, 2 back + run (pad.c) */
 int  pad_quick_knife(void);            /* the quick-knife row is held (pad.c) */

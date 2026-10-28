@@ -171,8 +171,9 @@ static void controls_section(void)
         if (ImGui::BeginTabItem("Gamepad")) { if (dev != BIND_PAD) cap_row = -1; dev = BIND_PAD; ImGui::EndTabItem(); }
         ImGui::EndTabBar();
     }
+    char pad_name[96];
     if (dev == BIND_PAD) ImGui::TextDisabled("%s; the left stick also moves, as on the DS2. The third-person rows play in third\n"
-                                             "person with Modern gamepad controls, instead of the game rows of the same buttons.", bind_pad_desc());
+                                             "person with Modern gamepad controls, instead of the game rows of the same buttons.", bind_pad_desc(pad_name, sizeof pad_name));
     ImGui::TextDisabled("Click a binding, then press the key/button (Esc cancels, Delete clears); right click clears.\n"
                         "Reload can share a button: then Aim + button reloads.");
     if (msg[0]) ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f), "%s", msg);

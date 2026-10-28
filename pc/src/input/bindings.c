@@ -216,9 +216,37 @@ static int ini_code(int dev, const char* s)
     return -1;
 }
 
+/* The open gamepad belongs to the game thread (pad.c opens, reads and closes it). Other threads
+   (the main thread's events and F1) get a copy of what they show: its id, type and name. */
 static SDL_Gamepad* gamepad;
+static struct { SDL_JoystickID id; SDL_GamepadType type; char name[96]; } pad_info = { 0, SDL_GAMEPAD_TYPE_STANDARD, "" };
+static SDL_SpinLock pad_info_lock;
 void* bind_gamepad(void) { return gamepad; }
-void bind_set_gamepad(void* g) { gamepad = (SDL_Gamepad*)g; }
+void bind_set_gamepad(void* g)
+{
+    SDL_JoystickID id = g ? SDL_GetGamepadID((SDL_Gamepad*)g) : 0;
+    SDL_GamepadType t = g ? SDL_GetGamepadType((SDL_Gamepad*)g) : SDL_GAMEPAD_TYPE_STANDARD;
+    const char* nm = g ? SDL_GetGamepadName((SDL_Gamepad*)g) : NULL;
+    char name[96];
+    SDL_snprintf(name, sizeof(name), "%s", nm ? nm : "Gamepad");
+    gamepad = (SDL_Gamepad*)g;
+    SDL_LockSpinlock(&pad_info_lock);
+    pad_info.id = id; pad_info.type = t;
+    memcpy(pad_info.name, name, sizeof(name));
+    SDL_UnlockSpinlock(&pad_info_lock);
+}
+/* any thread: the open gamepad's id (0: none), type, and name in name (n bytes) if not NULL */
+static SDL_JoystickID pad_info_get(SDL_GamepadType* type, char* name, int n)
+{
+    SDL_JoystickID id;
+    SDL_LockSpinlock(&pad_info_lock);
+    id = pad_info.id;
+    if (type) *type = pad_info.type;
+    if (name) SDL_strlcpy(name, pad_info.name, n);
+    SDL_UnlockSpinlock(&pad_info_lock);
+    return id;
+}
+static SDL_GamepadType pad_type(void) { SDL_GamepadType t; pad_info_get(&t, NULL, 0); return t; }
 
 /* ---------------------------------------------------------------- input source */
 int g_input_source, g_input_pad;
@@ -267,7 +295,7 @@ void bind_apply_source(void)
 /* what the player reads on the pad: by the connected pad's family */
 const char* bind_code_name(int dev, int code, char* buf, int n)
 {
-    SDL_GamepadType t = gamepad ? SDL_GetGamepadType(gamepad) : SDL_GAMEPAD_TYPE_STANDARD;
+    SDL_GamepadType t = pad_type();
     int ps = t == SDL_GAMEPAD_TYPE_PS3 || t == SDL_GAMEPAD_TYPE_PS4 || t == SDL_GAMEPAD_TYPE_PS5;
     int xb = t == SDL_GAMEPAD_TYPE_XBOX360 || t == SDL_GAMEPAD_TYPE_XBOXONE;
     int nin = t >= SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO && t <= SDL_GAMEPAD_TYPE_GAMECUBE;
@@ -317,14 +345,12 @@ const char* bind_code_name(int dev, int code, char* buf, int n)
     return buf;
 }
 
-const char* bind_pad_desc(void)
+const char* bind_pad_desc(char* d, int n)
 {
-    static char d[96];
     if (g_input_source == INPUT_KBM) return "Gamepads ignored (input source: keyboard/mouse only)";
-    if (!gamepad && g_input_pad) { snprintf(d, sizeof(d), "Gamepad %d not connected", g_input_pad); return d; }
-    if (!gamepad) return "No gamepad connected";
-    snprintf(d, sizeof(d), "%s", SDL_GetGamepadName(gamepad) ? SDL_GetGamepadName(gamepad) : "Gamepad");
-    return d;
+    if (pad_info_get(NULL, d, n)) return d;
+    if (g_input_pad) { snprintf(d, n, "Gamepad %d not connected", g_input_pad); return d; }
+    return "No gamepad connected";
 }
 
 /* game rows: what the DS2 button does under the game's key type (pad.c bhSetPad's virtual
@@ -633,7 +659,7 @@ int bind_hotkey(const void* e, int row)
 {
     const SDL_Event* ev = (const SDL_Event*)e;
     static bool axis_on[B_COUNT][BIND_SLOTS];   /* the row's gamepad axis was past its press point */
-    SDL_JoystickID mine = gamepad ? SDL_GetGamepadID(gamepad) : 0;
+    SDL_JoystickID mine = pad_info_get(NULL, NULL, 0);   /* main thread: the copy, not the game thread's gamepad */
     for (int s = 0; s < BIND_SLOTS; s++) {
         int c = bind_get(row, BIND_KB, s), p = bind_row_shown(row, BIND_PAD) ? bind_get(row, BIND_PAD, s) : 0;
         if (c && ev->type == SDL_EVENT_KEY_DOWN && !ev->key.repeat && (int)ev->key.scancode == c) return 1;
@@ -659,7 +685,8 @@ void bind_capture_start(int dev)
 {
     const bool* k = bind_keys();
     for (int i = 0; i < SDL_SCANCODE_COUNT; i++) cap_held[i] = k[i];
-    for (int b = 0; b < SDL_GAMEPAD_BUTTON_COUNT; b++) cap_held_pad[b] = gamepad && SDL_GetGamepadButton(gamepad, (SDL_GamepadButton)b);
+    SDL_JoystickID id = pad_info_get(NULL, NULL, 0);   /* (any thread: SDL looks it up by id, under its lock) */
+    for (int b = 0; b < SDL_GAMEPAD_BUTTON_COUNT; b++) cap_held_pad[b] = id && SDL_GetGamepadButton(SDL_GetGamepadFromID(id), (SDL_GamepadButton)b);
     cap_start = SDL_GetTicks();
     cap_result = -1;
     cap_dev = dev;
@@ -720,7 +747,8 @@ int bind_event(const void* e)
    left mouse button at window pixel x/y (as events: the overlay), @x:y:r the right one.
    RECVX_VPAD="<frame>:<input>+<input>,...": a virtual SDL gamepad (RECVX_VPAD_TYPE xbox, ps5 or
    generic; default xbox) holding gamepad inputs in the ini spelling (south, dpup, +lefttrigger),
-   or an axis at a value from -1 to 1 (leftx=0.5, lefty=-1: the left stick half right, all up). */
+   or an axis at a value from -1 to 1 (leftx=0.5, lefty=-1: the left stick half right, all up);
+   "unplug" disconnects it, "plug" connects it again (hotplug tests). */
 static void push_key(int sc, int down)
 {
     SDL_Event e;
@@ -791,33 +819,43 @@ static bool SDLCALL vpad_rumble(void* ud, Uint16 lo, Uint16 hi)
     return true;
 }
 
+static SDL_Joystick* vpad_plug(void)
+{
+    const char* t = SDL_getenv("RECVX_VPAD_TYPE");
+    SDL_VirtualJoystickDesc d;
+    SDL_Joystick* joy;
+    SDL_INIT_INTERFACE(&d);
+    d.type = SDL_JOYSTICK_TYPE_GAMEPAD;
+    d.naxes = SDL_GAMEPAD_AXIS_COUNT;
+    d.nbuttons = SDL_GAMEPAD_BUTTON_MISC1;   /* the standard ones */
+    d.button_mask = (1u << SDL_GAMEPAD_BUTTON_MISC1) - 1;
+    d.axis_mask = (1u << SDL_GAMEPAD_AXIS_COUNT) - 1;
+    d.Rumble = vpad_rumble;
+    if (t && !strcmp(t, "ps5")) { d.vendor_id = 0x054c; d.product_id = 0x0ce6; d.name = "Virtual DualSense"; }
+    else if (t && !strcmp(t, "generic")) d.name = "Virtual gamepad";
+    else { d.vendor_id = 0x045e; d.product_id = 0x02ea; d.name = "Virtual Xbox One"; }
+    joy = SDL_OpenJoystick(SDL_AttachVirtualJoystick(&d));
+    host_log("test: virtual gamepad %s\n", joy ? d.name : SDL_GetError());
+    if (joy) SDL_SetJoystickVirtualAxis(joy, SDL_GAMEPAD_AXIS_LEFT_TRIGGER, -32768),
+             SDL_SetJoystickVirtualAxis(joy, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, -32768);
+    return joy;
+}
+
 static void vpad_frame(uint64_t now)
 {
     static const char* p; static int chk;
     static SDL_Joystick* joy;
     const char* body;
     const char* end;
-    if (!chk++) {
-        const char* t = SDL_getenv("RECVX_VPAD_TYPE");
-        SDL_VirtualJoystickDesc d;
-        p = SDL_getenv("RECVX_VPAD");
-        if (!p) return;
-        SDL_INIT_INTERFACE(&d);
-        d.type = SDL_JOYSTICK_TYPE_GAMEPAD;
-        d.naxes = SDL_GAMEPAD_AXIS_COUNT;
-        d.nbuttons = SDL_GAMEPAD_BUTTON_MISC1;   /* the standard ones */
-        d.button_mask = (1u << SDL_GAMEPAD_BUTTON_MISC1) - 1;
-        d.axis_mask = (1u << SDL_GAMEPAD_AXIS_COUNT) - 1;
-        d.Rumble = vpad_rumble;
-        if (t && !strcmp(t, "ps5")) { d.vendor_id = 0x054c; d.product_id = 0x0ce6; d.name = "Virtual DualSense"; }
-        else if (t && !strcmp(t, "generic")) d.name = "Virtual gamepad";
-        else { d.vendor_id = 0x045e; d.product_id = 0x02ea; d.name = "Virtual Xbox One"; }
-        joy = SDL_OpenJoystick(SDL_AttachVirtualJoystick(&d));
-        host_log("test: virtual gamepad %s\n", joy ? d.name : SDL_GetError());
-        if (joy) SDL_SetJoystickVirtualAxis(joy, SDL_GAMEPAD_AXIS_LEFT_TRIGGER, -32768),
-                 SDL_SetJoystickVirtualAxis(joy, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, -32768);
-    }
-    while (joy && p && *p && (end = script_entry(p, now, &body))) {
+    if (!chk++ && (p = SDL_getenv("RECVX_VPAD"))) joy = vpad_plug();
+    while (p && *p && (end = script_entry(p, now, &body))) {
+        if (!strncmp(body, "unplug", 6) || !strncmp(body, "plug", 4)) {
+            if (joy) { SDL_JoystickID id = SDL_GetJoystickID(joy); SDL_CloseJoystick(joy); SDL_DetachVirtualJoystick(id); joy = NULL; host_log("test: virtual gamepad unplugged\n"); }
+            if (*body == 'p') joy = vpad_plug();
+            p = *end ? end + 1 : end;
+            continue;
+        }
+        if (!joy) { p = *end ? end + 1 : end; continue; }
         for (int b = 0; b < SDL_GAMEPAD_BUTTON_MISC1; b++) SDL_SetJoystickVirtualButton(joy, b, false);
         for (int a = 0; a < SDL_GAMEPAD_AXIS_COUNT; a++) SDL_SetJoystickVirtualAxis(joy, a, a >= SDL_GAMEPAD_AXIS_LEFT_TRIGGER ? -32768 : 0);
         while (body < end) {

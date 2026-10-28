@@ -522,7 +522,7 @@ static void draw_help(void)
     else switch (r->kind) {
     case K_PAGE: snprintf(t, sizeof(t), "Left/right or %s change the page, up/down choose a setting. Changes are saved at once; F1 shows the same settings.",
                           page_keys(nm, sizeof(nm))); break;
-    case K_DEVICE: snprintf(t, sizeof(t), "%s", st.dev ? bind_pad_desc() : "The game's buttons, third-person keys and hotkeys."); break;
+    case K_DEVICE: snprintf(t, sizeof(t), "%s", st.dev ? bind_pad_desc(nm, sizeof(nm)) : "The game's buttons, third-person keys and hotkeys. Mouse buttons can be bound too, e.g. right mouse on Aim, left on Fire."); break;
     case K_RESET: snprintf(t, sizeof(t), "All %s bindings back to the defaults.", st.dev ? "gamepad" : "keyboard and mouse"); break;
     case K_BACK: snprintf(t, sizeof(t), "Back to the OPTION screen (also cancel or a right click)."); break;
     case K_BIND: {
