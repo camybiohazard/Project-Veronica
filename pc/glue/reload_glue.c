@@ -22,6 +22,7 @@
 #include <stdlib.h>
 
 int pad_reload(void);
+int pc_play_screen(int scope);
 
 static int rest;   /* a reload started with the weapon lowered, the aim not held since */
 
@@ -29,9 +30,15 @@ static int rest;   /* a reload started with the weapon lowered, the aim not held
    or attract demo running. Also quick knife (knife_glue.c) and modern controls (modern_glue.c), with scope 0. */
 int pc_in_play(const BH_PWORK* p, int scope)
 {
-    return p == &ply && p->mnwP && p->mlwP && (sys->sp_flg & 0x40) && !(sys->ss_flg & 0x400000) &&
+    return p == &ply && p->mnwP && p->mlwP && pc_play_screen(scope) && p->mode0 == 1;
+}
+
+/* pc_in_play's screen half, whatever the player's mode (the ammo counter, hud_glue.c) */
+int pc_play_screen(int scope)
+{
+    return (sys->sp_flg & 0x40) && !(sys->ss_flg & 0x400000) &&
            !(sys->st_flg & (scope ? 0x1 : 0x800001)) && !(sys->gm_flg & (scope ? 0x9 : 0x49)) && !(sys->cb_flg & 0x5) && !(sys->ts_flg & 0x80) &&
-           !*(int*)&sys->mn_mode0 && !*(int*)&sys->mn_md0 && p->mode0 == 1;
+           !*(int*)&sys->mn_mode0 && !*(int*)&sys->mn_md0;
 }
 
 /* a reload binding shared with another action takes a press with aim held only here (pc/src/input/bindings.c

@@ -48,6 +48,7 @@ int pc_intro_pressed(int start)
 }
 int pc_quick_knife_on(void) { return g_config.quick_knife; }
 int pc_head_blowoff_on(void) { return g_config.head_blowoff; }
+int pc_ammo_hud_on(void) { return g_config.ammo_hud; }
 int pc_auto_stairs_on(void) { return g_config.auto_stairs; }
 /* event.c bhPlItemCheck, ps2_McSaveFile.c mcWriteStartSaveFile: typewriters save without an ink ribbon and use none */
 int pc_no_ink_ribbon(void) { return g_config.no_ink_ribbon; }
@@ -98,7 +99,7 @@ float pc_overlay_x(float x)
 }
 
 HostConfig g_config = { .window_w = 1280, .window_h = 960, .borderless_extra = 1,.vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .frame_blend = 0, .aspect = 2, .show_fps = 1,
-                       .screen_filter = 1, .cinema_bars = 1, .screen_effects = 1, .native_3d = 1, .model_cull = 1, .native_tex = 1, .hd_textures = 1, .hd_textures_ui = 1, .quick_knife = 1, .head_blowoff = 1,
+                       .screen_filter = 1, .cinema_bars = 1, .screen_effects = 1, .native_3d = 1, .model_cull = 1, .native_tex = 1, .hd_textures = 1, .hd_textures_ui = 1, .quick_knife = 1, .head_blowoff = 1, .ammo_hud = 1,
                        .skip_doors = 1, .fast_loading = 1, .auto_stairs = 1, .skip_intro = 1, .battle_unlocked = 1, .difficulty_select = 1, .contrast = 100, .gamma = 10, .fog_intensity = 100 };   /* first-start defaults; recvx.ini overrides */
 SDL_Window* g_window;
 SDL_GLContext g_gl;

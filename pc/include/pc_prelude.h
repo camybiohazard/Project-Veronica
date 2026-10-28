@@ -241,6 +241,8 @@ unsigned int modern_pad(unsigned int pad);   /* pad.c bhSetPad, before knife_pad
 void  modern_player(void);                    /* player.c bhControlPlayer, after the mode handler */
 /* reload button (pc/glue/reload_glue.c) */
 void  reload_player(void);                    /* player.c bhControlPlayer, after modern_player */
+/* ammo counter (pc/glue/hud_glue.c) */
+void  hud_draw(void);                         /* system.c bhSysCallScreenSaver, after the game's timer */
 struct STCAM_WRK;
 void  menu_examine(struct STCAM_WRK* sc);
 

@@ -44,6 +44,7 @@ typedef struct {
     int  fast_loading;       /* room loads: sound packs and texture lists at once instead of spread over frames (pc_fast_loading) */
     int  quick_knife;        /* holding the quick-knife key draws the knife (pc/glue/knife_glue.c) */
     int  auto_stairs;        /* walking into stairs climbs them without the action button (pc/glue/stairs_glue.c) */
+    int  ammo_hud;           /* the equipped weapon's magazine in the bottom right corner (pc/glue/hud_glue.c) */
     int  head_blowoff;       /* a zombie whose head the game destroyed is drawn without it (pc/glue/variant_glue.c pc_zombie_head) */
     int  model_cull;         /* skip actors/objects whose test points are off-screen (as the PS2) */
     int  skip_intro;         /* boot straight into the title menu */
