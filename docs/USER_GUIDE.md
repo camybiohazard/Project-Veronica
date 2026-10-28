@@ -374,7 +374,8 @@ it up). Without matching ammo, with a full magazine, unlimited ammo, during even
 doors or when grabbed it does nothing. Weapons the game does not reload by itself, the grenade
 launcher (its rounds are combined in the inventory) and the knife, are left alone; the bow gun
 reloads the kind of arrows it holds. The sniper rifle and linear launcher reload only through
-their scope (their reload ends in it).
+their scope (their reload ends in it). The sub machine gun has no reload motion: its ammo goes in
+at once.
 
 Defaults:
 

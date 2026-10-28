@@ -17,6 +17,12 @@
   again once after updating.
 - The gamepad's left stick click is L3 again by default (it was the trade request).
 
+### Fixes
+
+- **Sub machine gun reload crash**: reloading the sub machine gun, with the Reload button or by
+  firing on an empty magazine, no longer crashes the game. It has no reload animation, so the ammo
+  goes in at once and you keep aiming.
+
 ## 0.6.8 (2026-10-23)
 
 ### Gameplay
