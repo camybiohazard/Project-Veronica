@@ -136,6 +136,10 @@ void host_pump_events(void)
             SDL_AddAtomicInt(&presses, 1);
         tps_input_event(&ev);
         menu_mouse_event(&ev);
+        if (bind_hotkey(&ev, B_TPS_TOGGLE)) {   /* a key, mouse button or gamepad input */
+            g_tps.on = !g_tps.on;
+            settings_save_later();
+        }
         switch (ev.type) {
         case SDL_EVENT_QUIT:
             exit(0);
@@ -147,10 +151,6 @@ void host_pump_events(void)
             if (bind_hotkey(&ev, B_FULLSCREEN)) {
                 g_config.fullscreen = !g_config.fullscreen;   /* of the kind chosen last (Display mode) */
                 settings_apply_display();
-                settings_save_later();
-            }
-            if (bind_hotkey(&ev, B_TPS_TOGGLE)) {
-                g_tps.on = !g_tps.on;
                 settings_save_later();
             }
             break;

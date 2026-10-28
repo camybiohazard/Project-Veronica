@@ -22,7 +22,7 @@ enum {
        run .. quick turn, knife, options, recenter; the classic scheme drives it through the DS2 rows) */
     B_TPS_FWD, B_TPS_BACK, B_TPS_LEFT, B_TPS_RIGHT, B_TPS_RUN, B_TPS_ACTION, B_TPS_CANCEL,
     B_TPS_STATUS, B_TPS_MAP, B_TPS_AIM, B_TPS_FIRE, B_TPS_RELOAD, B_TPS_QUICKTURN, B_TPS_KNIFE, B_TPS_OPTIONS, B_TPS_RECENTER,
-    /* port hotkeys (keyboard) */
+    /* port hotkeys (keyboard; the third-person toggle also on the gamepad) */
     B_TPS_TOGGLE, B_SETTINGS, B_CHEATS, B_FULLSCREEN, B_NOCLIP_UP, B_NOCLIP_DOWN,
     B_COUNT
 };
@@ -61,7 +61,7 @@ void bind_combo_frame(int on, const bool* keys, int mouse);     /* each pad repo
 int  bind_pad_raw(int row);                                     /* the gamepad holds an input of the row, whichever set reads it now */
 int  bind_pad_menu_button(int which);                           /* the code of the gamepad's own button, whatever it is bound to: 0 LB, 1 RB, 2 A (bottom face), 3 B (right face) */
 int  bind_pad_code_down(int code);                              /* the gamepad holds this input */
-int  bind_hotkey(const void* sdl_event, int row);               /* a key-down event of this hotkey */
+int  bind_hotkey(const void* sdl_event, int row);               /* a press event of this hotkey (key, mouse button; a gamepad input for one with a gamepad set) */
 void* bind_gamepad(void);              /* the open SDL_Gamepad (pad.c) */
 void bind_set_gamepad(void* gamepad);
 const bool* bind_keys(void);           /* SDL keyboard state plus scripted keys (RECVX_KEYS) */

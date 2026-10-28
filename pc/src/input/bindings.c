@@ -38,7 +38,7 @@ const BindRow bind_rows[B_COUNT] = {
     [B_TPS_KNIFE] = { "tps_knife", "Quick knife (hold)", BG_TPS, 2 },
     [B_TPS_OPTIONS] = { "tps_options", "Options", BG_TPS, 2 },
     [B_TPS_RECENTER] = { "tps_recenter", "Camera behind character", BG_TPS, 2 },
-    [B_TPS_TOGGLE] = { "tps_toggle", "Third-person camera on/off", BG_HOTKEY, 0 },
+    [B_TPS_TOGGLE] = { "tps_toggle", "Third-person camera on/off", BG_HOTKEY, 1 },   /* no gamepad default */
     [B_SETTINGS] = { "settings", "Settings overlay", BG_HOTKEY, 0 },
     [B_CHEATS] = { "cheats", "Cheat menu", BG_HOTKEY, 0 },
     [B_FULLSCREEN] = { "fullscreen", "Fullscreen", BG_HOTKEY, 0 },
@@ -481,13 +481,16 @@ static int tps_uses(int dev, int code)
     return 0;
 }
 
+/* axis code c at value v: past its press point */
+static int axis_past(int c, int v)
+{
+    int lim = (c - BIND_AXIS) / 2 >= SDL_GAMEPAD_AXIS_LEFT_TRIGGER ? 8000 : 16000;
+    return (c - BIND_AXIS) & 1 ? v < -lim : v > lim;
+}
+
 static int pad_down(int c)
 {
-    if (c >= BIND_AXIS) {
-        int a = (c - BIND_AXIS) / 2, v = SDL_GetGamepadAxis(gamepad, (SDL_GamepadAxis)a);
-        int lim = a >= SDL_GAMEPAD_AXIS_LEFT_TRIGGER ? 8000 : 16000;
-        return (c - BIND_AXIS) & 1 ? v < -lim : v > lim;
-    }
+    if (c >= BIND_AXIS) return axis_past(c, SDL_GetGamepadAxis(gamepad, (SDL_GamepadAxis)((c - BIND_AXIS) / 2)));
     return SDL_GetGamepadButton(gamepad, (SDL_GamepadButton)(c - 1));
 }
 
@@ -625,14 +628,23 @@ int bind_pad_menu_button(int which)
 }
 int bind_pad_code_down(int code) { return code && gamepad && pad_down(code); }
 
+/* hotkeys with a gamepad set (pad_ok 1): a button press or an axis going past its press point, on the gamepad this window reads */
 int bind_hotkey(const void* e, int row)
 {
     const SDL_Event* ev = (const SDL_Event*)e;
+    static bool axis_on[B_COUNT][BIND_SLOTS];   /* the row's gamepad axis was past its press point */
+    SDL_JoystickID mine = gamepad ? SDL_GetGamepadID(gamepad) : 0;
     for (int s = 0; s < BIND_SLOTS; s++) {
-        int c = bind_get(row, BIND_KB, s);
-        if (!c) continue;
-        if (ev->type == SDL_EVENT_KEY_DOWN && !ev->key.repeat && (int)ev->key.scancode == c) return 1;
-        if (ev->type == SDL_EVENT_MOUSE_BUTTON_DOWN && c == BIND_MOUSE + ev->button.button) return 1;
+        int c = bind_get(row, BIND_KB, s), p = bind_row_shown(row, BIND_PAD) ? bind_get(row, BIND_PAD, s) : 0;
+        if (c && ev->type == SDL_EVENT_KEY_DOWN && !ev->key.repeat && (int)ev->key.scancode == c) return 1;
+        if (c && ev->type == SDL_EVENT_MOUSE_BUTTON_DOWN && c == BIND_MOUSE + ev->button.button) return 1;
+        if (!p || !mine) continue;
+        if (ev->type == SDL_EVENT_GAMEPAD_BUTTON_DOWN && ev->gbutton.which == mine && p == 1 + ev->gbutton.button) return 1;
+        if (ev->type == SDL_EVENT_GAMEPAD_AXIS_MOTION && ev->gaxis.which == mine && p >= BIND_AXIS && (p - BIND_AXIS) / 2 == ev->gaxis.axis) {
+            bool on = axis_past(p, ev->gaxis.value), was = axis_on[row][s];
+            axis_on[row][s] = on;
+            if (on && !was) return 1;
+        }
     }
     return 0;
 }

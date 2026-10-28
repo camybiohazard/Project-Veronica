@@ -435,7 +435,7 @@ Hotkeys:
 |---|---|
 | F1 | settings overlay |
 | F2 | cheat menu |
-| F5 | third-person camera on/off |
+| F5 | third-person camera on/off (can also be bound to a gamepad button: CONTROLS, gamepad, Hotkeys) |
 | F11 | windowed / fullscreen (borderless or exclusive, as chosen in Display mode) |
 | Page Up, F / Page Down | noclip fly up / down (when flying is on; R reloads now) |
 
