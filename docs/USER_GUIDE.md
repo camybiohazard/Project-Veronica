@@ -170,6 +170,7 @@ visible, and Contrast until the right square on the white strip is barely visibl
 | Battle Game unlocked | `battle_unlocked` | **on**: the title menu offers BATTLE GAME without a finished playthrough, and its character select offers all five characters at once (Claire, Claire in her other costume, Chris, Steve, Wesker). Saves and system data are not changed: characters and records you earn are still saved as in the original, and the Linear Launcher still needs an A rank with all five. Off: as the original, BATTLE GAME only after a cleared game and the characters you have earned |
 | Difficulty select | `difficulty_select` | **on**: NEW GAME opens the difficulty menu of the European and Japanese versions (MODE SELECT: NORMAL, EASY, VERY EASY; its pictures are on the US disc too). NORMAL is preselected, so confirming twice starts the original game; Cancel goes back to the title menu. **Easy**: the item box starts with handgun bullets, bow gun arrows and powder, first aid sprays and ink ribbons, and ammo pickups hold more (handgun bullets 30 instead of 15, for example); your health and most enemies as on Normal. **Very Easy**: twice the health, healing items heal twice as much, enemies with fewer hit points (zombies about half), ammo pickups as Easy, an ink ribbon in your bag that is never used up, and an item box with the bow gun, grenade launcher, shotgun, magnum and assault rifle, their ammo and first aid sprays. Only Normal has the ranking at the end and its A-rank reward. A save keeps its difficulty. Off: as the US original, NEW GAME always starts on Normal |
 | Quick knife | `quick_knife` | on: hold the quick-knife key to draw the combat knife without opening the inventory; release to get the previous weapon back |
+| Weapon shortcuts | `weapon_shortcuts` | on: 1 / 2 or the d-pad's left / right switch to the previous / next weapon without the inventory ([Weapon shortcuts](#weapon-shortcuts)); **off**: the d-pad's left / right turn in play, as the original |
 | **Saves** | | |
 | Save system | `save_system` | **Native files** (0): every save a file in `save/saves`, no limit, no memory card screens; Memory card (original) (1): see [Saves](#saves) |
 | Import memory card saves | (action) | copies the memory card's saves into the save files |
@@ -192,7 +193,7 @@ menus, the typewriter's save screen and LOAD GAME (with either save system: poin
 selects it, a click picks it, the wheel or a click on the arrows scrolls, YES / NO and the memory
 cards too) and the game's questions such as "Use an ink ribbon?"; right click goes back; drag to
 rotate and wheel to zoom when examining an item), **Fixed
-camera controls** (`fixed_cam_controls`: Classic (tank) 0, **Modern (camera-relative)** 1; see
+camera controls** (`fixed_cam_controls`: **Classic (tank)** 0, Modern (camera-relative) 1; see
 [Modern controls](#modern-controls-fixed-cameras)), then the bindings ([Rebinding](#rebinding)).
 
 ### Third person
@@ -247,15 +248,18 @@ Keyboard defaults (all rebindable):
 | Arrow keys | D-pad |
 | Z / X / A / S | Cross / Circle / Square / Triangle |
 | Q / W | L1 / R1 |
-| 1 / 2 | L2 / R2 |
+| 9 / 0 | L2 / R2 |
 | Enter / Backspace | Start / Select |
 | Space (hold) | Quick knife |
+| 1 / 2 | Previous / next weapon, with Weapon shortcuts on ([Weapon shortcuts](#weapon-shortcuts)) |
 | R | Reload ([Reload](#reload)) |
 
 Any gamepad SDL supports works as a DualShock 2 (south/east/west/north = Cross/Circle/Square/
 Triangle, shoulders L1/R1, left trigger L2, right stick click R3). The right trigger is the
 quick knife, since that button has no game action; the left stick click is L3.
-Aim (R1 / RB) + Triangle (Y) reloads ([Reload](#reload)).
+Aim (R1 / RB) + Triangle (Y) reloads ([Reload](#reload)). With Weapon shortcuts on, in play the
+d-pad's left / right switch weapons ([Weapon shortcuts](#weapon-shortcuts)): the left stick turns,
+up / down still walk.
 The game's own key types (OPTION -> KEY CONFIG) still decide what each PS2 button does.
 
 ### Vibration
@@ -283,7 +287,8 @@ Xbox / PlayStation; keyboard in brackets.
 
 | Action | Fixed cameras (Classic or Modern) | Third person, keyboard and mouse | Third person, gamepad Classic | Third person, gamepad Modern |
 |---|---|---|---|---|
-| Move | d-pad, left stick (arrows): tank, or where it points on screen with Modern | W/S/A/D (camera A: towards them on screen) | d-pad, left stick: tank | left stick, seen from the camera; d-pad: tank |
+| Move | d-pad, left stick (arrows): tank, or where it points on screen with Modern; d-pad left / right not in play with Weapon shortcuts on | W/S/A/D (camera A: towards them on screen) | d-pad, left stick: tank | left stick, seen from the camera; d-pad: tank |
+| Previous / next weapon (Weapon shortcuts on) | d-pad left / right (1 / 2) | 1 / 2 | d-pad left / right | d-pad left / right |
 | Run | B / Circle held (X) | Shift | B / Circle | X / Square, or the stick pushed far |
 | Quick turn | back + run; Modern: the Quick turn row (unbound) | S + Shift | back + run | d-pad down, or stick back + run |
 | Aim | RB / R1 (W) | right mouse | RB / R1 | LT / L2 |
@@ -328,7 +333,8 @@ behind). As in the Resident Evil 2 and 4 remakes:
 | Right stick click | camera behind the character; in the scope: zoom in / out | `pad_tps_recenter` |
 | Left stick pulled back + run | quick turn | |
 | Menu / Options (Start) | options (the OPTION screen; View / Share is the map here) | `pad_tps_options` |
-| D-pad up / left / right | as before: tank turn and walk; while aiming they move the crosshair | |
+| D-pad left / right | tank turn; with Weapon shortcuts on previous / next weapon ([Weapon shortcuts](#weapon-shortcuts)); while aiming they move the crosshair | `pad_weapon_prev`, `pad_weapon_next` |
+| D-pad up | as before: tank walk; while aiming it moves the crosshair | |
 
 The sniper rifle and the linear launcher aim through their scope: hold LT, aim with the right stick
 (the left stick and d-pad turn it as in the original), click the right stick to zoom in or out, RT
@@ -361,6 +367,27 @@ has the quick turn on RB gets the new default.
   near the centre.
 - The third-person gamepad buttons are their own bindings: rebinding one (CONTROLS, Gamepad,
   "Third person (gamepad, Modern)") leaves the fixed-camera binding of the same button alone.
+
+### Weapon shortcuts
+
+With **Weapon shortcuts** on (GAMEPLAY, off by default, so the whole d-pad moves you as in the original), 1 / 2 on the keyboard or the d-pad's left /
+right on a gamepad switch to the previous / next weapon in your bag, without opening the inventory.
+Weapons follow the inventory's order (left to right, top to bottom) and wrap round from the last to
+the first; with no weapon in your hand, next gives the first and previous the last. The lighter is
+always skipped, and while the quick knife is on the knife is too, it has its own key. Rearranging the bag in the inventory changes
+the order. The weapon is equipped as choosing it in the inventory does, so its ammo and the
+third-person pose are the game's own.
+
+A switch works in play with the weapon lowered (standing, walking, running); a press just before
+that, during a quick turn or while the quick knife is put away, waits up to half a second for it.
+With no other weapon in the bag it does nothing.
+
+In play with the weapon lowered the d-pad's left / right belong to the shortcuts, so they no longer
+turn the character (the left stick does); up / down still walk. In menus, the inventory, events and
+while aiming the d-pad works as before. Both are rebindable (CONTROLS, `key_weapon_prev`,
+`key_weapon_next`, `pad_weapon_prev`, `pad_weapon_next`) and may share a button with a game row,
+which then gets it everywhere but in play. A `recvx.ini` from before them that still has L2 / R2 on
+1 / 2 gets 9 / 0.
 
 ### Reload
 
@@ -407,8 +434,8 @@ their default then, gets these defaults.
 ### Modern controls (fixed cameras)
 
 F1 -> Controls or ENHANCED SETTINGS -> CONTROLS: **Fixed camera controls** = Modern
-(camera-relative), ini `fixed_cam_controls = 1`, the default on a first start (an existing
-`recvx.ini` keeps its choice); Classic (tank controls) is `fixed_cam_controls = 0`. Like the
+(camera-relative), ini `fixed_cam_controls = 1`; Classic (tank controls), `fixed_cam_controls = 0`,
+is the default on a first start, as the original (an existing `recvx.ini` keeps its choice). Like the
 alternate controls of the Resident Evil HD remasters:
 
 - The **left stick** or the **d-pad** (arrow keys on the keyboard) points where the character

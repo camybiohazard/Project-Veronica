@@ -18,6 +18,10 @@ enum {
     B_QUICKTURN,                       /* back, then the run button (the game's quick turn) */
     B_QUICKKNIFE,                      /* hold: knife drawn and readied, the weapon before back on release (knife_glue.c) */
     B_RELOAD,                          /* reload the weapon from the inventory's ammo, as on an empty trigger pull (reload_glue.c); R, Aim + Triangle */
+    /* equip the bag's weapon before / after the one in the hand (weapon_glue.c); 1 / 2, the d-pad's left / right. They share
+       with the other game and third-person rows: in play with the weapon down (g_wpn_take) their inputs are the shortcuts'
+       alone, elsewhere (menus, aiming) the others' */
+    B_WPN_PREV, B_WPN_NEXT,
     /* third person: keyboard and mouse; the gamepad set has its own (modern scheme, g_tps.pad_modern:
        run .. quick turn, knife, options, recenter; the classic scheme drives it through the DS2 rows) */
     B_TPS_FWD, B_TPS_BACK, B_TPS_LEFT, B_TPS_RIGHT, B_TPS_RUN, B_TPS_ACTION, B_TPS_CANCEL,
@@ -69,6 +73,10 @@ int  bind_quickturn(int which, int held);   /* which 0 game, 1 third person: 0 o
 int  pad_quick_knife(void);            /* the quick-knife row is held (pad.c) */
 int  pad_reload(void);                 /* a reload row is held (pad.c) */
 int  pad_report_bits(void);            /* the DS2 buttons held in the last pad report (pad.c) */
+/* weapon shortcuts (pc/glue/weapon_glue.c), game thread */
+#define WPN_KEYS 2                     /* B_WPN_PREV, B_WPN_NEXT */
+extern int g_wpn_take;                 /* set by pad.c for each pad report: the shortcut rows' inputs read as up for every other row */
+int  pad_wpn_key(int n);               /* shortcut row B_WPN_PREV + n (n 0..WPN_KEYS - 1) is held (pad.c) */
 /* Input source of this window (F1 Controls, ENHANCED SETTINGS -> CONTROLS; ini input_source, input_pad;
    docs/USER_GUIDE.md "Input source (per window)"). Auto: keyboard/mouse and the gamepad, while focused. Gamepad only:
    keyboard/mouse no longer play (hotkeys and the F1/F2 windows still work) and

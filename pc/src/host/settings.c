@@ -366,6 +366,8 @@ const Setting g_settings[] = {
       .help = "NEW GAME asks for the difficulty, as the European and Japanese versions do: Normal, Easy (supplies in the item box, more ammo per pickup) or Very Easy (also twice the health, stronger healing, weaker enemies). Off: as the US original, always Normal." },
     { SP_GAMEPLAY, "Quick knife", V(g_config.quick_knife), 0, 1, 1,
       .help = "Hold the quick-knife key (Space, right trigger; see CONTROLS) to draw the knife without the inventory; release it for the weapon before." },
+    { SP_GAMEPLAY, "Weapon shortcuts", V(g_config.weapon_shortcuts), 0, 1, 1,
+      .help = "1 / 2 or the d-pad's left / right equip the bag's previous / next weapon, skipping the lighter (and the knife while the quick knife is on). Left / right then no longer turn in play (the stick does); up / down still walk." },
     { SP_GAMEPLAY, "Auto-climb stairs", V(g_config.auto_stairs), 0, 1, 1,
       .help = "Walking or running into a staircase climbs it without the action button. Steps onto or off a ledge, doors and items still need the button." },
     { SP_GAMEPLAY, "Head blow-offs", V(g_config.head_blowoff), 0, 1, 1, .help = "Enables head blow-offs on zombies." },

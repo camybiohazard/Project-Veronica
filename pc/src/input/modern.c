@@ -3,7 +3,7 @@
 #include "../host/modern.h"
 #include <math.h>
 
-int g_modern_on = 1;   /* first-start default: modern; recvx.ini overrides */
+int g_modern_on = 0;   /* first-start default: classic (tank); recvx.ini overrides */
 
 #define UNITS (32768.0f / 3.14159265f)
 

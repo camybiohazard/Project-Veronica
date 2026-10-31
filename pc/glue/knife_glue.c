@@ -3,7 +3,8 @@
    weapon equipped before comes back once the knife is lowered again. Everything goes through
    the inventory's own WeaponSet (equipped slot sys->itm[ply*16], weapon number, the weapon
    file load, motions), so ammo, aiming, firing, and the third-person pose of the knife
-   are the game's. Game thread: knife_pad from bhSetPad (pad.c), after tps_pad. */
+   are the game's. Game thread: knife_pad from bhSetPad (pad.c), after tps_pad; the weapon shortcuts
+   (weapon_glue.c) follow it. */
 #include "../../decomp/include/ps2/veronica/prog/types.h"
 #include "../../decomp/include/ps2/veronica/prog/main.h"
 #include "../../decomp/include/ps2/veronica/prog/sub1.h"
@@ -13,6 +14,7 @@
 int pad_quick_knife(void);
 int pc_in_play(const BH_PWORK* p, int scope);   /* reload_glue.c */
 int pc_quick_knife_on(void);   /* the option (host.c) */
+void wpn_pad(void);            /* weapon_glue.c */
 
 #define KNIFE 8                         /* item 8 "Combat Knife", weapon 2 (WpnTab flag 0x40000000: the knife's hit check) */
 #define ID(v) ((v) >> 16 & 0x7FF)       /* item id without the ammo kind and unlimited bits */
@@ -33,6 +35,10 @@ static int at_rest(void)
 {
     return in_play() && plp->mode1 == 0 && ((plp->mode2 <= 11 && !(plp->flg & 0x10000)) || plp->mode2 == 13);
 }
+int pc_weapon_at_rest(void) { return sys && plp && at_rest(); }   /* also the weapon shortcuts' (weapon_glue.c) */
+
+/* the knife is drawn by its key or about to be given back: the weapon shortcuts wait (weapon_glue.c) */
+int knife_busy(void) { return state || (pc_quick_knife_on() && g_cheat.noclip != 2 && pad_quick_knife()); }
 
 static void equip(int slot)
 {
@@ -111,5 +117,6 @@ unsigned int knife_pad(unsigned int pad)
     }
     if (state == 2 && at_rest()) give_back();   /* after the swing: the game lowers the knife first */
     if (state == 1 && in_play()) pad |= 0x10;   /* readied: fire slashes */
+    wpn_pad();
     return pad;
 }

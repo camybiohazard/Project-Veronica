@@ -28,6 +28,7 @@ const BindRow bind_rows[B_COUNT] = {
     [B_QUICKTURN] = { "quickturn", "Quick turn (back, then run)", BG_GAME, 1 },
     [B_QUICKKNIFE] = { "quickknife", "Quick knife (hold)", BG_GAME, 1 },
     [B_RELOAD] = { "reload", "Reload", BG_GAME, 1 },
+    [B_WPN_PREV] = { "weapon_prev", "Previous weapon", BG_GAME, 1 }, [B_WPN_NEXT] = { "weapon_next", "Next weapon", BG_GAME, 1 },
     [B_TPS_FWD] = { "tps_forward", "Forward", BG_TPS, 0 },   [B_TPS_BACK] = { "tps_back", "Back", BG_TPS, 0 },
     [B_TPS_LEFT] = { "tps_left", "Turn left", BG_TPS, 0 },   [B_TPS_RIGHT] = { "tps_right", "Turn right", BG_TPS, 0 },
     [B_TPS_RUN] = { "tps_run", "Run", BG_TPS, 1 },           [B_TPS_ACTION] = { "tps_action", "Action / confirm", BG_TPS, 1 },
@@ -48,7 +49,7 @@ const BindRow bind_rows[B_COUNT] = {
 
 const int bind_order[B_COUNT] = {
     B_UP, B_DOWN, B_LEFT, B_RIGHT, B_CROSS, B_SQUARE, B_CIRCLE, B_TRIANGLE, B_R1, B_L1, B_R2, B_L2,
-    B_START, B_SELECT, B_R3, B_L3, B_QUICKTURN, B_QUICKKNIFE, B_RELOAD,
+    B_START, B_SELECT, B_R3, B_L3, B_QUICKTURN, B_QUICKKNIFE, B_RELOAD, B_WPN_PREV, B_WPN_NEXT,
     B_TPS_FWD, B_TPS_BACK, B_TPS_LEFT, B_TPS_RIGHT, B_TPS_RUN, B_TPS_ACTION, B_TPS_CANCEL, B_TPS_STATUS,
     B_TPS_MAP, B_TPS_AIM, B_TPS_FIRE, B_TPS_RELOAD, B_TPS_QUICKTURN, B_TPS_KNIFE, B_TPS_OPTIONS, B_TPS_RECENTER,
     B_TPS_TOGGLE, B_SETTINGS, B_CHEATS, B_FULLSCREEN, B_NOCLIP_UP, B_NOCLIP_DOWN,
@@ -58,13 +59,14 @@ static const int defaults[2][B_COUNT][BIND_SLOTS] = {
     [BIND_KB] = {
         [B_SELECT] = { SC(BACKSPACE) }, [B_START] = { SC(RETURN) },
         [B_UP] = { SC(UP) }, [B_RIGHT] = { SC(RIGHT) }, [B_DOWN] = { SC(DOWN) }, [B_LEFT] = { SC(LEFT) },
-        [B_L2] = { SC(1) }, [B_R2] = { SC(2) }, [B_L1] = { SC(Q) }, [B_R1] = { SC(W) },
+        [B_L2] = { SC(9) }, [B_R2] = { SC(0) }, [B_L1] = { SC(Q) }, [B_R1] = { SC(W) },   /* 1 and 2 until the weapon shortcuts */
         [B_TRIANGLE] = { SC(S) }, [B_CIRCLE] = { SC(X) }, [B_CROSS] = { SC(Z) }, [B_SQUARE] = { SC(A) },
         [B_TPS_FWD] = { SC(W) }, [B_TPS_BACK] = { SC(S) }, [B_TPS_LEFT] = { SC(A) }, [B_TPS_RIGHT] = { SC(D) },
         [B_TPS_RUN] = { SC(LSHIFT), SC(RSHIFT) }, [B_TPS_ACTION] = { SC(E) }, [B_TPS_CANCEL] = { SC(Q) },
         [B_TPS_STATUS] = { SC(TAB) }, [B_TPS_MAP] = { SC(M) }, [B_TPS_AIM] = { MB(SDL_BUTTON_RIGHT) },
         [B_TPS_FIRE] = { MB(SDL_BUTTON_LEFT) }, [B_TPS_RELOAD] = { SC(R) },
         [B_QUICKKNIFE] = { SC(SPACE) }, [B_RELOAD] = { SC(R) },   /* R: no game key in any key type */
+        [B_WPN_PREV] = { SC(1) }, [B_WPN_NEXT] = { SC(2) },
         [B_TPS_TOGGLE] = { SC(F5) }, [B_SETTINGS] = { SC(F1) }, [B_CHEATS] = { SC(F2) },
         [B_FULLSCREEN] = { SC(F11) }, [B_NOCLIP_UP] = { SC(PAGEUP) }, [B_NOCLIP_DOWN] = { SC(F), SC(PAGEDOWN) },
     },
@@ -75,6 +77,9 @@ static const int defaults[2][B_COUNT][BIND_SLOTS] = {
         [B_L1] = { GB(LEFT_SHOULDER) }, [B_R1] = { GB(RIGHT_SHOULDER) },
         [B_TRIANGLE] = { GB(NORTH) }, [B_CIRCLE] = { GB(EAST) }, [B_CROSS] = { GB(SOUTH) }, [B_SQUARE] = { GB(WEST) },
         [B_QUICKKNIFE] = { GA(RIGHT_TRIGGER, 0) },
+        /* the weapon shortcuts on the d-pad's left / right, which then no longer turn in play (the left stick does); up / down
+           still walk */
+        [B_WPN_PREV] = { GB(DPAD_LEFT) }, [B_WPN_NEXT] = { GB(DPAD_RIGHT) },
         /* reload: Aim + Triangle (shared with Triangle: bind_held). With the weapon raised Triangle does nothing in
            any key type (map in A-C, options in D: system.c opens neither while st_flg 0x4, the weapon modes) */
         [B_RELOAD] = { GB(NORTH) },
@@ -123,12 +128,16 @@ static int same_context(int a, int b)
 }
 
 static int is_reload(int row) { return row == B_RELOAD || row == B_TPS_RELOAD; }
+static int is_wpn(int row) { return row == B_WPN_PREV || row == B_WPN_NEXT; }
 
 /* a reload row may share a code with another row of its group: then it is a combination, Aim + that
-   button (bind_held) */
+   button (bind_held). A weapon shortcut may share with any row but a hotkey or another shortcut: in play
+   with the weapon down it is the shortcut's (g_wpn_take), elsewhere the other row's */
 static int may_share(int a, int b)
 {
-    return (is_reload(a) || is_reload(b)) && bind_rows[a].group != BG_HOTKEY && bind_rows[b].group != BG_HOTKEY;
+    if (bind_rows[a].group == BG_HOTKEY || bind_rows[b].group == BG_HOTKEY) return 0;
+    if (is_wpn(a) || is_wpn(b)) return !(is_wpn(a) && is_wpn(b));
+    return is_reload(a) || is_reload(b);
 }
 
 void bind_set(int row, int dev, int slot, int code)
@@ -376,12 +385,15 @@ const char* bind_row_label(int row, char* buf, int n)
 /* ---------------------------------------------------------------- recvx.ini */
 int bind_ini_line(const char* key, const char* value)
 {
-    static int knife_seen, reload_seen, combo_seen;   /* the file has quick-knife / reload lines (written before the third-person rows) */
+    static int knife_seen, reload_seen, combo_seen, version;   /* the file has quick-knife / reload lines (written before the third-person rows) */
     int dev, slot = 0, code;
     char k[64];
     /* a file from before the reload combination (no bindings_version line, written first): the reload rows' "none",
        their default then, gets today's defaults (R, Aim + Triangle) */
-    if (!strcmp(key, "bindings_version")) { combo_seen = 1; return 1; }
+    if (!strcmp(key, "bindings_version")) { combo_seen = 1; version = atoi(value); return 1; }
+    /* a file from before the weapon shortcuts (< 3): 1 and 2 (L2 and R2's then) are the previous and next weapon now, L2
+       and R2 get 9 and 0 */
+    if (version < 3 && ((!strcmp(key, "key_l2") && !strcmp(value, "1")) || (!strcmp(key, "key_r2") && !strcmp(value, "2")))) return 1;
     if (!combo_seen && (!strcmp(key, "key_reload") || !strcmp(key, "pad_reload")) && !SDL_strcasecmp(value, "none")) return 1;
     if (!strncmp(key, "key_quickknife", 14)) knife_seen = 1;
     /* a file from before the quick knife: Space was third-person action's default second key, now the quick knife's */
@@ -403,6 +415,9 @@ int bind_ini_line(const char* key, const char* value)
         if (code < 0) { host_log("recvx.ini: %s: unknown %s \"%s\"\n", key, dev ? "gamepad input" : "key", value); return 1; }
         init();
         put(r, dev, slot, code);
+        /* (and a key such a file gave a row a shortcut may not share with keeps it: the shortcut's default gives way) */
+        for (int w = B_WPN_PREV; w <= B_WPN_NEXT && version < 3 && code; w++)
+            if (r != w && same_context(r, w) && !may_share(r, w) && bind_get(w, dev, 0) == code) put(w, dev, 0, 0);
         return 1;
     }
     return 0;
@@ -418,7 +433,7 @@ void bind_ini_write(void* fp)
                "# (Xbox A/B/X/Y, PlayStation Cross/Circle/Square/Triangle), back, start, leftshoulder, dpup, ...,\n"
                "# +lefttrigger, -lefty (left stick up). A second binding: <name>_2. none = unbound.\n"
                "# reload may share a button with a game row (third person: a third-person row): Aim + that button.\n"
-               "bindings_version = 2\n");
+               "bindings_version = 3\n");
     for (int dev = 0; dev < 2; dev++)
         for (int i = 0; i < B_COUNT; i++) {
             int r = bind_order[i];
@@ -543,9 +558,20 @@ static int pad_row_reads(int row, int c)
     return !(take && tps_uses(BIND_PAD, c));
 }
 
+/* the weapon shortcuts (weapon_glue.c): while they take their inputs, those read as up for every other row */
+int g_wpn_take;
+
+static int wpn_uses(int dev, int c)
+{
+    for (int r = B_WPN_PREV; r <= B_WPN_NEXT; r++)
+        for (int s = 0; s < BIND_SLOTS; s++) if (bind_get(r, dev, s) == c) return 1;
+    return 0;
+}
+
 /* code c of the row is down, for that row */
 static int code_down(int row, int dev, int c, const bool* keys, int mouse)
 {
+    if (g_wpn_take && !is_wpn(row) && wpn_uses(dev, c)) return 0;
     if (dev == BIND_KB) {
         if (!input_accept(g_input_source, 0, BIND_KB, 0)) return 0;   /* Gamepad only */
         /* third person takes the keys it uses over (W/A/S/Q by default), in a game outside OPTION (kb_play) */

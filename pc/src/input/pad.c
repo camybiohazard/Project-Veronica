@@ -89,6 +89,7 @@ static int pad_can_rumble(void)
 static void rumble_off(void) { if (gamepad) SDL_RumbleGamepad(gamepad, 0, 0, 0); }
 
 int tps_mouse_buttons(void);
+int wpn_take_ok(void);   /* weapon_glue.c: the weapon shortcuts take their inputs */
 
 /* the DS2 bits of the run button under the game's key type (quick turn) */
 static uint32_t run_bits(void)
@@ -144,12 +145,22 @@ static void build_report(unsigned char* r)
 
     ensure_gamepad();
     k = bind_keys();
+    /* the weapon shortcuts (weapon_glue.c): in play with the weapon down their inputs (the d-pad's left / right) are theirs, and stay
+       theirs while held after that (the weapon they equipped loading, aiming started with one held) */
+    {
+        static unsigned held_then;
+        unsigned held = 0;
+        g_wpn_take = 0;
+        for (int n = 0; n < WPN_KEYS; n++) if (pad_wpn_key(n)) held |= 1u << n;
+        held_then = input_enabled && wpn_take_ok() ? held : held_then & held;
+        g_wpn_take = input_enabled && (wpn_take_ok() || held_then);
+    }
     bind_combo_frame(input_enabled, k, tps_mouse_buttons());   /* the reload combination first: it takes its presses from the rows */
     if (input_enabled) {
         int mouse = tps_mouse_buttons(), qt;
         /* keyboard and gamepad through the bindings (bindings.c; by default arrows = d-pad,
            Enter = Start, Backspace = Select, Z/X/A/S = Cross/Circle/Square/Triangle, Q/W = L1/R1,
-           1/2 = L2/R2, the gamepad as a DS2) */
+           9/0 = L2/R2, the gamepad as a DS2) */
         for (int i = 0; i < 16; i++)
             if (bind_held(i, BIND_KB, k, mouse) || (gamepad && bind_held(i, BIND_PAD, k, 0))) b |= 1u << i;
         qt = bind_quickturn(0, bind_held(B_QUICKTURN, BIND_KB, k, mouse) || (gamepad && bind_held(B_QUICKTURN, BIND_PAD, k, 0)));
@@ -198,6 +209,14 @@ int pad_quick_knife(void)
            (gamepad && (bind_held(B_QUICKKNIFE, BIND_PAD, k, 0) || bind_held(B_TPS_KNIFE, BIND_PAD, k, 0)));
 }
 
+/* weapon shortcuts (pc/glue/weapon_glue.c), game thread: shortcut row n (previous, next) is held on the keyboard/mouse or the gamepad */
+int pad_wpn_key(int n)
+{
+    const bool* k = bind_keys();
+    if (!input_enabled || n < 0 || n >= WPN_KEYS) return 0;
+    return bind_held(B_WPN_PREV + n, BIND_KB, k, tps_mouse_buttons()) || (gamepad && bind_held(B_WPN_PREV + n, BIND_PAD, k, 0));
+}
+
 /* reload (pc/glue/reload_glue.c), game thread: its row is held on the keyboard/mouse or the gamepad, or in
    third person the third-person reload row (keyboard/mouse; the gamepad's in third-person play with the modern scheme);
    a binding shared with another row only as Aim + that button (bindings.c bind_combo) */
@@ -211,8 +230,8 @@ int pad_reload(void)
 }
 
 /* noclip cheat with free height (pc/glue/cheat_glue.c), game thread: +1 up, -1 down. Up: the
-   "noclip fly up" hotkeys (R, Page Up) or the R2 button (key 2, right trigger); down: "noclip
-   fly down" (F, Page Down) or L2 (key 1, left trigger). R2 is unused by the game's key types,
+   "noclip fly up" hotkeys (R, Page Up) or the R2 button (key 0, right trigger); down: "noclip
+   fly down" (F, Page Down) or L2 (key 9, left trigger). R2 is unused by the game's key types,
    L2 only by type D; the stick clicks are not free (R3 = status). The gamepad's right trigger is
    the quick knife's by default, which is off while flying (knife_glue.c), so it flies up too. */
 int pad_noclip_vertical(void)

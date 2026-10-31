@@ -43,6 +43,7 @@ typedef struct {
     int  skip_doors;         /* door/stairs/ladder animations: 0 played, 1 instant (load screen), 2 played, a press skips */
     int  fast_loading;       /* room loads: sound packs and texture lists at once instead of spread over frames (pc_fast_loading) */
     int  quick_knife;        /* holding the quick-knife key draws the knife (pc/glue/knife_glue.c) */
+    int  weapon_shortcuts;   /* 1 / 2 and the d-pad's left / right cycle the bag's weapons in play (pc/glue/weapon_glue.c) */
     int  auto_stairs;        /* walking into stairs climbs them without the action button (pc/glue/stairs_glue.c) */
     int  ammo_hud;           /* the equipped weapon's magazine in the bottom right corner (pc/glue/hud_glue.c) */
     int  head_blowoff;       /* a zombie whose head the game destroyed is drawn without it (pc/glue/variant_glue.c pc_zombie_head) */

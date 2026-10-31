@@ -31,7 +31,11 @@ int main(void)
     CHECK(held(B_CROSS, SDL_SCANCODE_Z) && held(B_CIRCLE, SDL_SCANCODE_X) && held(B_SQUARE, SDL_SCANCODE_A));
     CHECK(held(B_TRIANGLE, SDL_SCANCODE_S) && held(B_L1, SDL_SCANCODE_Q) && held(B_R1, SDL_SCANCODE_W));
     CHECK(held(B_START, SDL_SCANCODE_RETURN) && held(B_SELECT, SDL_SCANCODE_BACKSPACE) && held(B_UP, SDL_SCANCODE_UP));
-    CHECK(held(B_L2, SDL_SCANCODE_1) && held(B_R2, SDL_SCANCODE_2) && !held(B_CROSS, SDL_SCANCODE_X));
+    CHECK(held(B_L2, SDL_SCANCODE_9) && held(B_R2, SDL_SCANCODE_0) && !held(B_CROSS, SDL_SCANCODE_X));
+    /* weapon shortcuts: 1-4 (L2 and R2's 1 and 2 before) and the d-pad, which they share with the d-pad rows */
+    CHECK(held(B_WPN_PREV, SDL_SCANCODE_1) && held(B_WPN_NEXT, SDL_SCANCODE_2) && !held(B_L2, SDL_SCANCODE_1) && !held(B_R2, SDL_SCANCODE_2));
+    CHECK(bind_get(B_WPN_PREV, BIND_PAD, 0) == 1 + SDL_GAMEPAD_BUTTON_DPAD_LEFT && bind_get(B_LEFT, BIND_PAD, 0) == 1 + SDL_GAMEPAD_BUTTON_DPAD_LEFT);
+    CHECK(bind_get(B_WPN_NEXT, BIND_PAD, 0) == 1 + SDL_GAMEPAD_BUTTON_DPAD_RIGHT && bind_get(B_TPS_QUICKTURN, BIND_PAD, 0) == 1 + SDL_GAMEPAD_BUTTON_DPAD_DOWN);
     CHECK(held(B_TPS_RUN, SDL_SCANCODE_RSHIFT) && held(B_NOCLIP_UP, SDL_SCANCODE_PAGEUP));
     CHECK(bind_get(B_TPS_FIRE, BIND_KB, 0) == BIND_MOUSE + SDL_BUTTON_LEFT);
     for (int r = 0; r < B_COUNT; r++) CHECK(!bind_conflict(r, BIND_KB) && !bind_conflict(r, BIND_PAD));
@@ -101,6 +105,29 @@ int main(void)
     CHECK(bind_ini_line("key_noclip_up", "R") && !bind_get(B_NOCLIP_UP, BIND_KB, 0) && !bind_conflict(B_TPS_RELOAD, BIND_KB));
     CHECK(bind_ini_line("pad_tps_quickturn", "rightshoulder") && bind_get(B_TPS_QUICKTURN, BIND_PAD, 0) == 1 + SDL_GAMEPAD_BUTTON_DPAD_DOWN);
     CHECK(bind_ini_line("key_noclip_up", "PageUp") && held(B_NOCLIP_UP, SDL_SCANCODE_PAGEUP));
+    /* a recvx.ini from before the weapon shortcuts (bindings_version < 3): L2 and R2's 1 and 2 are dropped (now the
+       shortcuts'); a key it gave a hotkey keeps it (the shortcut's default gives way) */
+    CHECK(bind_ini_line("key_l2", "1") && bind_ini_line("key_r2", "2"));
+    CHECK(held(B_L2, SDL_SCANCODE_9) && held(B_WPN_PREV, SDL_SCANCODE_1) && held(B_WPN_NEXT, SDL_SCANCODE_2));
+    CHECK(bind_ini_line("key_cheats", "2") && held(B_CHEATS, SDL_SCANCODE_2) && !bind_get(B_WPN_NEXT, BIND_KB, 0) && !bind_conflict(B_CHEATS, BIND_KB));
+    CHECK(bind_ini_line("key_cheats", "F2"));
+    bind_set(B_WPN_NEXT, BIND_KB, 0, SDL_SCANCODE_2);
+    /* a game row onto a shortcut's key shares it (no swap); another shortcut's swaps; a hotkey's swaps */
+    bind_set(B_L2, BIND_KB, 0, SDL_SCANCODE_1);
+    CHECK(!bind_swapped() && held(B_L2, SDL_SCANCODE_1) && held(B_WPN_PREV, SDL_SCANCODE_1) && !bind_conflict(B_L2, BIND_KB) && !bind_conflict(B_WPN_PREV, BIND_KB));
+    /* in play with the weapon down (g_wpn_take) the shortcut's key is its own */
+    g_wpn_take = 1;
+    CHECK(!held(B_L2, SDL_SCANCODE_1) && held(B_WPN_PREV, SDL_SCANCODE_1) && held(B_UP, SDL_SCANCODE_UP) && held(B_CROSS, SDL_SCANCODE_Z));
+    g_wpn_take = 0;
+    bind_set(B_L2, BIND_KB, 0, SDL_SCANCODE_9);
+    bind_set(B_WPN_PREV, BIND_KB, 0, SDL_SCANCODE_2);
+    CHECK(bind_swapped() && held(B_WPN_PREV, SDL_SCANCODE_2) && held(B_WPN_NEXT, SDL_SCANCODE_1));
+    bind_set(B_WPN_PREV, BIND_KB, 0, SDL_SCANCODE_1);
+    bind_set(B_WPN_PREV, BIND_KB, 0, SDL_SCANCODE_F1);
+    CHECK(bind_swapped() && held(B_SETTINGS, SDL_SCANCODE_1));
+    bind_set(B_WPN_PREV, BIND_KB, 0, SDL_SCANCODE_1);
+    CHECK(held(B_SETTINGS, SDL_SCANCODE_F1) && held(B_WPN_NEXT, SDL_SCANCODE_2) && held(B_WPN_PREV, SDL_SCANCODE_1));
+    for (int r = 0; r < B_COUNT; r++) CHECK(!bind_conflict(r, BIND_KB) && !bind_conflict(r, BIND_PAD));
     /* third person takes W/A/S/Q from the DS2 rows in a game, nothing else (tps_glue.c kb_play) */
     g_tps.on = g_tps.kb_play = 1;
     CHECK(!held(B_SQUARE, SDL_SCANCODE_A) && !held(B_R1, SDL_SCANCODE_W) && held(B_CROSS, SDL_SCANCODE_Z) && held(B_TPS_FWD, SDL_SCANCODE_W));
@@ -212,6 +239,16 @@ int main(void)
         g_tps.pad_play = 1;
         CHECK(!bind_held(B_QUICKKNIFE, BIND_PAD, keys, 0) && !bind_held(B_TPS_FIRE, BIND_PAD, keys, 0));   /* held across the change: neither */
         CHECK(bind_held(B_UP, BIND_PAD, keys, 0));                                                         /* the d-pad (but the quick turn's back) stays the game's */
+        /* the weapon shortcuts taking their inputs: the d-pad's left / right are theirs, up / down still walk */
+        SDL_SetJoystickVirtualButton(j, SDL_GAMEPAD_BUTTON_DPAD_RIGHT, true);
+        SDL_UpdateGamepads();
+        CHECK(bind_held(B_WPN_NEXT, BIND_PAD, keys, 0) && bind_held(B_RIGHT, BIND_PAD, keys, 0));
+        g_wpn_take = 1;
+        CHECK(!bind_held(B_RIGHT, BIND_PAD, keys, 0) && bind_held(B_WPN_NEXT, BIND_PAD, keys, 0) && bind_held(B_UP, BIND_PAD, keys, 0));
+        g_wpn_take = 0;
+        CHECK(bind_held(B_RIGHT, BIND_PAD, keys, 0));
+        SDL_SetJoystickVirtualButton(j, SDL_GAMEPAD_BUTTON_DPAD_RIGHT, false);
+        SDL_UpdateGamepads();
         SDL_SetJoystickVirtualAxis(j, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, -32768);
         SDL_UpdateGamepads();
         CHECK(!bind_held(B_TPS_FIRE, BIND_PAD, keys, 0));

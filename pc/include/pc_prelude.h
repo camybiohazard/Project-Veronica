@@ -235,6 +235,7 @@ unsigned int menu_pad(unsigned int pad);
 /* quick knife (pc/glue/knife_glue.c) */
 unsigned int knife_pad(unsigned int pad);
 void knife_game_exit(void);   /* cheat_game_exit (bhExitGame): the knife's state of that game goes */
+void wpn_game_exit(void);     /* cheat_game_exit (bhExitGame): a weapon shortcut waiting in that game goes (weapon_glue.c) */
 void tps_game_exit(void);     /* cheat_game_exit (bhExitGame): the third-person camera of that game goes (tps_glue.c) */
 /* modern controls for the fixed cameras (pc/glue/modern_glue.c): nothing while they are off */
 unsigned int modern_pad(unsigned int pad);   /* pad.c bhSetPad, before knife_pad */

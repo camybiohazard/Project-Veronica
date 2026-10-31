@@ -490,6 +490,15 @@ village, collision. The render thread (GS emulation, replays: `r_exec`, `r_inter
   aim breaks it), and on release restores the previous weapon (or the same item in another slot)
   once the knife is lowered. Nothing is restored if the weapon was changed meanwhile, or if the
   game ended (`bhExitGame` -> `knife_game_exit`).
+- **Weapon shortcuts** (`pc/glue/weapon_glue.c`, `wpn_pad` called from `knife_pad` after the quick
+  knife): `B_WPN_PREV` / `B_WPN_NEXT` (keys 1 / 2, the d-pad's left / right) equip the equipable item
+  (`itemdata[].type & 1`; not the lighter, item 55, nor the knife while the quick knife is on) before / after the equipped
+  bag slot, wrapping round, through `WeaponSet`, as the quick knife, once at rest (`pc_weapon_at_rest`; a press waits up to 15 game frames). The rows may
+  share codes with any game or third-person row (`may_share`): `build_report` (pad.c) sets
+  `g_wpn_take` while `wpn_take_ok` (in play, `mode1` 0, no quick knife, no noclip) or while a
+  shortcut input held since then is still down, and `code_down` then reads the shortcut rows' codes
+  as up for every other row. Only presses made while they were taken count, so the d-pad's crosshair
+  left / right never swaps a weapon.
 - **Reload** (`pc/glue/reload_glue.c`, hooked in `bhControlPlayer` after the mode handler, where
   the game's own trigger-pull reload switches to it): on a press of a reload row (`pad_reload`: the
   game row, or in third person `tps_reload`) with the magazine not full, the game's

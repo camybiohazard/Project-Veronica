@@ -10,6 +10,14 @@
 
 - **Ammo counter** (GAMEPLAY, on by default): the equipped weapon's magazine and its size, such
   as `12/15`, in the bottom right corner in the game's font. Red when empty.
+- **Weapon shortcuts** (GAMEPLAY, off by default): 1 / 2 or the d-pad's left / right switch to the
+  previous / next weapon in the bag, without the inventory. In play the d-pad's left / right no
+  longer turn (the left stick does), up / down still walk; menus and aiming keep the whole d-pad.
+  L2 / R2 moved from 1 / 2 to 9 / 0.
+- **Fixed camera controls** start as Classic (tank), as the original; Modern (camera-relative) is
+  still in CONTROLS. A `recvx.ini` that has a choice keeps it.
+- ENHANCED SETTINGS -> CONTROLS shows the gamepad's bindings first (the device row switches to the
+  keyboard and mouse).
 - "You appear as" is saved as `appear_char` in `recvx.ini` (it was `coop_char`): choose your model
   again once after updating.
 - The gamepad's left stick click is L3 again by default (it was the trade request).

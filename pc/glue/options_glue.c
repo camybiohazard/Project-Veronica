@@ -233,7 +233,7 @@ static struct {
     int msg_t;
     unsigned char pending[256];  /* actions to run when the menu closes */
     int any_pending;
-} st;
+} st = { .dev = BIND_PAD };   /* the bindings shown first: the gamepad's */
 
 static Row rows[MAX_ROWS];
 static int nrows;
@@ -529,6 +529,9 @@ static void draw_help(void)
         int c = bind_conflict(r->idx, st.dev);
         if (c) { snprintf(t, sizeof(t), "Also bound to: %s. Bind one of them to something else.", bind_rows[c - 1].name); col = 0xFFFF8080; }
         else if (r->idx == B_QUICKTURN || r->idx == B_TPS_QUICKTURN) snprintf(t, sizeof(t), "Tap it: holds back, then presses run, as the game's own quick turn.");
+        else if (r->idx == B_WPN_PREV || r->idx == B_WPN_NEXT)
+            snprintf(t, sizeof(t), "Equips the bag's %s weapon (GAMEPLAY: Weapon shortcuts). May share a button: in play with the "
+                                   "weapon down it is the shortcut's, elsewhere the other action's.", r->idx == B_WPN_PREV ? "previous" : "next");
         else if (r->idx == B_RELOAD || r->idx == B_TPS_RELOAD)
             snprintf(t, sizeof(t), "Reloads from the inventory's ammo, as firing on an empty magazine does. Shared with another action: "
                                    "Aim + button reloads.");
