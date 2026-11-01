@@ -28,6 +28,7 @@ typedef struct TpsConfig {
     int pad_sens_x, pad_sens_y;   /* right stick camera speed, percent (100: 180 / 120 degrees a second) */
     int pad_aim_sens;             /* right stick while aiming, percent of the above */
     int pad_invert_y;
+    int aim_move;             /* modern gamepad: the left stick's forward / back walks while aiming (tps_glue.c aim_walk) */
     int pad_dead_move, pad_dead_look;   /* dead zones of the left / right stick, percent */
     /* published by the game thread */
     volatile int cam_active;  /* the third-person camera drew the last frame */

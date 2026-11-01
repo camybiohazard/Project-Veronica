@@ -14,6 +14,8 @@
   previous / next weapon in the bag, without the inventory. In play the d-pad's left / right no
   longer turn (the left stick does), up / down still walk; menus and aiming keep the whole d-pad.
   L2 / R2 moved from 1 / 2 to 9 / 0.
+- **Move while aiming** (THIRD PERSON, Modern gamepad, off by default): the left stick's forward /
+  back walks slowly while aiming and firing, the legs walking under the aim.
 - **Fixed camera controls** start as Classic (tank), as the original; Modern (camera-relative) is
   still in CONTROLS. A `recvx.ini` that has a choice keeps it.
 - ENHANCED SETTINGS -> CONTROLS shows the gamepad's bindings first (the device row switches to the

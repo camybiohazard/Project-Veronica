@@ -367,6 +367,12 @@ has the quick turn on RB gets the new default.
   near the centre.
 - The third-person gamepad buttons are their own bindings: rebinding one (CONTROLS, Gamepad,
   "Third person (gamepad, Modern)") leaves the fixed-camera binding of the same button alone.
+- **Move while aiming** (THIRD PERSON page, GAMEPAD; `tps_aim_move`, **off**): while aiming or
+  firing, the left stick pushed forward or back walks forward or steps back at a little over half
+  walking speed (slower the less it is pushed), the legs walking under the raised weapon with the
+  walk's footsteps. Walls, doors and enemies stop it as a walk. Sideways does nothing yet. Not with
+  the knife, in the sniper rifle's or linear launcher's scope, or while the weapon is raised,
+  lowered or reloaded; off: aiming stands still, as the original.
 
 ### Weapon shortcuts
 

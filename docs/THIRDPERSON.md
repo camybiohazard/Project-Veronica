@@ -188,6 +188,7 @@ unit (the character is about 17 units tall).
 | Precise hits ([Precise hits](#precise-hits)) | `tps_precise_hits` | 1 |
 | Mouse/keyboard camera (0 = B, 1 = A) | `tps_free_camera` | 0 |
 | Gamepad controls (0 = Classic, 1 = Modern) | `tps_pad_controls` | 1 |
+| Move while aiming (Modern gamepad: walk forward / back while aiming) | `tps_aim_move` | 0 |
 | Stick camera speed X / Y (percent; 100 = 180 / 120 degrees a second) | `tps_pad_sens_x`, `tps_pad_sens_y` | 100 |
 | Stick aiming speed (percent of the above) | `tps_pad_aim_sens` | 50 |
 | Stick invert Y | `tps_pad_invert_y` | 0 |

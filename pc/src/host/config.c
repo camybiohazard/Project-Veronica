@@ -92,6 +92,7 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "tps_pad_sens_y", &g_tps.pad_sens_y, 1, 1000 },
     { "tps_pad_aim_sens", &g_tps.pad_aim_sens, 1, 300 },
     { "tps_pad_invert_y", &g_tps.pad_invert_y, 0, 1 },
+    { "tps_aim_move", &g_tps.aim_move, 0, 1 },
     { "tps_pad_dead_move", &g_tps.pad_dead_move, 0, 90 },
     { "tps_pad_dead_look", &g_tps.pad_dead_look, 0, 90 },
 };
