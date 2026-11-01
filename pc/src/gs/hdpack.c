@@ -29,6 +29,7 @@
 #include "hdpack.h"
 #include "textures.h"
 #include "../render/gl_loader.h"
+#include "../render/hdr.h"
 #include "../ps2_platform.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -364,7 +365,7 @@ static GLuint upload_dds(const uint8_t* d, size_t n, uint32_t* out_bytes)
     uint32_t off, total = 0, mips;
     GLuint t;
     if (!dds_parse(d, n, &x)) return 0;
-    if (x.block && !cti && !(cti = (PFN_CompressedTexImage2D)SDL_GL_GetProcAddress("glCompressedTexImage2D"))) return 0;
+    if (x.block && !cti && !(cti = (PFN_CompressedTexImage2D)hdr_gl_proc("glCompressedTexImage2D"))) return 0;
     glGenTextures(1, &t);
     glBindTexture(GL_TEXTURE_2D, t);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);

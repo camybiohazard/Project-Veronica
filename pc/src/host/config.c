@@ -35,6 +35,10 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "brightness", &g_config.brightness, -50, 50 },
     { "contrast", &g_config.contrast, 50, 150 },
     { "gamma", &g_config.gamma, 5, 20 },
+    { "hdr", &g_config.hdr, 0, 1 },
+    { "hdr_paper_white", &g_config.hdr_paper_white, 0, 480 },   /* nits, 0 = Windows' SDR content brightness */
+    { "hdr_peak", &g_config.hdr_peak, 0, 4000 },                 /* nits, 0 = the display's */
+    { "hdr_highlights", &g_config.hdr_highlights, 0, 100 },
     { "skip_doors", &g_config.skip_doors, 0, 2 },     /* 0 off, 1 instant, 2 skippable */
     { "fast_loading", &g_config.fast_loading, 0, 1 },
     { "quick_knife", &g_config.quick_knife, 0, 1 },

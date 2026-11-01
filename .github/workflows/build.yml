@@ -142,13 +142,5 @@ jobs:
         run: |
           pre=
           case "$GITHUB_REF_NAME" in *-rc*|v0.*) pre=--prerelease ;; esac
-          gh release create "$GITHUB_REF_NAME" $pre --verify-tag --title "recvx-enhanced-port ${GITHUB_REF_NAME#v}" \
+          gh release create "$GITHUB_REF_NAME" $pre --verify-tag --title "cvx-port ${GITHUB_REF_NAME#v}" \
             --notes-file dist/RELEASE_NOTES.md dist/*.tar.gz dist/*.zip dist/SHA256SUMS
-      - name: Post the changelog to Discord (secret DISCORD_WEBHOOK; skipped without it)
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        run: |
-          ver=${GITHUB_REF_NAME#v}
-          awk -v v="$ver" '/^## /{p = index($0, v) > 0; next} p' CHANGELOG.md > dist/discord_notes.md
-          python3 .github/scripts/discord_release.py dist/discord_notes.md "recvx-enhanced-port $ver" \
-            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME"

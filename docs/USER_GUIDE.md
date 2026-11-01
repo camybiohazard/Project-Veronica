@@ -145,6 +145,11 @@ renderer, skipped intro and door animations (Skip door animations: Instant) and 
 | Contrast | `contrast` | 50% to 150%, **100%**: spreads or narrows the tones around mid-grey |
 | Gamma | `gamma` | 0.5 to 2.0, **1.0** (in the ini in tenths, 5 to 20): higher brightens the mid-tones, black and white stay |
 | Reset picture calibration | | brightness, contrast and gamma back to neutral |
+| **HDR** (Windows, Linux) | | see [HDR](#hdr) |
+| HDR output | `hdr` | **off**; on: HDR output on an HDR display (after a restart) |
+| Paper white | `hdr_paper_white` | **Auto** (Windows' SDR content brightness; Linux: 203 nits), or 80 to 480 nits: how bright the game's whites and the F1 overlay are |
+| Peak brightness | `hdr_peak` | **Auto** (what the display reports), or 400 to 4000 nits: the brightest highlight |
+| Highlights | `hdr_highlights` | 0% to 100%, **50%**: how far the brightest parts reach from paper white towards Peak brightness; 0% shows the picture as SDR at paper white |
 | **Renderer** | | |
 | Native 3D renderer | `native_3d` | **on**: 3D models projected and clipped by the GPU instead of the emulated VU1/GS path |
 | Native textures | `native_tex` | **on**: textures uploaded once instead of on every switch |
@@ -159,6 +164,32 @@ overlay; at the neutral values the picture is exactly the original. While one of
 both menus show a test pattern: a black strip and a white strip with five grey squares each (in F1
 in the setting's tooltip). Turn Brightness until the left square on the black strip is barely
 visible, and Contrast until the right square on the white strip is barely visible.
+
+#### HDR
+
+With HDR switched on in the system's display settings, **HDR output** turns the game's picture
+into HDR itself, without RTX HDR, Auto HDR or an injector. The game renders in SDR as on
+the PS2; its highlights (lights, fire, muzzle flashes, bright skies, white text) are expanded
+towards Peak brightness while everything below stays at Paper white, and the F1 overlay stays at
+Paper white. The renderer itself stays OpenGL; the picture is presented through Direct3D 11 on
+Windows (the log says `hdr: Direct3D 11 scRGB presentation on ...`) and Vulkan on Linux
+(`hdr: Vulkan HDR10 (PQ) presentation`). If HDR is unavailable the log says why and the game
+starts in SDR as usual. With HDR off in the system the picture looks as in SDR.
+
+On Linux HDR needs a Wayland desktop with HDR switched on (GNOME 48 or newer, KDE Plasma 6), the 32-bit OpenGL and Vulkan drivers of your GPU (NVIDIA: the 32-bit
+`libnvidia-gl` package; AMD/Intel: 32-bit Mesa and `mesa-vulkan-drivers`), and the Vulkan
+loader (`libvulkan1:i386` / `lib32-vulkan-icd-loader`). With HDR output on, the game asks SDL for
+Wayland; under X11 there is no HDR. Inside gamescope (`--hdr-enabled`) HDR comes only through
+gamescope's Vulkan layer for X11 windows, which must be installed in its 32-bit version (some
+distributions ship only the 64-bit one); the game then uses X11 there.
+
+GNOME does not report the display's real peak brightness; Auto then assumes 1000 nits, so set Peak
+brightness to your display's peak there.
+
+Set Paper white so the game's white is comfortable (Auto follows Windows' "SDR content
+brightness" slider), Peak brightness to your display's real peak if Auto clips, and Highlights to
+taste. Brightness, contrast and gamma still apply first. Frame dumps (`RECVX_DUMP_FRAMES`) save
+the SDR picture.
 
 ### Gameplay
 

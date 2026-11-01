@@ -306,6 +306,45 @@ Picture calibration (`brightness`, `contrast`, `gamma`) is applied in the presen
 and the overlay drawn afterwards does not. At the neutral values the shader skips it and the
 output is bit-identical; `gs_picture` is the same formula on the CPU (F1's test pattern).
 
+HDR output (`hdr`; `render/hdr.h`, `gs_gl.c hdr_compose`): OpenGL cannot mark a window as HDR, so
+Direct3D 11 (Windows, `hdr_win.c`) or Vulkan (Linux, `hdr_vk.c`) presents. The window has no GL
+surface; on Windows the GL context lives on a hidden window (`host.c`), on Linux it has none
+(below), and it draws only into framebuffers. `draw_display` draws the SDR picture into `out_fbo`,
+the overlay goes into `ui_fbo` (premultiplied, on transparent black), and `hdr_compose` writes both
+as scRGB (linear BT.709, 1.0 = 80 nits) into an FP16 D3D11 texture registered with GL
+(`WGL_NV_DX_interop2`, locked for GL while it draws), upside down for D3D. D3D copies it to an FP16
+flip-model swapchain in `DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709` and presents (`hdr_present`,
+which also returns the blocking time `render.c` paces by). The picture is taken as gamma 2.2; its
+luminance above the knee (0.5 linear) follows a cubic that keeps slope 1 at the knee and reaches
+peak / paper white at SDR white, the colour scaled with it (hue kept). Paper white and peak default
+to SDL's window HDR properties (Windows' SDR white level, the monitor's peak); a display not in HDR
+mode gets paper white = peak = 80 nits, i.e. the SDR picture. If any step fails at start (no
+interop, no scRGB swapchain), the window is recreated as an OpenGL window and the same context made
+current on it.
+
+On Linux (`hdr_vk.c`) the window is an SDL Vulkan window (`host.c` asks SDL for Wayland first;
+inside gamescope for X11, as gamescope's Wayland offers no colour management and its WSI layer
+gives X11 windows HDR) and
+the OpenGL context has no window: an EGL device-platform display, surfaceless, made current
+(`hdr_gl_headless`; NVIDIA's 32-bit EGL cannot make Wayland window surfaces at all), GL entry
+points through `hdr_gl_proc`. If HDR fails, SDL's video is restarted with its default driver and
+the usual OpenGL window made; under Wayland a failing OpenGL window falls back to X11 (XWayland)
+in any case.
+The Vulkan device is the GL driver's (`GL_DEVICE_UUID_EXT` against `VkPhysicalDeviceIDProperties`).
+An FP16 Vulkan image is exported as an opaque fd and imported as a GL texture
+(`GL_EXT_memory_object_fd`); two exported binary semaphores (`GL_EXT_semaphore_fd`) order the
+APIs: GL signals `gl_done` after composing, Vulkan waits, blits the image into the swapchain image
+and signals `vk_done`, which GL waits for before drawing into it again. The image stays in GENERAL
+layout and moves between `VK_QUEUE_FAMILY_EXTERNAL` and our queue family by barriers; a submit
+happens every image (also when no swapchain image was acquired) so the semaphores stay paired.
+The swapchain is HDR10 (`VK_COLOR_SPACE_HDR10_ST2084_EXT`, 10-bit preferred; `hdr_compose` then
+converts to BT.2020 and PQ-encodes) or else scRGB; the Vulkan driver offers and announces these to
+the compositor (color-management-v1). SDL reports on Wayland only the headroom over the
+compositor's reference white, so Auto paper white there is BT.2408's 203 nits
+(`hdr.h HDR_WHITE_NITS`), where a PQ compositor puts SDR white; an Auto peak beyond 4000 nits is
+PQ's nominal range (GNOME reports 10000) and taken as 1000 (`hdr_auto_peak`). The Vulkan headers come from the
+vendored SDL (`src/video/khronos`), the loader from SDL at run time.
+
 `glGetError` is read only every 64th executed frame (reading it after every flush made the
 render thread wait for the driver's GL thread).
 

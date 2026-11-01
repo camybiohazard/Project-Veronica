@@ -40,6 +40,10 @@ typedef struct {
     int  brightness;         /* picture calibration in the present pass (gs_gl.c draw_display): -50..50, 0 neutral */
     int  contrast;           /* 50..150 %, 100 neutral */
     int  gamma;              /* tenths, 5..20, 10 neutral */
+    int  hdr;                /* Windows: HDR output through Direct3D 11 (render/hdr_win.c), at the next start */
+    int  hdr_paper_white;    /* nits of the game's white (and the overlay), 0 = Windows' SDR content brightness */
+    int  hdr_peak;           /* nits of the brightest highlight, 0 = the display's peak */
+    int  hdr_highlights;     /* % of the room between paper white and peak the expanded highlights use */
     int  skip_doors;         /* door/stairs/ladder animations: 0 played, 1 instant (load screen), 2 played, a press skips */
     int  fast_loading;       /* room loads: sound packs and texture lists at once instead of spread over frames (pc_fast_loading) */
     int  quick_knife;        /* holding the quick-knife key draws the knife (pc/glue/knife_glue.c) */

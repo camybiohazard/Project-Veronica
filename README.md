@@ -72,11 +72,10 @@ the pack's font (off). A pack in another folder: `hd_textures_dir = <path>` in `
 ## Building from source
 
 ```sh
-git clone --recursive https://github.com/aikatore/recvx-enhanced-port.git
-cd recvx-enhanced-port
-cmake -B build -G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/linux-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build
-./build/pc/recvx
+git clone --recursive https://github.com/camybiohazard/Project-Veronica.git
+cd Project-Veronica
+scripts/build-linux.sh      # or scripts/build-windows.sh (mingw-w64 cross-build)
+scripts/run-linux.sh
 ```
 
 `--recursive` fetches the decompilation and its header submodules; the decomp's large compiler

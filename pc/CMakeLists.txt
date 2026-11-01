@@ -145,6 +145,10 @@ target_compile_options(recvx_platform PRIVATE
 target_link_libraries(recvx_platform PRIVATE SDL3::SDL3 imgui)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_compile_options(recvx_platform PRIVATE -fno-pie)
+    if(RECVX_VENDORED_SDL)
+        # Vulkan headers for HDR output (src/render/hdr_vk.c; the loader is SDL's, at runtime); else the system's
+        target_include_directories(recvx_platform PRIVATE ${sdl3_SOURCE_DIR}/src/video/khronos)
+    endif()
 endif()
 if(WIN32)
     target_compile_options(recvx_platform PRIVATE $<$<COMPILE_LANGUAGE:C>:-mno-ms-bitfields>)

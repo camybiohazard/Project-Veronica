@@ -3,9 +3,10 @@
 # only the binaries named here and the repository's docs.
 #   pc/tools/package.sh OUT_DIR [--linux BUILD_DIR] [--windows BUILD_DIR]
 # (no build: only the notes and the checksums, e.g. over archives downloaded into OUT_DIR)
-#     --linux    build/  (cmake/linux-i686.cmake)  -> recvx-enhanced-port-VER-linux-i686.tar.gz (+ -debug)
-#     --windows  build-win/ (cmake/mingw-i686.cmake) -> recvx-enhanced-port-VER-windows-x86.zip (+ -debug)
+#     --linux    build/  (cmake/linux-i686.cmake)  -> cvx-port-VER-linux-i686.tar.gz (+ -debug)
+#     --windows  build-win/ (cmake/mingw-i686.cmake) -> cvx-port-VER-windows-x86.zip (+ -debug)
 # Also writes OUT_DIR/RELEASE_NOTES.md and OUT_DIR/SHA256SUMS (over every archive in OUT_DIR).
+# Each archive also gets pc/res/release/ as it is (mods/textures/README.txt, ...).
 # The -debug archives hold the unstripped binaries, for addr2line on crash-log addresses.
 # Tools: strip (STRIP), i686-w64-mingw32-strip (WIN_STRIP; or $MINGW_PREFIX/bin), tar, zip, sha256sum.
 set -eu
@@ -25,24 +26,27 @@ tgz() {   # tgz NAME: stage/NAME -> out/NAME.tar.gz, stable owners and order
     tar -C "$stage" --owner=0 --group=0 --numeric-owner --sort=name -czf "$out/$1.tar.gz" "$1"
 }
 need() { [ -f "$1" ] || { echo "missing $1 (build it first)" >&2; exit 1; }; }
+release_files() { cp -R "$root/pc/res/release/." "$1/"; }   # release_files DIR: the folders players fill (mods/)
 
 while [ $# -gt 0 ]; do
     case $1 in
     --linux)
         b=$2/pc/recvx; need "$b"
-        n=recvx-enhanced-port-$ver-linux-i686; d=$stage/$n; mkdir -p "$d"
+        n=cvx-port-$ver-linux-i686; d=$stage/$n; mkdir -p "$d"
         ${STRIP:-strip} -o "$d/recvx" "$b"
         chmod 755 "$d/recvx"
         copy_docs "$d" $docs
+        release_files "$d"
         tgz "$n"
         mkdir -p "$stage/$n-debug"; cp "$b" "$stage/$n-debug/recvx"; tgz "$n-debug"
         ;;
     --windows)
         b=$2/pc/recvx.exe; need "$b"
         ws=${WIN_STRIP:-${MINGW_PREFIX:+$MINGW_PREFIX/bin/}i686-w64-mingw32-strip}
-        n=recvx-enhanced-port-$ver-windows-x86; d=$stage/$n; mkdir -p "$d"
+        n=cvx-port-$ver-windows-x86; d=$stage/$n; mkdir -p "$d"
         "$ws" -o "$d/recvx.exe" "$b"
         copy_docs "$d" $docs
+        release_files "$d"
         (cd "$stage" && rm -f "$out/$n.zip" && zip -qrX "$out/$n.zip" "$n")
         mkdir -p "$stage/$n-debug"; cp "$b" "$stage/$n-debug/recvx.exe"
         (cd "$stage" && rm -f "$out/$n-debug.zip" && zip -qrX "$out/$n-debug.zip" "$n-debug")
@@ -61,9 +65,9 @@ done
 
 - Your own disc image of *Resident Evil Code: Veronica X*, PS2 NTSC-U, **SLUS-20184** (\`.iso\`).
   No game data is included in these downloads.
-- **Windows** (\`recvx-enhanced-port-$ver-windows-x86.zip\`): Windows 10 or later, OpenGL 3.3.
+- **Windows** (\`cvx-port-$ver-windows-x86.zip\`): Windows 10 or later, OpenGL 3.3.
   Unpack and run \`recvx.exe\`.
-- **Linux** (\`recvx-enhanced-port-$ver-linux-i686.tar.gz\`): glibc 2.34 or newer and the 32-bit
+- **Linux** (\`cvx-port-$ver-linux-i686.tar.gz\`): glibc 2.34 or newer and the 32-bit
   (multilib) OpenGL, X11/Wayland and audio libraries. Unpack and run \`./recvx\`.
 - On the first start a file selector asks for the disc image; the choice is remembered. Settings
   and saves go to \`save/\` next to the game. F1 opens the settings. See \`docs/USER_GUIDE.md\`.

@@ -8,6 +8,14 @@
 
 ### Changes
 
+- Release downloads are named `cvx-port-VER-linux-i686.tar.gz` / `cvx-port-VER-windows-x86.zip`
+  and come with the `mods/textures/` folder for HD texture packs (with a short README).
+- **HDR output** (DISPLAY, off by default): on an HDR display the game's highlights are expanded
+  into HDR by the port itself (inverse tone mapping), without RTX HDR, Auto HDR or an injector; the
+  F1 overlay stays at paper white. Paper white, Peak brightness (Auto: from the system and the
+  display) and Highlights are adjustable. Presented through Direct3D 11 on Windows and Vulkan
+  (HDR10) on Linux Wayland desktops with HDR; the renderer stays OpenGL. Takes effect at the next
+  start.
 - **Ammo counter** (GAMEPLAY, on by default): the equipped weapon's magazine and its size, such
   as `12/15`, in the bottom right corner in the game's font. Red when empty.
 - **Weapon shortcuts** (GAMEPLAY, off by default): 1 / 2 or the d-pad's left / right switch to the
@@ -27,6 +35,9 @@
 - The gamepad's left stick click is L3 again by default (it was the trade request).
 
 ### Fixes
+
+- Linux: under Wayland with NVIDIA's 32-bit driver the game failed to start ("unable to create an
+  EGL window surface"); it now falls back to X11 (XWayland) by itself.
 
 - **Sub machine gun reload crash**: reloading the sub machine gun, with the Reload button or by
   firing on an empty magazine, no longer crashes the game. It has no reload animation, so the ammo

@@ -10,19 +10,41 @@ out the decomp's data differently (32-byte array alignment, bitfields) and misre
 ## Getting the sources
 
 ```sh
-git clone --recursive https://github.com/aikatore/recvx-enhanced-port.git
-cd recvx-enhanced-port
+git clone --recursive https://github.com/camybiohazard/Project-Veronica.git
+cd Project-Veronica
 # or, in an existing clone:
 git submodule update --init --recursive
 ```
 
-`decomp/` is the recvx-decomp fork (branch `pc-port`), which pulls the Katana and CRI header
+`decomp/` is the recvx-decomp fork ([camybiohazard/recvx-decomp](https://github.com/camybiohazard/recvx-decomp),
+branch `main`), which pulls the Katana and CRI header
 submodules. The decomp's large Metrowerks compiler submodule (`recvx-decomp-mwcc`) is marked
 `update = none` and is skipped; the PC build does not need it.
 
 CMake downloads SDL 3, Dear ImGui, xxHash and bcdec at configure time
 (FetchContent), so the first configure needs network access. Versions and licenses:
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+
+## Scripts
+
+`scripts/` wraps the commands below; run them from anywhere in the repository. They configure the
+build folder when needed (afresh if its CMake cache was made with another toolchain), write
+`compile_commands.json` for editors, and pass extra arguments on.
+
+| Script | Does |
+|---|---|
+| `scripts/build-linux.sh` | the Linux build in `build/` (`[cmake --build args]`) |
+| `scripts/build-windows.sh` | the Windows cross-build in `build-win/` (`--target recvx` by default; `MINGW_PREFIX` as below) |
+| `scripts/build-all.sh` | both |
+| `scripts/package.sh [OUT_DIR]` | both, then the release archives (`pc/tools/package.sh`) into `build-release/` |
+| `scripts/run-linux.sh [args]` | builds, then runs `build/pc/recvx` with the arguments |
+| `scripts/run-windows-proton.sh [args]` | builds, then runs `build-win/pc/recvx.exe` under Steam's Proton (Proton - Experimental, else the newest installed; `PROTON=` picks one) in the prefix `build-win/proton-prefix` |
+
+`BUILD_DIR` and `BUILD_TYPE` (default `RelWithDebInfo`) change the folder and build type,
+`NO_BUILD=1` runs or packages without building. Under Proton, Linux paths work as arguments and
+in `recvx.ini` (Proton maps `/` to drive `Z:`); the Windows build writes its log only with
+`--log[=file]`. HDR output is not available under Proton (Wine's OpenGL has no
+`WGL_NV_DX_interop2`): the game falls back to SDR.
 
 ## Linux
 
@@ -68,7 +90,10 @@ objdump -T build/pc/recvx | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1   # GLI
 
 At run time the 32-bit glibc, a 32-bit OpenGL 3.3 driver and the 32-bit X11/Wayland and audio
 libraries must be installed (on Arch: `lib32-glibc`, `lib32-mesa`, `lib32-libx11` or
-`lib32-wayland`, `lib32-libpulse`).
+`lib32-wayland`, `lib32-libpulse`). HDR output also needs the 32-bit Vulkan loader and Vulkan
+driver (`lib32-vulkan-icd-loader` plus `lib32-vulkan-radeon` / `lib32-vulkan-intel` /
+`lib32-nvidia-utils`; Debian/Ubuntu: `libvulkan1:i386` plus `mesa-vulkan-drivers:i386` or
+`libnvidia-gl-<version>:i386`) and a Wayland desktop with HDR; without them the game runs in SDR.
 
 ## Windows
 
@@ -110,12 +135,13 @@ packs finished builds into the release archives, named after the version in the 
 
 | Archive | Contents |
 |---|---|
-| `recvx-enhanced-port-VER-linux-i686.tar.gz` | `recvx` (stripped), README, LICENSE, THIRD_PARTY_NOTICES, CHANGELOG, `docs/USER_GUIDE.md` |
-| `recvx-enhanced-port-VER-windows-x86.zip` | `recvx.exe` (stripped), the same docs |
+| `cvx-port-VER-linux-i686.tar.gz` | `recvx` (stripped), README, LICENSE, THIRD_PARTY_NOTICES, CHANGELOG, `docs/USER_GUIDE.md`, `mods/textures/README.txt` |
+| `cvx-port-VER-windows-x86.zip` | `recvx.exe` (stripped), the same docs and `mods/` |
 | `...-linux-i686-debug.tar.gz`, `...-windows-x86-debug.zip` | the unstripped binaries, for `addr2line` on crash-log addresses |
 
 It also writes `RELEASE_NOTES.md` (this version's CHANGELOG section, requirements and first start,
-the README's AI note) and `SHA256SUMS`. No disc image or game data goes into any archive.
+the README's AI note) and `SHA256SUMS`. Everything under `pc/res/release/` goes into both archives as
+it is (the `mods/textures/` folder players drop HD texture packs into, with its README). No disc image or game data goes into any archive.
 `recvx --version` prints the version plus `git describe` as of the
 last CMake configure.
 

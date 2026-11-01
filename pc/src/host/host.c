@@ -9,6 +9,7 @@
 #include "menu_mouse.h"
 #include "bindings.h"
 #include "settings.h"
+#include "../render/hdr.h"
 void render_loop(void);
 #include <SDL3/SDL.h>
 #include <stdarg.h>
@@ -106,7 +107,8 @@ float pc_overlay_x(float x)
 
 HostConfig g_config = { .window_w = 1280, .window_h = 960, .borderless_extra = 1,.vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .frame_blend = 0, .aspect = 2, .show_fps = 1,
                        .screen_filter = 1, .cinema_bars = 1, .screen_effects = 1, .native_3d = 1, .model_cull = 1, .native_tex = 1, .hd_textures = 1, .hd_textures_ui = 1, .quick_knife = 1, .head_blowoff = 1, .ammo_hud = 1,
-                       .skip_doors = 1, .fast_loading = 1, .auto_stairs = 1, .skip_intro = 1, .battle_unlocked = 1, .difficulty_select = 1, .contrast = 100, .gamma = 10, .fog_intensity = 100 };   /* first-start defaults; recvx.ini overrides */
+                       .skip_doors = 1, .fast_loading = 1, .auto_stairs = 1, .skip_intro = 1, .battle_unlocked = 1, .difficulty_select = 1, .contrast = 100, .gamma = 10, .fog_intensity = 100,
+                       .hdr_highlights = 50 };   /* first-start defaults; recvx.ini overrides */
 SDL_Window* g_window;
 SDL_GLContext g_gl;
 
@@ -183,7 +185,7 @@ static void watchdog(int sig)
 static void usage(void)
 {
     fprintf(stderr,
-        "recvx-enhanced-port " RECVX_VERSION "\n"
+        "cvx-port " RECVX_VERSION "\n"
         "usage: recvx [options] <game disc image (.iso)>\n"
         "  --save-dir <dir>   settings and memory card directory (default: ./save if it exists,\n"
         "                     else save/ next to the program, which also holds mods/ and logs)\n"
@@ -259,7 +261,7 @@ static void parse_args(int argc, char** argv)
         else if (!strncmp(argv[i], "--profile", 9) && (argv[i][9] == 0 || argv[i][9] == '='))
             SDL_strlcpy(profile_path, argv[i][9] ? argv[i] + 10 : "recvx_profile.csv", sizeof(profile_path));
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) { usage(); exit(0); }
-        else if (!strcmp(argv[i], "--version")) { printf("recvx-enhanced-port " RECVX_VERSION "\n"); exit(0); }
+        else if (!strcmp(argv[i], "--version")) { printf("cvx-port " RECVX_VERSION "\n"); exit(0); }
         else if (argv[i][0] != '-') iso_from(argv[i]);
         else { usage(); exit(1); }
     }
@@ -307,7 +309,7 @@ int main(int argc, char** argv)
     parse_args(argc, argv);
     home_dir();
     if (log_path[0]) { extern void log_start(const char*); log_start(log_path); }
-    host_log("recvx-enhanced-port " RECVX_VERSION "\n");
+    host_log("cvx-port " RECVX_VERSION "\n");
     if (profile_path[0]) { extern void prof_open_csv(const char*); prof_open_csv(profile_path); }
 #ifndef _WIN32
     if (getenv("RECVX_WATCHDOG")) { signal(SIGALRM, watchdog); alarm((unsigned)atoi(getenv("RECVX_WATCHDOG"))); }
@@ -318,6 +320,11 @@ int main(int argc, char** argv)
     { extern void variants_load(void); variants_load(); }   /* mods/enemies.ini: custom enemies (variants.h) */
     ps2_memory_init();
 
+#ifdef __linux__
+    /* HDR needs Wayland (render/hdr_vk.c) - except in gamescope, whose Wayland offers no colour
+       management: its WSI layer gives X11 windows HDR. SDL_VIDEO_DRIVER still decides. */
+    if (g_config.hdr) SDL_SetHint(SDL_HINT_VIDEO_DRIVER, SDL_getenv("GAMESCOPE_WAYLAND_DISPLAY") ? "x11" : "wayland,x11");
+#endif
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD))
         host_fatal("SDL_Init: %s", SDL_GetError());
     bind_apply_source();   /* Gamepad only: gamepads also in the background */
@@ -336,16 +343,80 @@ int main(int argc, char** argv)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    g_window = SDL_CreateWindow("Resident Evil Code: Veronica X", g_config.window_w, g_config.window_h,
-                                SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
-    if (!g_window) host_fatal("SDL_CreateWindow: %s", SDL_GetError());
-    settings_display_modes();
-    settings_apply_display();   /* hidden: fullscreen (and its mode) are taken when it is shown */
-    SDL_ShowWindow(g_window);
-    g_gl = SDL_GL_CreateContext(g_window);
-    if (!g_gl) host_fatal("SDL_GL_CreateContext: %s", SDL_GetError());
-    SDL_GL_SetSwapInterval(g_config.vsync ? 1 : 0);
-    gs_renderer_init();
+    int have_window = 0;
+#ifdef _WIN32
+    if (g_config.hdr) {
+        /* HDR output (render/hdr_win.c): Direct3D 11 presents to the window, which therefore has no
+           OpenGL pixel format; the context lives on a hidden window of its own and draws only into
+           framebuffers. Without HDR (no interop, no scRGB swapchain): the usual OpenGL window, the
+           same context made current on it. */
+        SDL_Window* gl_window = SDL_CreateWindow("recvx OpenGL", 16, 16, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+        g_window = SDL_CreateWindow("Resident Evil Code: Veronica X", g_config.window_w, g_config.window_h, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
+        if (!gl_window || !g_window) host_fatal("SDL_CreateWindow: %s", SDL_GetError());
+        g_gl = SDL_GL_CreateContext(gl_window);
+        if (!g_gl) host_fatal("SDL_GL_CreateContext: %s", SDL_GetError());
+        gs_renderer_init();
+        if (!hdr_init(g_window)) {
+            SDL_DestroyWindow(g_window);
+            g_window = SDL_CreateWindow("Resident Evil Code: Veronica X", g_config.window_w, g_config.window_h,
+                                        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
+            if (!g_window) host_fatal("SDL_CreateWindow: %s", SDL_GetError());
+            if (!SDL_GL_MakeCurrent(g_window, g_gl)) host_fatal("SDL_GL_MakeCurrent: %s", SDL_GetError());
+            SDL_DestroyWindow(gl_window);
+            SDL_GL_SetSwapInterval(g_config.vsync ? 1 : 0);
+        }
+        have_window = 1;
+    }
+#elif defined(__linux__)
+    if (g_config.hdr) {
+        /* HDR output (render/hdr_vk.c): Vulkan presents to the window (Wayland, asked for above); the
+           OpenGL context has no window at all (EGL device platform), as it draws only into
+           framebuffers. Without HDR: SDL's video restarted with its usual driver (X11 under most
+           desktops; some drivers cannot make Wayland OpenGL windows) and the usual OpenGL window. */
+        int ok = 0;
+        g_window = SDL_CreateWindow("Resident Evil Code: Veronica X", g_config.window_w, g_config.window_h,
+                                    SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
+        if (!g_window) host_log("hdr: unavailable (no Vulkan window: %s), SDR output\n", SDL_GetError());
+        else if (hdr_gl_headless()) {
+            gs_renderer_init();
+            ok = hdr_init(g_window);
+        } else host_log("hdr: unavailable (no headless OpenGL context), SDR output\n");
+        if (!ok) {
+            if (g_window) SDL_DestroyWindow(g_window);
+            g_window = NULL;
+            hdr_gl_headless_release();
+            SDL_QuitSubSystem(SDL_INIT_VIDEO);
+            SDL_ResetHint(SDL_HINT_VIDEO_DRIVER);
+            if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) host_fatal("SDL_InitSubSystem: %s", SDL_GetError());
+        }
+        have_window = ok;
+    }
+#endif
+    if (have_window) {
+        settings_display_modes();
+        settings_apply_display();
+        SDL_ShowWindow(g_window);
+    } else {
+        g_window = SDL_CreateWindow("Resident Evil Code: Veronica X", g_config.window_w, g_config.window_h,
+                                    SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
+        if (!g_window && !SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland")) {
+            /* NVIDIA's 32-bit EGL makes no Wayland window surfaces: X11 (XWayland) instead */
+            host_log("display: no OpenGL window under Wayland (%s), using X11\n", SDL_GetError());
+            SDL_QuitSubSystem(SDL_INIT_VIDEO);
+            SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
+            if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) host_fatal("SDL_InitSubSystem: %s", SDL_GetError());
+            g_window = SDL_CreateWindow("Resident Evil Code: Veronica X", g_config.window_w, g_config.window_h,
+                                        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
+        }
+        if (!g_window) host_fatal("SDL_CreateWindow: %s", SDL_GetError());
+        settings_display_modes();
+        settings_apply_display();   /* hidden: fullscreen (and its mode) are taken when it is shown */
+        SDL_ShowWindow(g_window);
+        g_gl = SDL_GL_CreateContext(g_window);
+        if (!g_gl) host_fatal("SDL_GL_CreateContext: %s", SDL_GetError());
+        SDL_GL_SetSwapInterval(g_config.vsync ? 1 : 0);
+        gs_renderer_init();
+    }
     overlay_init(g_window, g_gl);
     audio_init();
 

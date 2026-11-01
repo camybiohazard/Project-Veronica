@@ -19,6 +19,7 @@
 #include "stream.h"
 #include "../ps2_platform.h"
 #include "../render/gl_loader.h"
+#include "../render/hdr.h"
 #include "../movie/movie.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -226,6 +227,43 @@ static const char* present_fs =
     "  o = vec4(c, 1.0);\n"
     "}\n";
 
+/* HDR output (render/hdr.h): the displayed image (u_game, present_fs's SDR output) and the
+   overlay (u_ui, premultiplied, drawn on transparent black) to scRGB, upside down (row 0 of the
+   shared D3D texture is the top). The game's picture is taken as gamma 2.2 and its highlights
+   expanded (inverse tone mapping) on luminance, hue kept: linear up to the knee, then a cubic
+   reaching peak / paper white at SDR white with the slope still 1 at the knee. The overlay stays
+   at paper white. u_hdr: paper white / 80 nits, peak / paper white, knee (linear), output
+   (0 scRGB; 1 HDR10: BT.2020 primaries, PQ-encoded nits). */
+static const char* hdr_vs =
+    "#version 330 core\n"
+    "out vec2 v_uv;\n"
+    "void main(){\n"
+    "  vec2 c = vec2((gl_VertexID & 1) != 0 ? 1.0 : 0.0, (gl_VertexID & 2) != 0 ? 1.0 : 0.0);\n"
+    "  v_uv = vec2(c.x, 1.0 - c.y);\n"
+    "  gl_Position = vec4(c * 2.0 - 1.0, 0.0, 1.0);\n"
+    "}\n";
+static const char* hdr_fs =
+    "#version 330 core\n"
+    "in vec2 v_uv; uniform sampler2D u_game, u_ui; uniform vec4 u_hdr; out vec4 o;\n"
+    "void main(){\n"
+    "  vec3 c = pow(clamp(texture(u_game, v_uv).rgb, 0.0, 1.0), vec3(2.2));\n"
+    "  float y = dot(c, vec3(0.2126, 0.7152, 0.0722)), k = u_hdr.z;\n"
+    "  if (u_hdr.y > 1.0 && y > k) {\n"
+    "    float t = (y - k) / (1.0 - k);\n"
+    "    c *= (k + (1.0 - k) * t + (u_hdr.y - 1.0) * t * t * t) / y;\n"
+    "  }\n"
+    "  vec4 u = texture(u_ui, v_uv);\n"
+    "  vec3 ul = u.a > 0.0 ? pow(clamp(u.rgb / u.a, 0.0, 1.0), vec3(2.2)) : vec3(0.0);\n"
+    "  c = mix(c, ul, u.a) * u_hdr.x;\n"
+    "  if (u_hdr.w != 0.0) {\n"
+    "    c = mat3(0.6274, 0.0691, 0.0164, 0.3293, 0.9195, 0.0880, 0.0433, 0.0114, 0.8956) * c;\n"
+    "    vec3 p = pow(max(c * (80.0 / 10000.0), 0.0), vec3(0.1593017578125));\n"
+    "    c = pow((0.8359375 + 18.8515625 * p) / (1.0 + 18.6875 * p), vec3(78.84375));\n"
+    "  }\n"
+    "  o = vec4(c, 1.0);\n"
+    "}\n";
+#define HDR_KNEE 0.5f
+
 static int picture(float* b, float* k, float* ig)
 {
     *b = g_config.brightness / 200.0f; *k = g_config.contrast / 100.0f; *ig = 10.0f / (g_config.gamma > 0 ? g_config.gamma : 10);
@@ -262,7 +300,7 @@ static GLuint compile(const char* vs, const char* fs)
     return p;
 }
 
-static void* gl_getproc(const char* name) { return (void*)SDL_GL_GetProcAddress(name); }
+static void* gl_getproc(const char* name) { return hdr_gl_proc(name); }
 
 void gs_renderer_init(void)
 {
@@ -836,10 +874,10 @@ static void gt_init(void)
     if (done++) return;
     gt.on = SDL_getenv("RECVX_GPU_TIME") && SDL_atoi(SDL_getenv("RECVX_GPU_TIME"));
     if (!gt.on) return;
-    gt.counter = (PFN_QueryCounter)SDL_GL_GetProcAddress("glQueryCounter");
-    gt.get64 = (PFN_GetQueryObjectui64v)SDL_GL_GetProcAddress("glGetQueryObjectui64v");
-    gt.geti = (PFN_GetQueryObjectiv)SDL_GL_GetProcAddress("glGetQueryObjectiv");
-    gt.gen = (PFN_GenQueries)SDL_GL_GetProcAddress("glGenQueries");
+    gt.counter = (PFN_QueryCounter)hdr_gl_proc("glQueryCounter");
+    gt.get64 = (PFN_GetQueryObjectui64v)hdr_gl_proc("glGetQueryObjectui64v");
+    gt.geti = (PFN_GetQueryObjectiv)hdr_gl_proc("glGetQueryObjectiv");
+    gt.gen = (PFN_GenQueries)hdr_gl_proc("glGenQueries");
     if (!gt.counter || !gt.get64 || !gt.geti || !gt.gen) { gt.on = 0; return; }
     for (int i = 0; i < GT_RING; i++) gt.gen(GT_N, gt.q[i]);
 }
@@ -1543,12 +1581,20 @@ void gs_window_to_screen(float px, float py, float* x, float* y)
     *y = vh > 0 ? (py - vy) * 480.0f / vh : 0;
 }
 
+/* HDR output: the window's image is drawn into out_fbo (window-sized), the overlay into ui_fbo,
+   and hdr_compose turns both into the shared scRGB texture; SDR: out_fbo 0, the window */
+static GLuint out_tex, out_fbo, ui_tex, ui_fbo, hdr_prog;
+static int out_w, out_h, ui_w, ui_h;
+static GLint uh_game, uh_ui, uh_hdr;
+static void ensure_target(GLuint* tex, GLuint* fbo, int* cw, int* ch, int w, int h);
+
 /* the 640x480 display area of a render-target texture to the window */
 static void draw_display(GLuint tex, int rt_vw, int rt_vh)
 {
     int ww, wh;
     SDL_GetWindowSizeInPixels(g_window, &ww, &wh);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (hdr_active() && ww > 0 && wh > 0) ensure_target(&out_tex, &out_fbo, &out_w, &out_h, ww, wh);
+    glBindFramebuffer(GL_FRAMEBUFFER, out_fbo);
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
@@ -1590,8 +1636,10 @@ static void save_window(const char* dir, const char* kind)
     char path[1024];
     SDL_GetWindowSizeInPixels(g_window, &ww, &wh);
     sf = SDL_CreateSurface(ww, wh, SDL_PIXELFORMAT_ABGR8888);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, out_fbo);   /* HDR output: the SDR image, without the overlay */
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
     glReadPixels(0, 0, ww, wh, GL_RGBA, GL_UNSIGNED_BYTE, sf->pixels);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     SDL_FlipSurface(sf, SDL_FLIP_VERTICAL);
     SDL_snprintf(path, sizeof(path), "%s/%s_%05llu.bmp", dir, kind, (unsigned long long)frame_no);
     SDL_SaveBMP(sf, path);
@@ -1666,6 +1714,62 @@ static void ensure_target(GLuint* tex, GLuint* fbo, int* cw, int* ch, int w, int
     glBindFramebuffer(GL_FRAMEBUFFER, *fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *tex, 0);
     *cw = w; *ch = h;
+}
+
+/* HDR output: paper white (scRGB units, 1.0 = 80 nits) and peak / paper white from the settings,
+   0 meaning the window's display (SDL: Windows' SDR content brightness and the monitor's peak; on
+   Wayland the compositor's headroom over its reference white, hdr.h HDR_WHITE_NITS).
+   A display not in HDR mode shows scRGB 0..1 (Windows) or PQ up to 203 nits (Wayland) as its SDR
+   range: the picture as SDR. */
+static void hdr_levels(float* paper, float* rel_peak)
+{
+    SDL_PropertiesID p = SDL_GetWindowProperties(g_window);
+    float white = HDR_WHITE_NITS * SDL_GetFloatProperty(p, SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT, 1.0f);
+    float pw = g_config.hdr_paper_white ? (float)g_config.hdr_paper_white : white;
+    float peak = g_config.hdr_peak ? (float)g_config.hdr_peak
+               : hdr_auto_peak(SDL_GetFloatProperty(p, SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT, 1.0f), SDL_GetFloatProperty(p, SDL_PROP_WINDOW_HDR_HEADROOM_FLOAT, 1.0f));
+    static int logged_pw, logged_peak = -1;
+    if (!SDL_GetBooleanProperty(p, SDL_PROP_WINDOW_HDR_ENABLED_BOOLEAN, false)) { pw = HDR_WHITE_NITS; peak = HDR_WHITE_NITS; }   /* its SDR white */
+    if (peak < pw) peak = pw;
+    peak = pw + (peak - pw) * g_config.hdr_highlights / 100.0f;
+    if ((int)pw != logged_pw || (int)peak != logged_peak) {
+        logged_pw = (int)pw; logged_peak = (int)peak;
+        host_log("hdr: paper white %d nits, highlights up to %d nits%s\n", logged_pw, logged_peak,
+                 SDL_GetBooleanProperty(p, SDL_PROP_WINDOW_HDR_ENABLED_BOOLEAN, false) ? "" : " (the display is not in HDR mode)");
+    }
+    *paper = pw / 80.0f; *rel_peak = peak / pw;
+}
+
+/* HDR output: out_fbo (the image) and ui_fbo (the overlay) into the shared texture */
+static void hdr_compose(int ww, int wh)
+{
+    GLuint fbo = hdr_begin(ww, wh);
+    float paper, rel_peak;
+    if (!fbo) return;
+    if (!hdr_prog) {
+        hdr_prog = compile(hdr_vs, hdr_fs);
+        uh_game = glGetUniformLocation(hdr_prog, "u_game");
+        uh_ui = glGetUniformLocation(hdr_prog, "u_ui");
+        uh_hdr = glGetUniformLocation(hdr_prog, "u_hdr");
+    }
+    hdr_levels(&paper, &rel_peak);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glViewport(0, 0, ww, wh);
+    glUseProgram(hdr_prog);
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindTexture(GL_TEXTURE_2D, ui_tex);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, out_tex);
+    glUniform1i(uh_game, 0);
+    glUniform1i(uh_ui, 1);
+    glUniform4f(uh_hdr, paper, rel_peak, HDR_KNEE, hdr_pq() ? 1.0f : 0.0f);
+    glBindVertexArray(present_vao);
+    glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 /* the targets' state after the executed frame (replays draw into shadow[], gs_replay_begin) */
@@ -1995,30 +2099,43 @@ void gs_replay_check(const struct Frame* cur)
 uint64_t gs_present(const struct Frame* cur, float t)
 {
     uint64_t swap;
-    int inbetween = cur && snapshot_valid && t < 1.0f;
+    int inbetween = cur && snapshot_valid && t < 1.0f, hdr = hdr_active(), ww, wh;
     prof_push(PROF_PRESENT);
     gt_present_begin();
+    SDL_GetWindowSizeInPixels(g_window, &ww, &wh);
     if (inbetween) {
         RenderTarget* rt;
         stream_replay(cur, t);
         gt_mark(GT_RD);
         rt = rt_find(gs.disp_fbp, gs.disp_fbw ? gs.disp_fbw : 10);
         draw_display(rt ? rt->tex : 0, rt ? rt->vw : 640, rt ? rt->vh : 512);
-        overlay_render();
+    } else {
+        draw_display(final_vw ? img[fin].tex : 0, final_vw ? final_vw : 640, final_vw ? final_vh : 512);
+    }
+    if (hdr && ww > 0 && wh > 0) {   /* the overlay on its own, composed at paper white */
+        ensure_target(&ui_tex, &ui_fbo, &ui_w, &ui_h, ww, wh);
+        glBindFramebuffer(GL_FRAMEBUFFER, ui_fbo);
+        glClearColor(0, 0, 0, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+    overlay_render();
+    if (inbetween) {
         if (!interp_dumped) { dump_frame(1); interp_dumped = 1; }
         gt_mark(GT_DD);
         rt_restore();
     } else {
-        draw_display(final_vw ? img[fin].tex : 0, final_vw ? final_vw : 640, final_vw ? final_vh : 512);
-        overlay_render();
         if (!final_dumped) { dump_frame(0); final_dumped = 1; }
         dump_window();
     }
+    if (hdr && ww > 0 && wh > 0) hdr_compose(ww, wh);
     gt_present_end(inbetween);
     gpu_fence_set();   /* before the swap: the image's own work, not the presentation queue */
-    swap = SDL_GetTicksNS();
-    SDL_GL_SwapWindow(g_window);
-    swap = SDL_GetTicksNS() - swap;
+    if (hdr) swap = hdr_present(g_config.vsync);
+    else {
+        swap = SDL_GetTicksNS();
+        SDL_GL_SwapWindow(g_window);
+        swap = SDL_GetTicksNS() - swap;
+    }
     prof_pop();
     return swap;
 }

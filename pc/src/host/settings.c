@@ -14,6 +14,7 @@
 #include "saves.h"
 #include "savestore.h"
 #include "../audio/audio.h"
+#include "../render/hdr.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -223,6 +224,33 @@ static const char* tenths(int v, char* b, int n) { snprintf(b, n, "%d.%d", v / 1
    while a SET_CALIB row is chosen: squares on a black and on a white strip, the faint ones at the ends */
 const unsigned char settings_calib[2][CALIB_STEPS] = { { 5, 10, 16, 24, 32 }, { 223, 231, 239, 245, 250 } };
 static void picture_reset(void) { g_config.brightness = 0; g_config.contrast = 100; g_config.gamma = 10; settings_save_later(); }
+/* HDR output (Windows, Linux: render/hdr.h; gs_gl.c hdr_levels): paper white 80..480 nits by 10 and
+   peak 400..4000 by 100, row 0 Auto (the window's display, as SDL reports it) */
+#if defined(_WIN32) || defined(__linux__)
+static int hdr_platform(void) { return 1; }
+#else
+static int hdr_platform(void) { return 0; }
+#endif
+static int hdr_shown(void) { return hdr_platform() && g_config.hdr; }
+static float hdr_display(const char* key) { return SDL_GetFloatProperty(SDL_GetWindowProperties(g_window), key, 1.0f); }
+static int pw_get(void) { return g_config.hdr_paper_white ? (g_config.hdr_paper_white - 70 + 5) / 10 : 0; }
+static void pw_set(int v) { g_config.hdr_paper_white = v > 0 ? 70 + 10 * v : 0; }
+static const char* pw_name(int v, char* b, int n)
+{
+    if (v > 0) snprintf(b, n, "%d nits", 70 + 10 * v);
+    else snprintf(b, n, "Auto (%d nits)", (int)(HDR_WHITE_NITS * hdr_display(SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT) + 0.5f));
+    return b;
+}
+static int peak_get(void) { return g_config.hdr_peak ? (g_config.hdr_peak - 300 + 50) / 100 : 0; }
+static void peak_set(int v) { g_config.hdr_peak = v > 0 ? 300 + 100 * v : 0; }
+static const char* peak_name(int v, char* b, int n)
+{
+    float head = hdr_display(SDL_PROP_WINDOW_HDR_HEADROOM_FLOAT);
+    if (v > 0) snprintf(b, n, "%d nits", 300 + 100 * v);
+    else if (head > 1.0f) snprintf(b, n, "Auto (%d nits)", (int)(hdr_auto_peak(hdr_display(SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT), head) + 0.5f));
+    else snprintf(b, n, "Auto (display not in HDR)");
+    return b;
+}
 /* "You appear as": positions in the menus' list (actors.c, without event doubles) */
 static int chr_get(void) { return appear_pos(g_appear_chr); }
 static void chr_set(int v) { g_appear_chr = appear_at(v); }
@@ -345,6 +373,14 @@ const Setting g_settings[] = {
       .help = "Higher brightens the mid-tones, lower darkens them; black and white stay." },
     { SP_DISPLAY, "Reset picture calibration", NULL, .flags = SET_ACTION | SET_NOW, .apply = picture_reset,
       .help = "Brightness, contrast and gamma back to neutral: the original picture." },
+    { SP_DISPLAY, "HDR output", V(g_config.hdr), 0, 1, 1, .flags = SET_RESTART, .shown = hdr_platform, .group = "HDR",
+      .help = "For HDR displays (HDR on in the system's display settings; Linux: a Wayland desktop with HDR, such as GNOME 48+ or KDE Plasma 6): the picture's highlights are expanded into HDR, the overlay stays at paper white. Presented through Direct3D 11 (Windows) or Vulkan (Linux)." },
+    { SP_DISPLAY, "Paper white", NULL, 0, 41, 1, .get = pw_get, .set = pw_set, .name = pw_name, .shown = hdr_shown,
+      .help = "How bright the game's whites and the overlay are. Auto: Windows' SDR content brightness; Linux: 203 nits, where the desktop puts SDR white." },
+    { SP_DISPLAY, "Peak brightness", NULL, 0, 37, 1, .get = peak_get, .set = peak_set, .name = peak_name, .shown = hdr_shown,
+      .help = "The brightest the display can show. Auto: what the display reports; set it lower if highlights clip or look washed out." },
+    { SP_DISPLAY, "Highlights", V(g_config.hdr_highlights), 0, 100, 10, .fmt = "%d%%", .shown = hdr_shown,
+      .help = "How far the brightest parts of the picture (lights, fire, flashes, white text) reach towards Peak brightness. 0%: the picture as SDR at paper white." },
     { SP_DISPLAY, "Native 3D renderer", V(g_config.native_3d), 0, 1, 1, .help = "3D models projected and clipped by the GPU instead of the emulated VU1 and GS.", .group = "RENDERER" },
     { SP_DISPLAY, "Native textures", V(g_config.native_tex), 0, 1, 1, .help = "Textures uploaded once and bound afterwards instead of re-uploaded on every switch." },
     { SP_DISPLAY, "Cull off-screen models", V(g_config.model_cull), 0, 1, 1, .help = "As on the PS2. Off: characters, enemies and objects no longer pop at the screen edges (the room itself is not affected). Third person never culls." },
