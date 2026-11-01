@@ -264,6 +264,7 @@ void  tps_player(void);
 void  tps_calc_model(void);
 struct BH_PWORK;
 void  tps_bend(struct BH_PWORK* p, float pitch);   /* the free-aim bend by pitch (radians) on a display copy (actor_glue.c) */
+void  tps_aim_legs(struct BH_PWORK* p);   /* "Move while aiming": the walking legs on a gender-matched copy (actor_glue.c) */
 float tps_aim_pitch(void);   /* the pitch of our free-aim bend this tick (radians, 0: none) */
 #include "ps2sdk_shim.h"
 #include "ps2_hw.h"

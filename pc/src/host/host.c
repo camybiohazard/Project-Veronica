@@ -64,8 +64,13 @@ int pc_skip_intro(void) { return g_config.skip_intro; }
 int pc_movie_zoom(void) { return g_config.movie_zoom; }
 /* fog at i % of the original: the fog density (njCalcFogPower) x 100 / i, so everything's fog is
    that of something i % as far: 50 % = x 2. 0 %: every distance reads the table's nearest
-   entry, 254 or 255 of 255 (no fog) */
-float pc_fog_scale(void) { int i = g_config.fog_intensity; return i <= 0 ? 1e6f : 100.0f / i; }
+   entry, 254 or 255 of 255 (no fog). The third-person camera takes 75 % of the setting (100 % looked too foggy close
+   behind the player in many rooms) */
+float pc_fog_scale(void)
+{
+    float i = g_config.fog_intensity * (tps_cam_active ? 0.60f : 1.0f);
+    return i <= 0 ? 1e6f : 100.0f / i;
+}
 int pc_skip_intro_press_start(void)
 {
     static int done;

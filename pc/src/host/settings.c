@@ -424,7 +424,7 @@ const Setting g_settings[] = {
       .help = "Modern: the left stick walks where it points seen from the camera, the right stick turns the camera and aims; "
               "own bindings (CONTROLS, gamepad, Third person). Classic: tank controls through the game's buttons, the camera behind." },
     { SP_TPS, "Move while aiming", V(g_tps.aim_move), 0, 1, 1,
-      .help = "Modern gamepad: the left stick's forward / back walks slowly while aiming and firing, the legs walking under the aim. "
+      .help = "Modern gamepad: the left stick walks slowly while aiming and firing. "
               "Not with the knife or in a scope. Off: as the original, aiming stands still." },
     { SP_TPS, "Stick camera speed X", V(g_tps.pad_sens_x), 10, 300, 5, .fmt = "%d%%", .help = "Right stick fully pushed at 100%: 180 degrees a second." },
     { SP_TPS, "Stick camera speed Y", V(g_tps.pad_sens_y), 10, 300, 5, .fmt = "%d%%" },

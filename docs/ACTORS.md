@@ -489,7 +489,8 @@ their file, `appear_part_anim`):
   `wpn + chr * 30 + 20` (only the weapon file is re-read on a weapon change), 500 KB per slot.
   Every tick after the source's motion the copy plays the same motion number at the source's
   phase, with its `mtn_md` and flip table, blending whenever the source blends; neck and head
-  take the source's angles; the third-person aim bend applies too (`tps_bend`). A slot the other
+  take the source's angles; the third-person aim bend applies too (`tps_bend`), and so do "Move while
+  aiming"'s walking legs (`tps_aim_legs`: its set's walk or step back at the source's phase). A slot the other
   character lacks (Claire's 90..97) and room-set acting play the source's own motion. In a grab
   `appear_grab_motion` picks the other character's motion of the enemy's set (zombie
   400/425/450/425, Gulp Worm 21/29, Black Widow 14 * `ply_id`, Cerberus 100/105, bat 30/33/36,

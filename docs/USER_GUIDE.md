@@ -140,7 +140,7 @@ renderer, skipped intro and door animations (Skip door animations: Instant) and 
 | Cutscene bars, Camera vignette, Screen effects | `cinema_bars`, `screen_filter`, `screen_effects` | Original (4:3), **Stretch to width**, Off: how these full-screen layers behave in widescreen. Screen effects also covers the tint of the sniper rifle's and linear launcher's scope (its reticle stays round in the middle) and the screen of Chris's oil pressure puzzle, which Off shows 4:3 instead of hiding |
 | Movie zoom | `movie_zoom` | **off**; on: in widescreen the movies are enlarged, never stretched, until the black bars above and below them leave the screen or the picture reaches the window's sides. Nothing of the picture is cut off: on 16:9 thin bars stay (the movies are wider than 16:9), on ultrawide the movie fills the height. No effect at 4:3 |
 | **Fog and brightness** | | |
-| Fog intensity | `fog_intensity` | 0% to 100%, **100%** (as on the PS2): how thick the game's distance fog is, including the black fog many rooms use as darkness (lower values let the unlit cell at the start show more of the room outside). The fog everywhere becomes that of something the value's % as far away: 50% doubles the fog's distance (the fog density x 2.00 of fmil95's PS2 patch), 0% removes it. Applies at once |
+| Fog intensity | `fog_intensity` | 0% to 100%, **100%** (as on the PS2): how thick the game's distance fog is, including the black fog many rooms use as darkness (lower values let the unlit cell at the start show more of the room outside). The fog everywhere becomes that of something the value's % as far away: 50% doubles the fog's distance (the fog density x 2.00 of fmil95's PS2 patch), 0% removes it. The third-person camera uses 60% of the value (100% there is 75%), since its view close behind Claire looked too foggy at the full value. Applies at once |
 | Brightness | `brightness` | -50 to +50, **0**: lifts or lowers the dark end of the picture |
 | Contrast | `contrast` | 50% to 150%, **100%**: spreads or narrows the tones around mid-grey |
 | Gamma | `gamma` | 0.5 to 2.0, **1.0** (in the ini in tenths, 5 to 20): higher brightens the mid-tones, black and white stay |
@@ -367,10 +367,10 @@ has the quick turn on RB gets the new default.
   near the centre.
 - The third-person gamepad buttons are their own bindings: rebinding one (CONTROLS, Gamepad,
   "Third person (gamepad, Modern)") leaves the fixed-camera binding of the same button alone.
-- **Move while aiming** (THIRD PERSON page, GAMEPAD; `tps_aim_move`, **off**): while aiming or
-  firing, the left stick pushed forward or back walks forward or steps back at a little over half
-  walking speed (slower the less it is pushed), the legs walking under the raised weapon with the
-  walk's footsteps. Walls, doors and enemies stop it as a walk. Sideways does nothing yet. Not with
+- **Move while aiming** (THIRD PERSON page, GAMEPAD; `tps_aim_move`, **on**): while aiming or
+  firing, the left stick walks the way it points, seen from the camera, at a little over half
+  walking speed (slower the less it is pushed), while Claire keeps aiming. Ahead and to the sides
+  her legs walk forward, behind her they step back; to the sides her feet slide. The walk's footsteps play, and walls, doors and enemies stop it as a walk. Not with
   the knife, in the sniper rifle's or linear launcher's scope, or while the weapon is raised,
   lowered or reloaded; off: aiming stands still, as the original.
 

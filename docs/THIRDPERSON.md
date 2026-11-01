@@ -188,7 +188,7 @@ unit (the character is about 17 units tall).
 | Precise hits ([Precise hits](#precise-hits)) | `tps_precise_hits` | 1 |
 | Mouse/keyboard camera (0 = B, 1 = A) | `tps_free_camera` | 0 |
 | Gamepad controls (0 = Classic, 1 = Modern) | `tps_pad_controls` | 1 |
-| Move while aiming (Modern gamepad: walk forward / back while aiming) | `tps_aim_move` | 0 |
+| Move while aiming (Modern gamepad: walk any way while aiming) | `tps_aim_move` | 1 |
 | Stick camera speed X / Y (percent; 100 = 180 / 120 degrees a second) | `tps_pad_sens_x`, `tps_pad_sens_y` | 100 |
 | Stick aiming speed (percent of the above) | `tps_pad_aim_sens` | 50 |
 | Stick invert Y | `tps_pad_invert_y` | 0 |
@@ -369,7 +369,8 @@ camera (`cut_cam`, above; the camera-relative shift of `flg & 0x40/0x80` include
 less their depth from ours: the player gets the fog the fixed camera gives them, what is near
 them about the same, what is farther more, as the fixed camera would show the same surfaces
 from a view along ours. The shift is divided by `pc_fog_scale()` (Fog intensity stretches all
-depths), so the option scales it as before and the player's fog matches at any setting. A near
+depths; with our camera as the view it takes 75 % of the setting, host.c), so the option scales it as before and
+the player's fog matches at any setting. A near
 value that ends up behind our camera means fog from the camera on, which `njGenerateFogTable3`
 cannot express (it starts the fog at the camera then); `fog_table` fills the table itself. The
 fixed camera, events and first person keep the game's fog.

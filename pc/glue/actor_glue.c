@@ -1098,6 +1098,7 @@ static BH_PWORK* shadow_step(Shadow* s, BH_PWORK* src, int from)
     s->w.frm_no = (int)frm;
     bhSetMotion(&s->w, 0, src->mtn_md, src->mtn_tp);
     for (i = 4; i <= 5; i++) memcpy(s->obj[i].ang, sm->objP[i].ang, sizeof(s->obj[i].ang));   /* neck and head look as the source's (bhControlPlayerHead) */
+    if (src == plp) tps_aim_legs(&s->w);   /* "Move while aiming": walking legs under the aim (tps_glue.c) */
     memcpy(s->w.mtxbuf, src->mtx, sizeof(float) * 16);
     bhCalcModel(&s->w);
     if ((sm->owP[7].flg & 0x2) && (sm->owP[9].flg & 0x2)) {   /* the source's arm is held by the lighter's IK (player.c
