@@ -42,4 +42,6 @@
 - **Sub machine gun reload crash**: reloading the sub machine gun, with the Reload button or by
   firing on an empty magazine, no longer crashes the game. It has no reload animation, so the ammo
   goes in at once and you keep aiming.
+- **Grenade launcher aim with another Character Model**: in third person the grenade launcher no longer
+  points up while aiming with another model; it points at the crosshair.
 
