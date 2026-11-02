@@ -538,6 +538,7 @@ static void read_check(Entry* e)
 static int SDLCALL loader(void* unused)
 {
     (void)unused;
+    crash_thread_init();
     SDL_LockMutex(qm);
     for (;;) {
         Entry* e;

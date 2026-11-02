@@ -114,7 +114,11 @@ SDL_GLContext g_gl;
 
 void host_log(const char* fmt, ...)
 {
+    extern void log_keep(const char* fmt, va_list ap);
     va_list ap;
+    va_start(ap, fmt);
+    log_keep(fmt, ap);   /* the last messages, for the crash report (log.c) */
+    va_end(ap);
     if (g_config.log_level <= 0) return;
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
@@ -296,6 +300,7 @@ static int SDLCALL game_thread(void* ud)
 {
     char* game_argv[] = { "cdrom0:\\SLUS_201.84;1", NULL };
     (void)ud;
+    crash_thread_init();
     prof_thread(PROF_LOGIC);
     { extern void profile_thread(char); profile_thread('g'); }   /* RECVX_PROFILE */
     exit(recvx_game_main(1, game_argv));
@@ -304,10 +309,12 @@ static int SDLCALL game_thread(void* ud)
 int main(int argc, char** argv)
 {
     setvbuf(stdout, NULL, _IONBF, 0); /* the game's printf diagnostics */
+    ps2_memory_init();   /* first: a DLL loaded later (the GPU driver's) moves aside, one loaded before can't */
     argv = pc_utf8_argv(argc, argv);   /* paths are UTF-8 everywhere (fileio.h) */
     { char* cwd = SDL_GetCurrentDirectory(); if (cwd) { SDL_strlcpy(start_dir, cwd, sizeof(start_dir)); SDL_free(cwd); } }
     parse_args(argc, argv);
     home_dir();
+    { extern void crash_init(const char*); crash_init(RECVX_VERSION); }   /* recvx-crash.log on a crash, with or without --log */
     if (log_path[0]) { extern void log_start(const char*); log_start(log_path); }
     host_log("cvx-port " RECVX_VERSION "\n");
     if (profile_path[0]) { extern void prof_open_csv(const char*); prof_open_csv(profile_path); }
@@ -318,7 +325,6 @@ int main(int argc, char** argv)
     config_load();
     parse_args(argc, argv);   /* command line overrides the saved settings */
     { extern void variants_load(void); variants_load(); }   /* mods/enemies.ini: custom enemies (variants.h) */
-    ps2_memory_init();
 
 #ifdef __linux__
     /* HDR needs Wayland (render/hdr_vk.c) - except in gamescope, whose Wayland offers no colour

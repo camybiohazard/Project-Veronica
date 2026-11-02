@@ -190,9 +190,14 @@ static int room_tex_push(void)
 
 /* (sys->rdtp: the room file, which room_tex_push reads while the room's textures are not all up; NULL
    before the first room load) */
+/* in a room that runs, and the system monitor only runs the game (mn_mode 0): its other modes read a file into
+   sys->memp and take it a frame later (a weapon change: bhSysCallMonitor mode 3, bhReadWeaponData), and a spawn
+   then wrote its model there - the weapon's motions came out of the enemy's data (crash at the next aim, or in
+   bhReadWeaponData itself) */
 static int ready(void)
 {
-    return sys && plp && rom && sys->rdtp && (sys->tk_flg & 0x80) && (sys->sp_flg & 0x2) && !(sys->gm_flg & 0x9) && !(sys->cb_flg & 0x1);
+    return sys && plp && rom && sys->rdtp && (sys->tk_flg & 0x80) && (sys->sp_flg & 0x2) && !(sys->gm_flg & 0x9) && !(sys->cb_flg & 0x1) &&
+           !*(int*)&sys->mn_mode0;
 }
 
 /* Sounds: enemies play their sound ids in SE bank 3, which the room's sound pack fills with its own

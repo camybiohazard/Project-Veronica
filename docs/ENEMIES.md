@@ -131,6 +131,10 @@ With these budgets 25..30 foreign types fit in one room before the slots run out
   leader counts as the holding body's family (`pc_family`): the body starts the grab, the type's
   one leader (an unlinked enemy of the same id that the first body's Init makes) plays it and
   lets go (`bhEne06_PlayerControl`, `bhEne03_PlayerControl`); refused, the player stayed grabbed.
+  The albinoid adult and Monster Steve step the hold of any player in `mode0` 4/6 (`bhEne22` /
+  `bhEne17` `PlyDG*`, which read a position table by the player's motion); while another enemy
+  holds the player (`pc_enemy_refused`) they leave it alone. An infant albinoid's hold (motion 42)
+  made the adult read `mtn_pos[42 - 30]` of 4 entries: crash.
 * Watchdog (`watchdog_glue.c pc_enemy_watch`): an alive enemy unchanged for 150 steps is logged; a
   zombie stuck in a grab state is released.
 

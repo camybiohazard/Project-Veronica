@@ -231,6 +231,20 @@ static void unlock(void)
     CHECK(!pc_unlock_rule(1, 0, 0x25, 1, 7, 0));    /* no use spot for it here */
 }
 
+/* the item box's and GetItem's special slot (Claire: lighter 55, lockpick 50; Chris: the lighter) */
+static void inventory(void)
+{
+    unsigned int d[12] = { 0, 0x370001 };
+    CHECK(!pc_to_special(d, 50, 55, 50));                  /* the lockpick out of the box: the lighter stays, a cell */
+    CHECK(!pc_to_special(d, 55, 55, 50));                  /* a second lighter: a cell */
+    d[1] = 0x320001;
+    CHECK(!pc_to_special(d, 55, 55, 50));                  /* the lighter with the lockpick in the slot: a cell */
+    d[1] = 0;
+    CHECK(pc_to_special(d, 55, 55, 50) && pc_to_special(d, 50, 55, 50));   /* an empty slot takes either */
+    CHECK(!pc_to_special(d, 50, 55, -1));                  /* Chris: the lockpick is any item */
+    CHECK(!pc_to_special(d, 0x08, 55, 50));                /* the knife (count 0) is no special-slot item */
+}
+
 int main(void)
 {
     enemies();
@@ -240,6 +254,7 @@ int main(void)
     clipping();
     warp_music();
     unlock();
+    inventory();
     if (fails) { printf("%d failed\n", fails); return 1; }
     printf("rules: all passed\n");
     return 0;

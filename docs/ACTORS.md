@@ -491,7 +491,9 @@ their file, `appear_part_anim`):
   phase, with its `mtn_md` and flip table, blending whenever the source blends; neck and head
   take the source's angles; the third-person aim bend applies too (`tps_bend`), and so do "Move while
   aiming"'s walking legs (`tps_aim_legs`: its set's walk or step back at the source's phase). A slot the other
-  character lacks (Claire's 90..97) and room-set acting play the source's own motion. In a grab
+  character lacks and room-set acting play the source's own motion, the other sex's (Claire's
+  90..92, the moth larva, on a man; Chris's, Steve's and Wesker's 51, 57, 58 and Steve's 30 on a
+  woman; weapon files 6, 13 and 18 differ too); it is always loaded. In a grab
   `appear_grab_motion` picks the other character's motion of the enemy's set (zombie
   400/425/450/425, Gulp Worm 21/29, Black Widow 14 * `ply_id`, Cerberus 100/105, bat 30/33/36,
   Bandersnatch 100/110/120, Alexia 2 10/16, Giant Black Widow 60/66).

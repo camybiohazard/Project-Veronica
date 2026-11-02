@@ -194,3 +194,12 @@ static inline int pc_margin_inside(const float* c, float r, const float* box)
         if (c[k] - r < box[k] || c[k] + r > box[3 + k]) return 0;
     return 1;
 }
+
+/* ---------------------------------------------------------------- inventory blocks (decomp sub1.c: item box) */
+/* sub1.c ItemBoxChange / GetItem: a special-slot item (`standard`: the lighter, Claire's lockpick too) goes into word 1
+   only while that is empty. Claire can hold both (the lockpick from a pickup lies in a cell, an event puts it into
+   the slot); the game wrote it over the item there, which was lost. Else it takes a cell like any other item. */
+static inline int pc_to_special(const unsigned int* b, int id, int std0, int std1)
+{
+    return (id == std0 || id == std1) && !((b[1] >> 16) & 0xFF);
+}

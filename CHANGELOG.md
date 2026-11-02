@@ -28,6 +28,11 @@
   still in CONTROLS. A `recvx.ini` that has a choice keeps it.
 - **Fog in third person**: the third-person camera uses 75% of Fog intensity (100% there is 75%):
   close behind Claire the full fog looked too thick in many rooms. The fixed cameras keep the value.
+- **Crash report**: every crash writes `recvx-crash.log` (the version, a backtrace and the last
+  messages) next to `recvx.log`, also without `--log`; on Linux also for a stack overflow.
+- **Smoother Motion under water**: the under-water views of the submarine dock are smooth too (they
+  stayed at 30 FPS with the fixed camera).
+- Smoother Motion takes less time a frame in rooms with many enemies.
 - ENHANCED SETTINGS -> CONTROLS shows the gamepad's bindings first (the device row switches to the
   keyboard and mouse).
 - "You appear as" is saved as `appear_char` in `recvx.ini` (it was `coop_char`): choose your model
@@ -44,4 +49,13 @@
   goes in at once and you keep aiming.
 - **Grenade launcher aim with another Character Model**: in third person the grenade launcher no longer
   points up while aiming with another model; it points at the crosshair.
+- **Side pack reload**: ammo in the side pack's last two slots now reloads the weapon when it runs
+  empty.
+- **Lighter and lockpick**: taking the lighter or Claire's lockpick out of the item box (or picking
+  up a lighter) no longer replaces the other one, which was lost.
+- **Albinoid crash**: an adult albinoid or Monster Steve no longer crashes the game while a young
+  albinoid holds you.
+- **Spawn crash**: an enemy spawned (F2) while changing weapons no longer crashes the game.
+- **Start-up memory error**: game memory is reserved first, and when another program holds its
+  address the error names it (usually an overlay or antivirus).
 

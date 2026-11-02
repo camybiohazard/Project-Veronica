@@ -145,6 +145,7 @@ static int step(void)
 static int SDLCALL run(void* user)
 {
     (void)user;
+    crash_thread_init();
     while (!SDL_GetAtomicInt(&mv.quit))
         if (!step()) SDL_DelayNS(2000000);
     return 0;

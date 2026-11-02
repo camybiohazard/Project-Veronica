@@ -275,6 +275,14 @@ shows in-between images at the display rate:
   duration, so the executed frame's targets are never drawn over. Only the parts a frame reads
   before overwriting are copied in. The display target's start image is the previous final
   image (the two swap roles instead of being copied).
+- **Render textures in replays**: a replay takes its own `StoreRenderTex` capture where the
+  executed frame took one (`gs_gl.c gs_replay_capture`, one kept texture, a blit) and its draws
+  bind it in place of the executed frame's. The full-screen distortion (effect 110: the
+  under-water views of the submarine dock 4/3 and 8/5, the type 0 wave) draws the whole picture
+  back from that capture, so bound to the executed frame's every in-between image was a copy of
+  the executed frame: 0 of 1050 in-between images in 4/3's under-water cuts showed motion of
+  their own, 30 FPS motion with the fixed camera (third person turns the distortion off). The
+  ripple grid is the executed frame's. Also redrawn: the command room's monitor (7/3, effect 111).
 - **Static strips**: a matched native strip whose blended fields are bitwise identical in both
   frames is drawn unblended from a per-frame vertex buffer instead of being clipped, converted and
   uploaded again.
@@ -785,6 +793,14 @@ called by the game thread.
 - `--log[=file]` copies all output (the game's own diagnostics and the port's messages) to a log
   file with a timestamp per line; a crash appends a backtrace (Windows: exception address and
   frame chain).
+- Every crash, with or without `--log`, writes `recvx-crash.log` to the current directory (where
+  `--log` puts `recvx.log`; the game's folder for the release builds): the version, the signal or
+  exception with the backtrace or frame chain, and the last 48 `host_log` messages (kept in memory)
+  - a few KB for bug reports (`host/log.c`). Addresses resolve with
+  `addr2line -f -e recvx` (Windows: `i686-w64-mingw32-addr2line -f -e recvx.exe`): the image base is fixed.
+  Linux: the signal, fault address, instruction pointer and thread go out first with `write()` alone,
+  then the backtrace (primed at start) and the messages; the main, game, HD loader, update and movie
+  threads each have an alternate signal stack (`crash_thread_init`), so a stack overflow is reported too.
 - `--profile[=file]` writes one CSV line per game frame: total frame time and exclusive time in
   game logic, VU0, VU1, GS emulation + GL submission, interpolation, presentation and idle wait.
   F1 -> Performance shows the same live. The native `CALCPOINT` (single calls and runs) is not
@@ -812,6 +828,7 @@ and game frames for game-state aids, as noted.
 | `SDL_VIDEO_DRIVER=offscreen` | headless run |
 | `RECVX_SHOW_OVERLAY=1` / `=2` | open the F1 overlay / the cheats window (F2) at start |
 | `RECVX_EXIT_FRAME=n` | exit at presented frame n |
+| `RECVX_TEST_CRASH=stack\|null[:n]` | crash the game thread at frame hand-off n (default 100) with a stack overflow or a null write (the crash report) |
 | `RECVX_WATCHDOG=sec` | Linux: print a backtrace after sec seconds and exit |
 | `RECVX_FAST_DEMO=1` | start the attract demo right away |
 | `RECVX_SKIP_MOVIES=1` | movies end after 30 game frames without decoding (repeatable test runs) |

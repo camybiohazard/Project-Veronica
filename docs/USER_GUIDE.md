@@ -636,4 +636,4 @@ tougher, faster or bigger; for the spawner and the Wild randomizer), see [ENEMIE
 | "cannot open game disc image" | check the path; only SLUS-20184 images work |
 | Low frame rate at high resolution | lower Internal resolution, set a Frame rate limit, or turn off Display-rate frames; F1 -> Performance shows where time goes |
 | Gamepad not working in the second window | set Input source to Gamepad only and pick the pad number; check Steam Input |
-| A crash | run with `--log` and attach `recvx.log` (it contains a backtrace) to an issue |
+| A crash | attach `recvx-crash.log` to an issue: every crash writes it (a few KB: the version, a backtrace and the last messages) next to `recvx.log`, in the game's folder. For more, run with `--log` and attach `recvx.log` too (it has the whole session) |

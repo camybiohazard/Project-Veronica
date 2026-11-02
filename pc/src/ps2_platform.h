@@ -82,6 +82,7 @@ void host_pump_events(void);
 void host_present(void);
 void host_fatal(const char* fmt, ...);
 void host_log(const char* fmt, ...);
+void crash_thread_init(void);   /* log.c: first thing in a thread that may crash (the crash report's signal stack) */
 
 /* kernel.c */
 void ps2_poll_interrupts(void);

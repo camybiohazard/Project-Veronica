@@ -196,6 +196,7 @@ void  spawn_textures_released(void);
 void  spawn_room_setup(void);      /* room.c bhSetRoom: the spawned types' data go with the room */
 extern int pc_enemy_added;         /* eneset.c: the room got enemies its file does not have (helper code per type) */
 void  pc_enemy_mark_added(void);   /* eneset.c: sets it, the shared helper functions as they are then kept for the room's earlier children */
+extern int pc_enemy_refused;       /* eneset.c: the enemy's code runs on a player another enemy holds (its changes are undone) */
 void  enemy_room_finished(void);   /* room.c bhFinishRoom: enemy options (pc/glue/enemyopt_glue.c) */
 
 /* the title menu (pc/glue/title_glue.c) */
