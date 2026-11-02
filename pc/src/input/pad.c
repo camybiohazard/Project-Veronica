@@ -209,6 +209,14 @@ int pad_quick_knife(void)
            (gamepad && (bind_held(B_QUICKKNIFE, BIND_PAD, k, 0) || bind_held(B_TPS_KNIFE, BIND_PAD, k, 0)));
 }
 
+/* flashlight (pc/glue/light_glue.c), game thread: its row is held on the keyboard/mouse or the gamepad */
+int pad_flashlight(void)
+{
+    const bool* k = bind_keys();
+    if (!input_enabled) return 0;
+    return bind_held(B_FLASHLIGHT, BIND_KB, k, tps_mouse_buttons()) || (gamepad && bind_held(B_FLASHLIGHT, BIND_PAD, k, 0));
+}
+
 /* weapon shortcuts (pc/glue/weapon_glue.c), game thread: shortcut row n (previous, next) is held on the keyboard/mouse or the gamepad */
 int pad_wpn_key(int n)
 {

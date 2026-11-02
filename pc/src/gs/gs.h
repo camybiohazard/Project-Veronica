@@ -8,6 +8,7 @@
  */
 #pragma once
 #include <stdint.h>
+#include <stddef.h>
 
 #define GS_MEM_SIZE (4 * 1024 * 1024)
 
@@ -80,6 +81,7 @@ unsigned int gs_capture_rt(uint32_t fbp, uint32_t fbw, uint32_t w, uint32_t h, i
 void gs_replay_capture(unsigned int exec_tex, uint32_t fbp, uint32_t fbw, uint32_t w, uint32_t h, int wide);   /* in a replay: as gs_capture_rt, bound in place of exec_tex until the replay ends */
 /* textures at TBP tbp are movie frame index (pc/src/movie) until the next executed frame */
 void     gs_movie_bind(uint32_t tbp, int index);
+void     gs_pretext_mark(void);   /* the port's HUD starts here: bloom from the picture before it (native.h NATIVE_PRETEXT) */
 /* decode a texture (TEX0 + TEXA) to RGBA8, w x h */
 void     gs_clut_load(uint64_t tex0);
 void     gs_decode_texture(uint64_t tex0, uint64_t texa, uint32_t w, uint32_t h, uint32_t* out);
@@ -96,6 +98,9 @@ int  gs_batch_two_pass(void);   /* the pending batch draws in two passes */
 struct Frame;
 void gs_frame_begin(void);
 void gs_frame_executed(int interpolate);
+void gs_post_frame(int menu);   /* stream_exec: the frame runs a menu task (no bloom in the present pass) */
+void gs_light_sets(const float* sets, size_t n);
+void gs_ao_frame(const float* cam);   /* stream_exec: the frame's projection and depth a, b (stream.h STREAM_CAM) */   /* stream_exec: the frame's per-pixel light sets (stream.h STREAM_LSET) */
 uint64_t gs_present(const struct Frame* cur, float t);   /* returns the swap's blocking time (ns) */
 int gs_gpu_ready(uint64_t wait_ns);   /* at most the last executed frame or image still on the GPU (waits up to wait_ns) */
 void gs_replay_check(const struct Frame* cur);   /* RECVX_REPLAY_CHECK */

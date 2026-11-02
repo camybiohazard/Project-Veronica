@@ -8,6 +8,40 @@
 
 ### Changes
 
+- **Post-processing** (DISPLAY, off by default): Bloom lets fire, lamps, flashes and other bright
+  parts glow onto their surroundings with a slightly warmer picture (on or off; the glow only in
+  play, not on the title screen, menus, movies or text), Colour grading (a filmic tone curve
+  easing highlights and deepening the near-blacks, teal shadows and warm highlights) and Ambient
+  occlusion (contact shadows in creases and under characters and objects). Works with SDR
+  and HDR output and with in-between frames; at the neutral values the picture is unchanged.
+- **Lighting** (DISPLAY): a moodier default look. Light falloff Smooth (default) lets lamps, fires
+  and other point lights fade out over the outer quarter of their range instead of cutting off, so
+  characters and objects no longer darken at once when leaving a light. Lighting picks how bright
+  the rooms are while lamps, fires and the flashlight keep their strength: Original (the PS2's),
+  Balanced (default; main and ambient light 75%), Horror (50% and 25%) and Nightmare (5%, the fog
+  thinned to 10%). Soft shading lets light reach further round the shadow side for softer shading
+  of low-polygon shapes. Light falloff Original with Lighting Original gives the PS2's lighting.
+- **Anisotropic filtering** (DISPLAY, 16x by default): floors and walls seen at a shallow angle
+  stay sharp into the distance without shimmering; textures with cut-outs are left as they are.
+- **Dithering** (DISPLAY, on by default): smooths colour banding in dark gradients.
+- **Per-pixel lighting** (DISPLAY -> LIGHTING, off by default, native 3D renderer): the game's own
+  lights computed for every pixel instead of at the corners of each polygon, so light pools and the
+  falloff of lamps and fires show across large floors and walls, and shading on characters is
+  smooth.
+- **Surface materials**: a picker in the F2 window gives a texture a material (metal, tile, glass,
+  wood, ...) by clicking a surface in the game picture; its surfaces then catch highlights from the
+  lights and the flashlight (Material shine, DISPLAY -> LIGHTING). Saved to `mods/materials.ini`,
+  which can be shared (docs/modding/MATERIALS.md).
+- **Wet surfaces** (DISPLAY -> LIGHTING, off by default): where it rains, floors are wet: lamps,
+  fires, moonlight and the flashlight glint on them, breaking up across the grime.
+- **Flashlight** (L, the gamepad's left stick click; rebindable): a flashlight Claire and Chris
+  switch on and off in play. It lights the floor ahead where they face, along the aim while
+  aiming, and glows faintly round them; Flashlight in DISPLAY -> LIGHTING (on by default) makes it available.
+  It runs on a battery (4 minutes, recharging in 3 while off): low,
+  the beam dims and flickers, empty it goes out; a battery icon above the ammo counter shows the
+  charge while it is in use.
+  Needs the native 3D renderer. The left stick click no longer passes the PS2's L3 (which the game
+  does not use) by default.
 - Release downloads are named `cvx-port-VER-linux-i686.tar.gz` / `cvx-port-VER-windows-x86.zip`
   and come with the `mods/textures/` folder for HD texture packs (with a short README).
 - **HDR output** (DISPLAY, off by default): on an HDR display the game's highlights are expanded

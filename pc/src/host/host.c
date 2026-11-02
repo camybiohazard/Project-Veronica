@@ -63,13 +63,43 @@ int pc_battle_unlocked(void) { return g_config.battle_unlocked; }
 int pc_difficulty_select(void) { return g_config.difficulty_select; }
 int pc_skip_intro(void) { return g_config.skip_intro; }
 int pc_movie_zoom(void) { return g_config.movie_zoom; }
+int pc_light_falloff(void) { return g_config.light_falloff; }
+/* Soft shading and Wet surfaces on: their strength, % */
+#define SOFT_ON 20
+#define WET_ON 100
+int pc_light_soft(void) { return g_config.light_soft ? SOFT_ON : 0; }
+/* the lighting mode (Lighting): the main (parallel) lights and the ambient light, % of the original;
+   Nightmare also thins the fog (pc_fog_scale), whose colour would light the dark scene */
+static const int light_modes[4][2] = { { 100, 100 }, { 75, 75 }, { 50, 25 }, { 5, 5 } };
+#define NIGHTMARE_FOG 10
+int pc_light_main(void) { return light_modes[g_config.lighting & 3][0]; }
+int pc_light_ambient(void) { return light_modes[g_config.lighting & 3][1]; }
+int pc_native_3d(void);
+int pc_flashlight_lit(void);   /* light_glue.c: per-pixel lighting while the flashlight shines */
+int pc_wet_active(void);       /* light_glue.c: wet surfaces while it rains */
+int mat_present(void);        /* gs/materials.c: mods/materials.ini has entries (loaded by the render thread) */
+int pc_light_pixel(void) { return (g_config.light_pixel || pc_flashlight_lit() || pc_wet_active() || (g_config.mat_shine > 0 && mat_present())) && pc_native_3d(); }
+int pc_light_wet(void) { return g_config.wet ? WET_ON : 0; }
+/* the flashlight (Flashlight on): brightness %, range (game units, about 10 cm), half the beam's
+   angle (degrees), minutes a full battery lasts and minutes from empty to full while off */
+#define FLASH_BRIGHTNESS 45
+#define FLASH_RANGE 150
+#define FLASH_BEAM 20
+#define FLASH_BATTERY 4
+#define FLASH_RECHARGE 3
+int pc_flashlight_enabled(void) { return g_config.flashlight; }
+void pc_flashlight_battery_config(int* life, int* recharge) { *life = FLASH_BATTERY; *recharge = FLASH_RECHARGE; }
+void pc_flashlight_config(int* brightness, int* range, int* beam)
+{
+    *brightness = FLASH_BRIGHTNESS; *range = FLASH_RANGE; *beam = FLASH_BEAM;
+}
 /* fog at i % of the original: the fog density (njCalcFogPower) x 100 / i, so everything's fog is
    that of something i % as far: 50 % = x 2. 0 %: every distance reads the table's nearest
    entry, 254 or 255 of 255 (no fog). The third-person camera takes 75 % of the setting (100 % looked too foggy close
-   behind the player in many rooms) */
+   behind the player in many rooms). Lighting Nightmare: NIGHTMARE_FOG % instead of the setting */
 float pc_fog_scale(void)
 {
-    float i = g_config.fog_intensity * (tps_cam_active ? 0.60f : 1.0f);
+    float i = (g_config.lighting == 3 ? NIGHTMARE_FOG : g_config.fog_intensity) * (tps_cam_active ? 0.60f : 1.0f);
     return i <= 0 ? 1e6f : 100.0f / i;
 }
 int pc_skip_intro_press_start(void)
@@ -108,6 +138,8 @@ float pc_overlay_x(float x)
 HostConfig g_config = { .window_w = 1280, .window_h = 960, .borderless_extra = 1,.vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .frame_blend = 0, .aspect = 2, .show_fps = 1,
                        .screen_filter = 1, .cinema_bars = 1, .screen_effects = 1, .native_3d = 1, .model_cull = 1, .native_tex = 1, .hd_textures = 1, .hd_textures_ui = 1, .quick_knife = 1, .head_blowoff = 1, .ammo_hud = 1,
                        .skip_doors = 1, .fast_loading = 1, .auto_stairs = 1, .skip_intro = 1, .battle_unlocked = 1, .difficulty_select = 1, .contrast = 100, .gamma = 10, .fog_intensity = 100,
+                       .light_falloff = 1, .lighting = 1,
+                       .flashlight = 1, .mat_shine = 1, .dither = 1, .aniso = 4,
                        .hdr_highlights = 50 };   /* first-start defaults; recvx.ini overrides */
 SDL_Window* g_window;
 SDL_GLContext g_gl;

@@ -8,11 +8,14 @@ typedef struct {
     float s, t;                 /* texture coordinates (0..1), interpolated perspective-correct */
     float fog;                  /* GS fog coefficient as computed (the GS takes its low 8 bits) */
     float near_d, far_d;        /* clip distances: >= 0 inside the near/far planes */
+    float vx, vy, vz;           /* per-pixel lighting (light != 0): view position */
+    float nx, ny, nz;           /* ... and view normal (as the model matrix makes it, unnormalised) */
     uint8_t r, g, b, a;         /* GS colour (0x80 = 1.0) */
     uint8_t cull;               /* bit 0: normal faces away (a triangle of three such is skipped,
                                    SingleMain); bit 1: the triangle ending here is skipped;
                                    bit 2 (on the last vertex): the triangle is drawn only outside
                                    the 4:3 screen, in the hor+ margins (NATIVE_43_X0..X1) */
+    uint16_t light;             /* per-pixel lighting: the frame's light set (stream_light_set), 0 none: the colour as is */
 } NativeVertex;
 #define NATIVE_43_X0 1728.0f   /* the 4:3 screen (the PS2's 640-wide display), GS x */
 #define NATIVE_43_X1 2368.0f
@@ -22,7 +25,7 @@ static inline NativeVertex native_lerp(const NativeVertex* a, const NativeVertex
 {
     NativeVertex o = *b;
     const float* fa = &a->x; const float* fb = &b->x; float* fo = &o.x;
-    for (int i = 0; i < 9; i++) fo[i] = fa[i] + (fb[i] - fa[i]) * k;   /* x y z w s t fog near_d far_d */
+    for (int i = 0; i < 15; i++) fo[i] = fa[i] + (fb[i] - fa[i]) * k;   /* x y z w s t fog near_d far_d vx vy vz nx ny nz */
     o.r = (uint8_t)(a->r + (b->r - a->r) * k + 0.5f); o.g = (uint8_t)(a->g + (b->g - a->g) * k + 0.5f);
     o.b = (uint8_t)(a->b + (b->b - a->b) * k + 0.5f); o.a = (uint8_t)(a->a + (b->a - a->a) * k + 0.5f);
     return o;
@@ -56,6 +59,9 @@ void native_strip(unsigned int prim, const NativeVertex* v, int n);
    emitted exactly where the GS would have drawn it. mesh/strip: identity for interpolation
    (0: draw within the current mesh tag). */
 #define NATIVE_MARKER_REG 0x7F
+/* NATIVE_MARKER_REG value: the port's HUD is drawn from here (ps2_dummy.c pc_ot_pretext): the
+   present pass takes bloom from the picture before it, as before text (gs_gl.c gs_pretext_mark) */
+#define NATIVE_PRETEXT 0xFFFFFFFEu
 /* GS register write that follows an ordering-table entry drawn by the GS path inside an effect
    (ps2_dummy.c Ps2AddOT): the primitive group just drawn is the effect's (low 32 bits: its
    tag, high: the polygon's number in it), for frame interpolation (stream_tag_last) */

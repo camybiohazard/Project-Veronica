@@ -314,6 +314,140 @@ Picture calibration (`brightness`, `contrast`, `gamma`) is applied in the presen
 and the overlay drawn afterwards does not. At the neutral values the shader skips it and the
 output is bit-identical; `gs_picture` is the same formula on the CPU (F1's test pattern).
 
+Post-processing (`bloom`, `color_grading`; each on is a fixed look, `gs_gl.c BLOOM_*`: strength 50%,
+threshold 75% of white, warmth +10, saturation unchanged; `GRADE_*`: highlight rolloff 60%, shadow
+depth 30%, split toning 20%) is applied in the same shader before the calibration, in linear light (the picture
+taken as gamma 2.2): bloom added, then the tone curve (a toe on the luminance below 0.03 linear,
+a cubic shoulder on the brightest channel above 0.5 reaching white at a point the rolloff sets;
+hue kept), saturation around the luminance, warmth (red up, blue down) and split toning (a tint
+from teal in the shadows to orange in the highlights by luminance).
+
+Ambient occlusion (`ao`; on is `gs_gl.c AO_*`: 60% strength, radius 2% of the screen's height; `ao_pass`) is computed from the depth native 3D
+wrote into a full-screen target. Full-screen 2D drawn later (the camera filter, fades) overwrites
+that depth with a flat value, so `gs_flush` copies it (`ao_keep`) just before a draw that is not
+native 3D (its vertices have w = 1) writes the same depth, or at the frame's end; executed frames
+and replays keep separate copies, as the replays draw into the same depth before the executed
+frame's own image is shown. The view distance is w = -b / (Z + a) with the frame's depth a, b
+(`STREAM_CAM`, `gs_ao_frame`). At half the display area's size, 12 samples on a rotated spiral
+within a radius set as a share of the screen's height (the fixed cameras stand 100 to 500 units
+off) are measured against the pixel's surface plane (1 / w is linear across it on screen; its
+slope from the steadier neighbour), so flat floors seen at a slant do not shade themselves; a
+sample in front of the plane by more than two steps of the 16-bit depth buffer occludes, less so
+up to a tenth of the distance in front. The result is blurred (3 x 3) and multiplies the picture
+in `present_fs` before bloom, except where the frame differs from its copy before the first text
+(`pretext_capture`, taken when bloom or AO is on). Not on movies and menu screens. Bloom (`gs_gl.c bloom_chain`,
+run per presented image, in-between images included) takes from the display area what is
+brighter than the threshold (soft knee; four taps per texel, each weighted by 1 / (1 + luminance)
+so single bright texels of a high internal resolution do not flicker) into a target half the
+display area's size, halves it down to six levels and adds them back up (dual filter). Only
+frames of play get bloom (`pc_rules.h pc_post_bloom`: the game, event or door task runs and none
+of the 2D screens: title, status screen, map, movie, ending, game over, typewriter, OPTION,
+computer screens, ...; checked in `view_glue.c pc_frame_menu` at submit, recorded with the frame
+and handed over by `stream_exec` -> `gs_post_frame`), as text, panels and title art would glow;
+frames that show a movie (`gs_movie_bind`) get none either. Text drawn in play (subtitles,
+messages, item names, the ammo counter) does not glow: the first draw of a frame from a font page
+(`textures.c ntex_is_font`, the decodes of `NTEX_FONT` definitions, and by image hash the three
+full-screen text pages of the new game's opening crawl, which runs under task 7 and so counts as
+play) into a full-screen target copies that target first (`gs_gl.c pretext_capture`; one copy for the executed frame, one for
+replays), and bloom is taken from the copy. The game draws into one buffer and copies it to the
+displayed one at the swap, so the copy is matched to the displayed image by size. What is drawn
+after the first text in a frame gives no bloom either. The flashlight's battery icon
+(`hud_glue.c`) is drawn from the ordering table ahead of the ammo counter's text, so its first
+rectangle carries a marker entry with the same key, added just before it (`ps2_dummy.c
+pc_ot_pretext`, the `NATIVE_MARKER_REG` value `NATIVE_PRETEXT`): `stream.c native_marker` records
+`EV_PRETEXT`, and executing it (`gs_pretext_mark`) takes the copy there as at the first text (native
+3D renderer only). At the neutral values the shader skips it and the
+output is bit-identical.
+
+Lighting options (`light_falloff`, `light_soft`; `pc/glue/light_glue.c`): the chunk models' light
+is per vertex, summed on the CPU (`ps2_NinjaCnk.c njCnkCvVn`; `njCnkCvVnPs2` through VU0 CALCPOINT
+and its fast path `vu.c vu0_calcpoint_n`, which sum the same for the first four lights): parallel
+lights N.C x I, point lights N.L / |L| inside their far range, x near^2 / d^2 beyond the near
+range. With an option on, the vertex chunk afterwards computes the light sum again
+(`pc_light_relight` -> `pc_rules.h pc_light_vertex`) from the view position CALCPOINT wrote and the
+normal by the model matrix: Soft shading as wrap lighting, (N.L + w) / (1 + w); Smooth falloff
+as a smoothstep over the outer quarter of a point light's range instead of the step at its end;
+Main light (the Lighting mode's, `host.c pc_light_main`: Original 100%, Balanced 75%, Horror 50%,
+Nightmare 5%) scales the parallel lights. Ambient light (`pc_light_ambient`: 100, 75, 25, 5%; Nightmare
+also takes the fog to 10% in `pc_fog_scale`, whose colour would light the dark scene) scales the ambient colour where the game sets
+it (`ps2_Vu1Strip.c vu1SetAmbient` -> `pc_light_ambient_scale`), which the VU1 programs, the CPU
+strips and native 3D all take from there.
+Only the light sum changes (ambient, material colours and the colour modes of `native_glue.c
+vertex_color` stay), for both the native 3D and the emulated VU1 path. At the original values
+nothing is computed again and the VU emulation is untouched.
+
+Per-pixel lighting (`light_pixel`, native 3D only). The light sets below are made when it is on or
+when the flashlight, wet surfaces or surface materials need them (`host.c pc_light_pixel`); with
+it off, `fs_src` keeps the strip's vertex colour (`u_lopt.w` 0) and adds only those per pixel (the
+flashlight as lit(sum + flashlight) - lit(sum), the highlights on top). The vertex chunks also keep each vertex's view
+normal, by its vertex buffer index (`light_glue.c pc_light_relight`; `njCnkCvVMod`'s vertices have
+none, `pc_light_forget`). `native_glue.c pc_native_strip` gives its vertices the view position,
+that normal and a light set number (`pc_light_set`: colour mode, light count, ambient, diffuse,
+specular and per light C, type, near^2, far^2, I and colour, `stream.h STREAM_LSET` floats; the
+modes that take no light, flat strips and strips with a vertex without a normal get 0 and keep
+their colours). The light sets are recorded with the frame (`stream_light_set`, consecutive equal
+ones shared) and uploaded per executed frame as rows of an RGBA32F texture (`gs_gl.c
+gs_light_sets`, unit 4); `fs_src` evaluates `light_sum` (`pc_light_vertex` with the lighting
+options) and `lit` (`vertex_color`'s colour modes) per pixel from the interpolated view position
+and normal, the normal at the length the model matrix gives it. Fog stays per vertex. In-between
+frames blend view position and normal with the position (`stream.c nv_blend_pos`) and light with
+the executed frame's sets. The CPU strips (`pc_native_prim3d`), `Ps2AddPrim` and the GS path
+draw as before.
+
+The flashlight (`light_glue.c`, binding `B_FLASHLIGHT`, `pad.c pad_flashlight`): the button is
+polled once per game frame at `stream_submit` (`pc_light_frame`) and toggles it in play
+(`reload_glue.c pc_in_play`). While it shines (`pc_flashlight_lit`) the light sets are made
+(`host.c pc_light_pixel`). At a frame's first light set `flash_make` places it: from the player's
+gun height (`py + 12`, 4 units ahead, as `tps_glue.c` aims from), along the facing 20 degrees down,
+or along the aim (`njRotateXYZ(wax, ay)`) while aiming, the world direction eased 45% of the way
+there per game frame (`FLASH_EASE`; taken as it is when it comes on), both by `cam.mtx` into the
+view space of the game's lights. Every light set carries it in texels 22..25 (position, direction and range,
+colour and near range^2, cos of the inner and outer beam, spill share and range); `fs_src`
+adds a spot (smoothstep across the beam's edge, x min(1, near^2 / d^2), the last quarter of the
+range faded) plus a faint spill all round within 6 m, through the strip's colour mode as the
+game's own lights. It touches no game state: the game's light table, its random numbers and
+saves are unaffected.
+
+Wet surfaces (`wet`): it rains while effect 100 runs (`effsub1.c bhEff100`, the rain round the
+camera; checked per game frame in `pc_light_frame`), and then the light sets are made and every
+light set carries the amount (texel 0.z) and the world's up in view space (texels 1..3.w, `cam.mtx`'s
+second row). In `fs_src` an up-facing pixel (smoothstep of N.up from 0.55 to 0.85) gets from each
+light, the flashlight's beam included, a Blinn-Phong highlight (exponent 140, rising towards
+grazing angles) by the light's strength there without N.L, added on top of the textured colour,
+which darkens by a fifth; darker texels count as wetter (puddles in the grime: 0.2 to 1 by the
+texel's luminance), so the shine breaks up instead of a uniform sheen.
+
+Anisotropic filtering (`anisotropic`, 0 off, else 2^n samples): textures have no mip levels as
+the GS draws them, so `textures.c ntex_mips` gives the native decodes and the HD replacements
+(PNG; a DDS keeps its own) a mip chain when they have no cut-outs (one alpha throughout; averaged
+alpha would thin railings and fences out with distance), and `GL_TEXTURE_MAX_LEVEL` records it
+(0: none). `gs_gl.c aniso_filter` samples such a texture through its mips with the anisotropy
+when the game filters it bilinearly (TEX1), and as the game asks otherwise; render targets
+never. `fs_src` takes the level from the texture coordinates before the GS's clamp and repeat
+regions (`textureGrad`), so their seams do not pick the smallest level.
+
+Dithering (`dither`): the GS's 8 bits are rounded down in `fs_src` (`floor`) as the GS does; with
+Dithering the threshold is a fixed per-pixel value (interleaved gradient noise) instead, so
+gradients from per-pixel and vertex lighting and fog keep their slope instead of steps (a whole
+colour is unchanged). `present_fs` adds half an output step either way the same way, after the
+post-processing and calibration, which stretch dark gradients.
+
+Surface materials (`material_shine`, `mods/materials.ini`; `gs/materials.c`, docs/modding/MATERIALS.md):
+a native texture definition's image data is hashed when it is defined (`textures.c`, FNV-1a), and
+`gs_flush` looks up the class of the batch's texture by it (`ntex_hash_of(TEX0)`) and sets
+`u_mat` (shininess, strength, metal, the picker's highlight); `fs_src` adds the class's highlight
+from every light (the wet surfaces' lobe at the class's shininess, a metal's in the texture's
+colour) on lit pixels. While the file has entries, the light sets are made. The F2 picker asks
+`gs_pick_request` for a point; `gs_draw_native` tests the executed frame's textured native
+triangles there (barycentric, the largest GS depth wins) and `gs_frame_executed` hands the
+texture's hash to the overlay, which writes the class (`mat_set`, replace-on-rename) and asks
+for the pulsing highlight (`gs_mat_highlight`). The flashlight (`flashlight`, 0/1; `host.c FLASH_*`: 45% brightness, range 150, beam 20 degrees,
+battery 4 minutes, recharge 3) and its battery are advanced in
+`pc_light_frame` per game frame in play (30 a second): drained while lit, recharged while off;
+below a fifth the beam's strength (`batt_k`) dims and flickers from the glue's own random
+numbers, empty it switches off. `hud_glue.c battery_draw` shows it above the ammo counter with
+`title_glue.c pc_ui_rect` while it is in use (`pc_flashlight_battery`).
+
 HDR output (`hdr`; `render/hdr.h`, `gs_gl.c hdr_compose`): OpenGL cannot mark a window as HDR, so
 Direct3D 11 (Windows, `hdr_win.c`) or Vulkan (Linux, `hdr_vk.c`) presents. The window has no GL
 surface; on Windows the GL context lives on a hidden window (`host.c`), on Linux it has none
@@ -890,6 +1024,7 @@ and game frames for game-state aids, as noted.
 | `RECVX_TRACE_HD=1`, `RECVX_HD_DUMP=dir` | log every HD texture lookup and check; write each looked-up original as PNG under its PCSX2 name |
 | `RECVX_INTERP_T=t` | the first refresh after each game frame shows the in-between image at t (comparable dumps) |
 | `RECVX_INTERP_STATS=1` | per-frame interpolation matching statistics |
+| `RECVX_MATPICK="frame:x:y:class"` | the material picker at x, y (640 x 480 screen space) once that executed frame is reached: assigns the class and keeps the highlight ([modding/MATERIALS.md](modding/MATERIALS.md)) |
 | `RECVX_REPLAY_CHECK=1` (or `=n`), `RECVX_REPLAY_CHECK_DIR=dir` | replay each interpolated frame at t = 1, which must reproduce it; log and save differing frames |
 | `RECVX_REPLAY_RTSTART=0` | in-between images start from the executed frame's display image (old behaviour) |
 | `RECVX_DISPLAY_HZ=n` | assume an n Hz display (e.g. 1000 with vsync off: present as fast as possible) |

@@ -134,17 +134,32 @@ renderer, skipped intro and door animations (Skip door animations: Instant) and 
 | **Picture** | | |
 | Aspect ratio | `aspect` | 4:3 (original), Stretch to window, **Widescreen (hor+)**: 3D fills the window, 2D and menus stay 4:3 in the middle; with the fixed cameras, room parts the original hides for a camera angle are drawn in the side margins (except walls the camera looks through), while the 4:3 middle stays exactly the original (the OPTION screen's picture strips run to the window's edges; what the inventory, item box, files and map keep off-screen stays hidden) |
 | Internal resolution | `scale` | **Auto** (follows the window) or 1x-8x of 640x448 |
+| Anisotropic filtering | `anisotropic` | Off, 2x, 4x, 8x, **16x**: floors and walls seen at a shallow angle stay sharp into the distance without shimmering. Textures with cut-outs (railings, fences, foliage) are left as they are. Needs Native textures or HD textures |
+| Dithering | `dither` | **on**: a fine fixed noise, too small to see, against colour banding in dark gradients (lamplight falloff, fog, the tone curve) |
 | Display-rate frames | `interpolate` | "Enhanced mode": in-between frames blended from the last two game frames, up to the display's refresh rate. The game logic stays at its original 30 FPS, so gameplay is unchanged. **On**; off is "vanilla" |
 | Frame blend (trail) | `frame_blend` | the PS2's motion trail (each frame mixed over the previous one). Auto, **Off**, On; Auto is on in vanilla and off with display-rate frames |
 | **Widescreen** | | |
 | Cutscene bars, Camera vignette, Screen effects | `cinema_bars`, `screen_filter`, `screen_effects` | Original (4:3), **Stretch to width**, Off: how these full-screen layers behave in widescreen. Screen effects also covers the tint of the sniper rifle's and linear launcher's scope (its reticle stays round in the middle) and the screen of Chris's oil pressure puzzle, which Off shows 4:3 instead of hiding |
 | Movie zoom | `movie_zoom` | **off**; on: in widescreen the movies are enlarged, never stretched, until the black bars above and below them leave the screen or the picture reaches the window's sides. Nothing of the picture is cut off: on 16:9 thin bars stay (the movies are wider than 16:9), on ultrawide the movie fills the height. No effect at 4:3 |
 | **Fog and brightness** | | |
-| Fog intensity | `fog_intensity` | 0% to 100%, **100%** (as on the PS2): how thick the game's distance fog is, including the black fog many rooms use as darkness (lower values let the unlit cell at the start show more of the room outside). The fog everywhere becomes that of something the value's % as far away: 50% doubles the fog's distance (the fog density x 2.00 of fmil95's PS2 patch), 0% removes it. The third-person camera uses 60% of the value (100% there is 75%), since its view close behind Claire looked too foggy at the full value. Applies at once |
+| Fog intensity | `fog_intensity` | 0% to 100%, **100%** (as on the PS2): how thick the game's distance fog is, including the black fog many rooms use as darkness (lower values let the unlit cell at the start show more of the room outside). The fog everywhere becomes that of something the value's % as far away: 50% doubles the fog's distance (the fog density x 2.00 of fmil95's PS2 patch), 0% removes it. The third-person camera uses 60% of the value (100% there is 75%), since its view close behind Claire looked too foggy at the full value. Applies at once. Lighting Nightmare sets 10% instead (the row shows 10% and is locked then) |
 | Brightness | `brightness` | -50 to +50, **0**: lifts or lowers the dark end of the picture |
 | Contrast | `contrast` | 50% to 150%, **100%**: spreads or narrows the tones around mid-grey |
 | Gamma | `gamma` | 0.5 to 2.0, **1.0** (in the ini in tenths, 5 to 20): higher brightens the mid-tones, black and white stay |
 | Reset picture calibration | | brightness, contrast and gamma back to neutral |
+| **Post-processing** | | |
+| Bloom | `bloom` | **Off**, On: bright parts of the picture (fire, lamps, muzzle flashes, snow) glow onto their surroundings, and the picture turns slightly warmer. Text (subtitles, messages, the ammo counter) does not glow. The glow is only in play and in-engine cutscenes: not on the title screen, the menus (status screen, files, item box, map, typewriter, OPTION), movies, game over and other 2D screens |
+| Colour grading | `color_grading` | **Off**, On: a filmic look: the brightest parts (fire, lamps, bloom) ease towards white instead of clipping, keeping their detail (highlight rolloff 60%, on the brightest colour channel, so a saturated fire keeps its shape); the near-blacks go a little deeper (shadow depth 30%); shadows lean cool teal and highlights warm orange (split toning 20%) |
+| Ambient occlusion | `ao` | **Off**, On: darkens creases, corners and where characters and objects meet the floor and walls (60% strength, reaching 2% of the screen's height from a crease), worked out from the depth of the 3D picture. Flat floors and walls stay as they are; text, menus and movies are left alone |
+| Reset post-processing | | bloom, colour grading and ambient occlusion off |
+| **Lighting** | | |
+| Per-pixel lighting | `light_pixel` | **off**; on: the game's own lights (and the options below) are computed for every pixel instead of at the corners of each polygon, so light pools and the falloff of lamps and fires show inside large floor and wall polygons and shading on characters is smooth. Needs the native 3D renderer. Effects, 2D and a few special models keep their per-vertex colours |
+| Wet surfaces | `wet` | **Off**, On: where it rains (the courtyards, the graveyard, ...), floors and other up-facing surfaces are wet: the lamps, fires, moonlight and the flashlight glint on them, the darker grime of the texture more than the rest, and they darken a little. Lit per pixel on top of the lighting (Per-pixel lighting itself stays as set); needs the native 3D renderer |
+| Material shine | `material_shine` | Off, **On**: the highlights of the surface materials in `mods/materials.ini`, assigned with the F2 picker ([modding/MATERIALS.md](modding/MATERIALS.md)); Off: none. The highlights are lit per pixel on top of the lighting (Per-pixel lighting itself stays as set); needs the native 3D renderer |
+| Flashlight | `flashlight` | Off, **On**: the flashlight ([Flashlight](#flashlight)): 45% brightness, a range of 150 game units (about 15 m), a beam 20 degrees either side, a battery lasting 4 minutes and recharging in 3. Off: the Flashlight on/off button does nothing |
+| Light falloff | `light_falloff` | Original, **Smooth**: how lamps, fires and other point lights end at their range, on characters, objects and the rooms themselves. Original: at a step, so something leaving the range darkens at once; Smooth: they fade out over the outer quarter of their range (closer, the light is the original) |
+| Soft shading | `light_soft` | **Off** (the original), On (20% wrap): light reaches further round the shadow side, so the edge between lit and unlit is softer and low-polygon shapes look less faceted; the lit side stays as bright |
+| Lighting | `lighting` | Original (0), **Balanced** (1), Horror (2), Nightmare (3): how bright the rooms are; lamps, fires and the flashlight keep their strength. Original: the PS2's main and ambient light. Balanced: both 75%. Horror: main light 50%, ambient light 25%. Nightmare: both 5%, so almost only lamps, fires and the flashlight light the way, and the fog thins to 10% (its colour would otherwise light the dark scene; Fog intensity shows 10% and is locked). With Light falloff Original, Lighting Original and Soft shading Off the lighting is the PS2's |
 | **HDR** (Windows, Linux) | | see [HDR](#hdr) |
 | HDR output | `hdr` | **off**; on: HDR output on an HDR display (after a restart) |
 | Paper white | `hdr_paper_white` | **Auto** (Windows' SDR content brightness; Linux: 203 nits), or 80 to 480 nits: how bright the game's whites and the F1 overlay are |
@@ -284,10 +299,12 @@ Keyboard defaults (all rebindable):
 | Space (hold) | Quick knife |
 | 1 / 2 | Previous / next weapon, with Weapon shortcuts on ([Weapon shortcuts](#weapon-shortcuts)) |
 | R | Reload ([Reload](#reload)) |
+| L | Flashlight on / off ([Flashlight](#flashlight)) |
 
 Any gamepad SDL supports works as a DualShock 2 (south/east/west/north = Cross/Circle/Square/
 Triangle, shoulders L1/R1, left trigger L2, right stick click R3). The right trigger is the
-quick knife, since that button has no game action; the left stick click is L3.
+quick knife, since that button has no game action; the left stick click switches the flashlight
+([Flashlight](#flashlight)), as L3 has no game action either (the L3 row stays bindable).
 Aim (R1 / RB) + Triangle (Y) reloads ([Reload](#reload)). With Weapon shortcuts on, in play the
 d-pad's left / right switch weapons ([Weapon shortcuts](#weapon-shortcuts)): the left stick turns,
 up / down still walk.
@@ -327,6 +344,7 @@ Xbox / PlayStation; keyboard in brackets.
 | Fire | A / Cross (Z) while aiming | left mouse | A / Cross | RT / R2 |
 | Reload | RB + Y (R) | R | RB + Y | RB / R1 |
 | Quick knife (hold) | RT / R2 (Space) | Space | RT / R2 | LB / L1 |
+| Flashlight on / off | LS / L3 (L) | L | LS / L3 | LS / L3 |
 | Action, confirm | A / Cross (Z) | E | A / Cross | A / Cross |
 | Cancel | B / Circle (X) | Q | B / Circle | B / Circle |
 | Inventory | Menu / Start, right stick click (Enter) | Tab | Menu / Start | Y / Triangle |
@@ -425,6 +443,28 @@ while aiming the d-pad works as before. Both are rebindable (CONTROLS, `key_weap
 `key_weapon_next`, `pad_weapon_prev`, `pad_weapon_next`) and may share a button with a game row,
 which then gets it everywhere but in play. A `recvx.ini` from before them that still has L2 / R2 on
 1 / 2 gets 9 / 0.
+
+### Flashlight
+
+**Flashlight on / off** (CONTROLS, `key_flashlight` / `pad_flashlight`; L, the gamepad's left stick
+click) switches a flashlight on and off. It shines from Claire's (or Chris's) chest where they
+face, a little down onto the floor ahead, and along the aim while aiming (the beam swings over
+in about a tenth of a second when the weapon comes up or goes down), with a faint glow all
+round so it shows even when the camera looks at them from the front. It lights the rooms,
+enemies and objects per pixel, on top of the room's lighting (Per-pixel lighting stays as set), and needs the
+native 3D renderer. It shines in play only: not in cutscenes, menus, doors or scripted moments,
+and comes back on after them. With the darker Lighting modes (Horror, Nightmare) dark
+corners are where it pays to have it on. **Flashlight** (DISPLAY -> LIGHTING, on by default)
+makes it available; off, the button does nothing. Its beam reaches about 15 m (150 game units)
+and is 20 degrees either side of its centre.
+
+It runs on a battery that lasts **4 minutes**. The battery drains only while the light shines in
+play and recharges while it is off (**3 minutes** from empty to full); menus and cutscenes stop both. Below a
+fifth the beam dims and flickers now and then; empty, the light goes out, and the button turns it
+on again once the battery is back to a tenth. While the battery is in use (the light on, or not
+full yet) a battery icon above the ammo counter shows its charge: green, amber below half, red
+below a fifth, blinking when nearly empty. The charge is not saved: it starts full each time the
+game starts.
 
 ### Reload
 
@@ -563,6 +603,8 @@ The F2 window (also the EXTRAS page of ENHANCED SETTINGS) is meant for testing a
   item check (the detector, the typewriters' ink ribbon, weapons and ammo, the item box) uses
   what you really carry;
 - add any item to the inventory, and view the inventory;
+- surface materials: pick a wall, floor or object with the mouse and give its texture a material
+  (metal, tile, glass, wood, ...) that catches the lights' highlights ([modding/MATERIALS.md](modding/MATERIALS.md));
 - spawn an enemy of any type in front of you ([ENEMIES.md](ENEMIES.md)); custom enemies follow the
   game's types at the end of the list, marked "[C] ": Mutated Steve (Steve's monster form that can
   be killed: his own moves, the Tyrant's death) and those of `mods/enemies.ini`;

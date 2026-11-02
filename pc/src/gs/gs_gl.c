@@ -17,6 +17,7 @@
 #include "hdpack.h"
 #include "../host/prof.h"
 #include "stream.h"
+#include "materials.h"
 #include "../ps2_platform.h"
 #include "../render/gl_loader.h"
 #include "../render/hdr.h"
@@ -99,6 +100,8 @@ typedef struct {
     float r, g, b, a;
     float fog;
     float clip[2];        /* native 3D: near/far clip distances (others: always inside) */
+    float vpos[3], nrm[3];/* per-pixel lighting: view position and normal (NativeVertex) */
+    float light;          /* ... the light set (gs_light_sets), 0: the colour as is */
 } GlVertex;
 
 #define MAX_VERTS 65536
@@ -128,8 +131,8 @@ static int batch_valid;
 
 static GLuint prog, vao, vbo, present_prog, present_vao, svao, svbo;
 static GLint u_rt_size, u_rt_margin, u_tme, u_tfx, u_tcc, u_fst, u_texsize, u_fge, u_fogcol, u_ate, u_atst, u_aref,
-             u_tex, u_tex_alpha_scale, u_texofs, u_premul, u_zscale, u_clamp_mode, u_clamp_vals, u_afail_pass, u_rt16;
-static GLint up_tex, up_rect, up_pic;
+             u_tex, u_tex_alpha_scale, u_texofs, u_premul, u_zscale, u_clamp_mode, u_clamp_vals, u_afail_pass, u_rt16, u_lights, u_lopt, u_mat, u_dith;
+static GLint up_tex, up_rect, up_pic, up_bloom, up_post, up_tone, up_ao, up_pre, up_aoon;
 
 static const char* vs_src =
     "#version 330 core\n"
@@ -138,14 +141,19 @@ static const char* vs_src =
     "layout(location=2) in vec4 a_col;\n"
     "layout(location=3) in float a_fog;\n"
     "layout(location=4) in vec2 a_clip;\n"
+    "layout(location=5) in vec3 a_vpos;\n"
+    "layout(location=6) in vec3 a_nrm;\n"
+    "layout(location=7) in float a_light;\n"
     "uniform vec2 u_rt_size; uniform float u_rt_margin; uniform float u_zscale;\n"
     /* everything perspective-correct: for GS vertices w = 1, so that is the GS's screen-space
        interpolation; native 3D triangles stay whole where VU1 would have cut them at the guard
        band, and screen-linear colour/fog across a triangle reaching far off-screen near the
        camera is wrong (walls came out fully fogged in third-person view) */
     "out vec3 v_stq; out vec4 v_col; out float v_fog;\n"
+    "out vec3 v_vpos; out vec3 v_nrm; out float v_nlen; flat out int v_light;\n"
     "void main(){\n"
     "  float w = a_pos.w;\n"
+    "  v_vpos = a_vpos; v_nrm = a_nrm; v_nlen = length(a_nrm); v_light = int(a_light + 0.5);\n"
     "  vec2 p = (vec2(a_pos.x + u_rt_margin * w, a_pos.y) / u_rt_size) * 2.0 - w;\n"
     "  gl_Position = vec4(p, a_pos.z * u_zscale * 2.0 - w, w);\n"
     "  gl_ClipDistance[0] = a_clip.x; gl_ClipDistance[1] = a_clip.y;\n"
@@ -155,7 +163,11 @@ static const char* vs_src =
 static const char* fs_src =
     "#version 330 core\n"
     "in vec3 v_stq; in vec4 v_col; in float v_fog;\n"
+    "in vec3 v_vpos; in vec3 v_nrm; in float v_nlen; flat in int v_light;\n"
     "uniform sampler2D u_tex;\n"
+    "uniform sampler2D u_lights; uniform vec4 u_lopt;\n"
+    "uniform vec4 u_mat;\n"
+    "uniform float u_dith;\n"
     "uniform int u_tme, u_tfx, u_tcc, u_fst, u_fge, u_ate, u_atst, u_premul, u_afail_pass;\n"
     "uniform float u_aref, u_tex_alpha_scale;\n"
     "uniform vec2 u_texsize; uniform vec4 u_texofs; uniform vec4 u_fogcol;\n"
@@ -169,12 +181,103 @@ static const char* fs_src =
     "  if (u_clamp_mode.y == 3) t.y = float((int(floor(t.y)) & int(u_clamp_vals.z)) | int(u_clamp_vals.w)) + fract(t.y);\n"
     "  return t;\n"
     "}\n"
+    /* per-pixel lighting (gs_light_sets; light_glue.c pc_light_set): a light set is a row of
+       u_lights: texel 0 (colour mode, light count), 1 ambient, 2 diffuse, 3 specular; per light k
+       4 + 3k (C, type: 0 parallel, 1 point, -1 off), 5 + 3k (near^2, far^2, I), 6 + 3k (colour);
+       the flashlight 22 (position, on), 23 (direction, range), 24 (colour, near^2), 25 (cos of the
+       inner and outer beam, spill share and range); wet surfaces: 0.z the amount (0 none), 1.w 2.w
+       3.w the view's up. u_mat: the batch's texture's material (materials.c: shininess, strength,
+       metal: the highlight in the texture's colour) and the material picker's highlight (pulse).
+       light_sum is pc_rules.h pc_light_vertex at the pixel (u_lopt: wrap, smooth, main), the
+       flashlight's share apart (fl). u_lopt.w: Per-pixel lighting on, the colour is lit here;
+       off, the vertex colour stays (the set is there for the flashlight, wet surfaces and
+       materials) and the flashlight adds what it adds at the pixel. lit is
+       native_glue.c vertex_color (the colour modes of vu1GetVertexColor*), in GS units. The normal
+       keeps the length the model matrix gives it (v_nlen), as the original's N.L does. */
+    /* wet (the set's wet amount for this pixel, 0: none): each light's highlight as well, into spec
+       (Blinn-Phong lobe, exponent WET_SHINE, a Schlick-like rise at grazing angles), from its
+       strength at the pixel without N.L or the wrap: water reflects what the surface would not */
+    "const float WET_SHINE = 140.0;\n"
+    "vec3 shine(vec3 nn, vec3 l, vec3 v){\n"
+    "  vec3 h = normalize(l + v);\n"
+    "  if (dot(nn, l) <= 0.0) return vec3(0.0);\n"
+    "  return vec3(pow(max(dot(nn, h), 0.0), u_mat.y > 0.0 ? u_mat.x : WET_SHINE) * (0.3 + 0.7 * pow(1.0 - max(dot(v, h), 0.0), 5.0)));\n"
+    "}\n"
+    "vec3 light_sum(int id, vec3 p, vec3 n, float wet, inout vec3 spec, inout vec3 fl){\n"
+    "  int nl = int(texelFetch(u_lights, ivec2(0, id), 0).y);\n"
+    "  vec3 s = vec3(0.0), nn = normalize(n), v = normalize(-p);\n"
+    "  for (int k = 0; k < nl; k++) {\n"
+    "    vec4 a = texelFetch(u_lights, ivec2(4 + 3 * k, id), 0), b = texelFetch(u_lights, ivec2(5 + 3 * k, id), 0);\n"
+    "    vec3 col = texelFetch(u_lights, ivec2(6 + 3 * k, id), 0).rgb;\n"
+    "    float f, att;\n"
+    "    vec3 l;\n"
+    "    if (a.w < 0.0) continue;\n"
+    "    if (a.w == 0.0) {\n"
+    "      att = b.z * u_lopt.z; l = normalize(a.xyz);\n"
+    "      f = (dot(n, a.xyz) + u_lopt.x) / (1.0 + u_lopt.x);\n"
+    "    } else {\n"
+    "      vec3 d = a.xyz - p; float d2 = dot(d, d);\n"
+    "      if (!(b.y > d2) || !(d2 > 0.0)) continue;\n"
+    "      l = d * inversesqrt(d2);\n"
+    "      f = (dot(n, l) + u_lopt.x) / (1.0 + u_lopt.x);\n"
+    "      att = b.x < d2 ? b.x / d2 : 1.0;\n"
+    "      if (u_lopt.y != 0.0) { float t = (1.0 - sqrt(d2 / b.y)) * 4.0; if (t < 1.0) att *= t * t * (3.0 - 2.0 * t); }\n"
+    "    }\n"
+    "    if (wet > 0.0) spec += att * col * shine(nn, l, v);\n"
+    "    if (f > 0.0) s += f * att * col;\n"
+    "  }\n"
+    "  vec4 fa = texelFetch(u_lights, ivec2(22, id), 0);\n"   /* the flashlight: position, on */
+    "  if (fa.w > 0.0) {\n"
+    "    vec4 fb = texelFetch(u_lights, ivec2(23, id), 0), fc = texelFetch(u_lights, ivec2(24, id), 0), fd = texelFetch(u_lights, ivec2(25, id), 0);\n"
+    "    vec3 d = fa.xyz - p; float d2 = dot(d, d);\n"
+    "    if (fb.w * fb.w > d2 && d2 > 0.0) {\n"
+    "      float il = inversesqrt(d2), r = sqrt(d2);\n"
+    "      float f = (dot(n, d) * il + u_lopt.x) / (1.0 + u_lopt.x);\n"
+    "      float t = (1.0 - r / fb.w) * 4.0, sp = clamp(1.0 - r / fd.w, 0.0, 1.0);\n"   /* beam, spill */
+    "      float beam = smoothstep(fd.y, fd.x, dot(-d * il, fb.xyz)) * min(1.0, fc.w / d2);\n"
+    "      if (t < 1.0) beam *= t * t * (3.0 - 2.0 * t);\n"
+    "      if (f > 0.0) fl += f * (beam + fd.z * sp * sp) * fc.rgb;\n"
+    "      if (wet > 0.0) spec += beam * fc.rgb * shine(nn, d * il, v);\n"
+    "    }\n"
+    "  }\n"
+    "  return s;\n"
+    "}\n"
+    "vec3 lit(int id, vec3 i){\n"
+    "  int mode = int(texelFetch(u_lights, ivec2(0, id), 0).x);\n"
+    "  vec3 amb = texelFetch(u_lights, ivec2(1, id), 0).rgb, dif = texelFetch(u_lights, ivec2(2, id), 0).rgb, spe = texelFetch(u_lights, ivec2(3, id), 0).rgb;\n"
+    "  vec3 ia = i + amb, ci = clamp(i, 0.0, 1.0), cia = clamp(ia, 0.0, 1.0);\n"
+    "  if (mode == 0) return i * 128.0;\n"
+    "  if (mode == 3) return ci * dif;\n"
+    "  if (mode == 4) return cia * dif;\n"
+    "  if (mode == 5) return ci * dif + clamp(i - 1.0, 0.0, 1.0) * spe;\n"
+    "  if (mode == 6) return ci * dif + clamp(ia - 1.0, 0.0, 1.0) * spe;\n"
+    "  if (mode == 7) return ci * dif + clamp(pow(max(i, 0.0), vec3(17.0)), 0.0, 1.0) * spe;\n"
+    "  if (mode == 8) return cia * dif + clamp(i - 1.0, 0.0, 1.0) * spe;\n"
+    "  if (mode == 9) return cia * dif + clamp(ia - 1.0, 0.0, 1.0) * spe;\n"
+    "  return cia * dif + clamp((ia + 1.0) * pow(max(ia, 0.0), vec3(17.0)), 0.0, 1.0) * spe;\n"
+    "}\n"
     "void main(){\n"
     "  vec4 c = v_col * 255.0;\n"     /* GS 0..255 integer domain */
+    /* wet surfaces (the set's texel 0.z: the amount; 1..3.w: the view's up): up-facing, the darker
+       texels (puddles in the grime) wetter; the colour darkens a little and the highlights go on top */
+    "  float wet = 0.0, tl = 0.5;\n"
+    "  vec3 tcol = vec3(1.0);\n"
+    "  vec3 spec = vec3(0.0);\n"
+    "  if (v_light > 0) {\n"
+    "    wet = texelFetch(u_lights, ivec2(0, v_light), 0).z;\n"
+    "    if (wet > 0.0) {\n"
+    "      vec3 up = vec3(texelFetch(u_lights, ivec2(1, v_light), 0).w, texelFetch(u_lights, ivec2(2, v_light), 0).w, texelFetch(u_lights, ivec2(3, v_light), 0).w);\n"
+    "      wet *= smoothstep(0.55, 0.85, dot(normalize(v_nrm), up));\n"
+    "    }\n"
+    "    vec3 fl = vec3(0.0), i = light_sum(v_light, v_vpos, normalize(v_nrm) * v_nlen, max(wet, u_mat.y), spec, fl);\n"
+    "    if (u_lopt.w > 0.0) c.rgb = clamp(lit(v_light, i + fl), 0.0, 255.0);\n"
+    "    else if (any(greaterThan(fl, vec3(0.0)))) c.rgb = clamp(c.rgb + lit(v_light, i + fl) - lit(v_light, i), 0.0, 255.0);\n"
+    "  }\n"
     "  if (u_tme != 0) {\n"
-    "    vec2 tc = (u_fst != 0) ? v_stq.xy : (v_stq.xy / v_stq.z) * u_texsize;\n"
+    "    vec2 tc = (u_fst != 0) ? v_stq.xy : (v_stq.xy / v_stq.z) * u_texsize, tg = tc * u_texofs.xy;\n"   /* tg: the mip level's coordinates, before the regions (aniso_filter) */
     "    tc = wrap(tc);\n"
-    "    vec4 t = texture(u_tex, tc * u_texofs.xy + u_texofs.zw);\n"
+    "    vec4 t = textureGrad(u_tex, tc * u_texofs.xy + u_texofs.zw, dFdx(tg), dFdy(tg));\n"
+    "    tl = dot(t.rgb, vec3(0.299, 0.587, 0.114)); tcol = t.rgb;\n"
     "    t.rgb *= 255.0; t.a *= u_tex_alpha_scale;\n"
     "    if (u_rt16.x != 0.0) {\n"                     /* render target read as 16-bit texels */
     "      t.rgb = floor(clamp(t.rgb, 0.0, 255.0) / 8.0) * 8.0;\n"
@@ -187,8 +290,17 @@ static const char* fs_src =
     "    else { r.rgb = t.rgb * c.rgb / 128.0 + c.a; r.a = (u_tcc != 0) ? t.a : c.a; }\n"
     "    c = min(r, vec4(255.0));\n"
     "  }\n"
+    "  if (wet > 0.0) { float m = wet * mix(0.2, 1.0, smoothstep(0.45, 0.12, tl)); c.rgb = min(c.rgb * (1.0 - 0.2 * m) + spec * 255.0 * m * 0.8, vec3(255.0)); }\n"
+    "  else if (v_light > 0 && u_mat.y > 0.0) {\n"
+    "    vec3 tint = u_mat.z > 0.0 ? clamp(tcol / max(max(tcol.r, tcol.g), max(tcol.b, 0.05)), 0.0, 1.0) : vec3(1.0);\n"
+    "    c.rgb = min(c.rgb + spec * 255.0 * u_mat.y * tint, vec3(255.0));\n"
+    "  }\n"
+    "  if (u_mat.w > 0.0) c.rgb = mix(c.rgb, vec3(255.0, 40.0, 255.0), u_mat.w);\n"
     "  if (u_fge != 0) { float f = clamp(v_fog, 0.0, 255.0); c.rgb = (f * c.rgb + (255.0 - f) * u_fogcol.rgb) / 256.0; }\n"
-    "  c = floor(c + 0.0001);\n"
+    /* the GS's 8 bits: rounded down as the GS does, or with Dithering (u_dith) by a fixed per-pixel
+       threshold (interleaved gradient noise), so smooth light and fog gradients keep their slope
+       instead of steps; a colour already whole is unchanged */
+    "  c = floor(c + vec4(u_dith > 0.0 ? vec3(fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))))) : vec3(0.0001), 0.0001));\n"
     "  if (u_ate != 0) {\n"
     "    bool pass = true;\n"
     "    if (u_atst == 0) pass = false;\n"
@@ -210,21 +322,154 @@ static const char* fs_src =
 static const char* present_vs =
     "#version 330 core\n"
     "uniform vec4 u_rect;\n"
-    "out vec2 v_uv;\n"
+    "out vec2 v_uv; out vec2 v_c;\n"
     "void main(){\n"
     "  vec2 c = vec2((gl_VertexID & 1) != 0 ? 1.0 : 0.0, (gl_VertexID & 2) != 0 ? 1.0 : 0.0);\n"
     "  v_uv = vec2(mix(u_rect.x, u_rect.z, c.x), mix(u_rect.y, u_rect.w, c.y));\n"
+    "  v_c = vec2(c.x, 1.0 - c.y);\n"
     "  gl_Position = vec4(c.x * 2.0 - 1.0, 1.0 - c.y * 2.0, 0.0, 1.0);\n"
     "}\n";
-/* u_pic: picture calibration (brightness offset, contrast, 1 / gamma, on); off at the neutral
-   values, so the image is the same as without it. gs_picture is the same on the CPU. */
+/* u_post: post-processing (bloom strength, saturation, warmth, on), in linear light (gamma 2.2):
+   the bloom chain's level 0 (u_bloom, the display area as v_c) added, then the tone curve (hue
+   kept; u_tone: highlight rolloff, shadow depth, split toning), saturation around the luminance,
+   warmth as red up / blue down, split toning (shadows teal, highlights orange). Shadow depth s,
+   on the luminance Y below TONE_TOE: Y x (m(2 - m))^s, m = Y / TONE_TOE, with slope 1 where it
+   ends (this game's scenes are mostly dark, so the toe stays at the near-blacks). Rolloff r, on
+   the brightest channel (what clips: a saturated fire's red is at full while its luminance is
+   low) above TONE_KNEE: a cubic with slope 1 at the knee and 0 at the white point
+   W = knee + (1 - knee)(1 + 2r), which reaches 1 there (monotonic for that range). u_pic: picture calibration (brightness offset,
+   contrast, 1 / gamma, on), last; then u_tone.w: Dithering, half a step of the 8-bit output either
+   way by a fixed per-pixel threshold, against the banding the curves and darker lighting bring
+   out in dark gradients. Each is off at its neutral values, so the image is the same as
+   without it. gs_picture is the calibration on the CPU. */
 static const char* present_fs =
     "#version 330 core\n"
-    "in vec2 v_uv; uniform sampler2D u_tex; uniform vec4 u_pic; out vec4 o;\n"
+    "in vec2 v_uv; in vec2 v_c; uniform sampler2D u_tex, u_bloom, u_ao, u_pre; uniform vec4 u_pic, u_post, u_tone; uniform vec2 u_aoon; out vec4 o;\n"
+    "const float TONE_KNEE = 0.5, TONE_TOE = 0.03;\n"
+    "float shoulder(float y){\n"
+    "  float e = 1.0 - TONE_KNEE, d = e * (1.0 + 2.0 * u_tone.x), u = min(y - TONE_KNEE, d);\n"
+    "  float b = (d - 2.0 * e) / (d * d * d), a = (3.0 * e - 2.0 * d) / (d * d);\n"
+    "  return TONE_KNEE + u + a * u * u + b * u * u * u;\n"
+    "}\n"
+    "float toe(float y){ float m = y / TONE_TOE; return y * pow(max(m * (2.0 - m), 0.0), u_tone.y); }\n"
     "void main(){\n"
     "  vec3 c = clamp(texture(u_tex, v_uv).rgb, 0.0, 1.0);\n"
+    "  if (u_post.w != 0.0) {\n"
+    "    vec3 l = pow(c, vec3(2.2));\n"
+    "    if (u_aoon.x > 0.0) {\n"   /* ambient occlusion; not on what the frame drew after its first text (u_pre: the picture before it) */
+    "      float a = texture(u_ao, v_c).r;\n"
+    "      if (u_aoon.y > 0.0 && any(greaterThan(abs(clamp(texture(u_pre, v_uv).rgb, 0.0, 1.0) - c), vec3(0.02)))) a = 1.0;\n"
+    "      l *= a;\n"
+    "    }\n"
+    "    if (u_post.x > 0.0) l += texture(u_bloom, v_c).rgb * u_post.x;\n"
+    "    if (u_tone.y > 0.0) { float y = dot(l, vec3(0.2126, 0.7152, 0.0722)); if (y > 0.0 && y < TONE_TOE) l *= toe(y) / y; }\n"
+    "    if (u_tone.x > 0.0) { float m = max(l.r, max(l.g, l.b)); if (m > TONE_KNEE) l *= shoulder(m) / m; }\n"
+    "    l = max(mix(vec3(dot(l, vec3(0.2126, 0.7152, 0.0722))), l, u_post.y), 0.0);\n"
+    "    l *= vec3(1.0 + u_post.z, 1.0, 1.0 - u_post.z);\n"
+    "    if (u_tone.z > 0.0) { float w = smoothstep(0.02, 0.5, dot(l, vec3(0.2126, 0.7152, 0.0722))); l *= mix(vec3(1.0), mix(vec3(0.90, 1.0, 1.10), vec3(1.10, 1.0, 0.86), w), u_tone.z); }\n"
+    "    c = clamp(pow(l, vec3(1.0 / 2.2)), 0.0, 1.0);\n"
+    "  }\n"
     "  if (u_pic.w != 0.0) c = clamp((pow(c, vec3(u_pic.z)) - 0.5) * u_pic.y + 0.5 + u_pic.x, 0.0, 1.0);\n"
+    "  if (u_tone.w > 0.0) c += (fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)) + 0.37)) - 0.5) / 255.0;\n"
     "  o = vec4(c, 1.0);\n"
+    "}\n";
+
+/* bloom (draw_display -> bloom_chain): level 0, half the display area's size, gets what is
+   brighter than the threshold (u_thr: threshold, knee; linear light) from the display area
+   (present_vs, u_rect), four bilinear taps over its texel, each weighted by 1 / (1 + luminance)
+   so a single bright texel of a high internal resolution does not flicker. Each further level is
+   half the previous (dual filter: down 5 taps, up 8 taps, added onto the larger level). */
+static const char* bloom_pre_fs =
+    "#version 330 core\n"
+    "in vec2 v_uv; uniform sampler2D u_tex; uniform vec4 u_rect; uniform vec2 u_texel, u_thr; out vec4 o;\n"
+    "vec3 tap(vec2 d, inout float wsum){\n"
+    "  vec3 c = pow(clamp(texture(u_tex, clamp(v_uv + d * u_texel, u_rect.xy, u_rect.zw)).rgb, 0.0, 1.0), vec3(2.2));\n"
+    "  float w = 1.0 / (1.0 + dot(c, vec3(0.2126, 0.7152, 0.0722)));\n"
+    "  wsum += w; return c * w;\n"
+    "}\n"
+    "void main(){\n"
+    "  float ws = 0.0;\n"
+    "  vec3 c = tap(vec2(-1.0, -1.0), ws) + tap(vec2(1.0, -1.0), ws) + tap(vec2(-1.0, 1.0), ws) + tap(vec2(1.0, 1.0), ws);\n"
+    "  c /= ws;\n"
+    "  float br = max(c.r, max(c.g, c.b));\n"
+    "  float s = clamp(br - u_thr.x + u_thr.y, 0.0, 2.0 * u_thr.y);\n"
+    "  s = s * s / (4.0 * u_thr.y + 1e-5);\n"
+    "  o = vec4(c * max(s, br - u_thr.x) / max(br, 1e-5), 1.0);\n"
+    "}\n";
+static const char* quad_vs =
+    "#version 330 core\n"
+    "out vec2 v_uv;\n"
+    "void main(){\n"
+    "  vec2 c = vec2((gl_VertexID & 1) != 0 ? 1.0 : 0.0, (gl_VertexID & 2) != 0 ? 1.0 : 0.0);\n"
+    "  v_uv = c;\n"
+    "  gl_Position = vec4(c * 2.0 - 1.0, 0.0, 1.0);\n"
+    "}\n";
+static const char* bloom_down_fs =
+    "#version 330 core\n"
+    "in vec2 v_uv; uniform sampler2D u_tex; uniform vec2 u_texel; out vec4 o;\n"
+    "void main(){\n"
+    "  vec2 d = u_texel, e = vec2(u_texel.x, -u_texel.y);\n"
+    "  vec3 c = texture(u_tex, v_uv).rgb * 4.0 + texture(u_tex, v_uv - d).rgb + texture(u_tex, v_uv + d).rgb\n"
+    "         + texture(u_tex, v_uv - e).rgb + texture(u_tex, v_uv + e).rgb;\n"
+    "  o = vec4(c / 8.0, 1.0);\n"
+    "}\n";
+static const char* bloom_up_fs =
+    "#version 330 core\n"
+    "in vec2 v_uv; uniform sampler2D u_tex; uniform vec2 u_texel; out vec4 o;\n"
+    "vec3 t(float x, float y){ return texture(u_tex, v_uv + vec2(x, y) * u_texel).rgb; }\n"
+    "void main(){\n"
+    "  vec3 c = t(-2.0, 0.0) + t(2.0, 0.0) + t(0.0, -2.0) + t(0.0, 2.0)\n"
+    "         + 2.0 * (t(-1.0, -1.0) + t(1.0, -1.0) + t(-1.0, 1.0) + t(1.0, 1.0));\n"
+    "  o = vec4(c / 12.0, 1.0);\n"
+    "}\n";
+
+/* ambient occlusion (draw_display -> ao_pass): at half the display area's size, from the frame's
+   depth (u_depth, GS depth / zmax as the vertex shader writes it; the view distance
+   w = -b / (Z + a), u_aoz: zmax, a, b): 12 samples on a rotated spiral within the radius, a share
+   of the screen's height (u_aok: the radius in uv x and y, |b|, strength), as the fixed cameras
+   stand 100 to 500 units off. A sample is measured against the pixel's surface plane (1 / w is
+   linear across it on screen; its slope from the neighbours), not the pixel's depth, so a floor
+   seen at a slant does not shade itself. A sample in front of the plane occludes by more than about two
+   steps of the depth buffer (16-bit: a step is w^2 / |b|, 2 units at 500) and less so up to a tenth
+   of the distance in front (beyond it not at all: a pillar far in front does not darken the wall
+   behind it). Depth 0 (nothing drawn) is open. */
+static const char* ao_fs =
+    "#version 330 core\n"
+    "in vec2 v_uv; uniform sampler2D u_depth; uniform vec4 u_rect, u_aoz, u_aok; out vec4 o;\n"
+    "float dist(vec2 uv){\n"
+    "  float d = texture(u_depth, clamp(uv, u_rect.xy, u_rect.zw)).r;\n"
+    "  if (d <= 0.0) return 1e9;\n"
+    "  float w = -u_aoz.z / (d * u_aoz.x + u_aoz.y);\n"
+    "  return w > 0.0 ? w : 1e9;\n"
+    "}\n"
+    "void main(){\n"
+    "  float w0 = dist(v_uv);\n"
+    "  if (w0 >= 1e8) { o = vec4(1.0); return; }\n"
+    "  vec2 rad = u_aok.xy, px = 2.0 / vec2(textureSize(u_depth, 0));\n"
+    "  float bias = max(0.01 * w0, 2.0 * w0 * w0 / u_aok.z), range = 0.1 * w0;\n"
+    /* the surface's plane: 1 / w is linear across it on screen; its slope from the neighbour on the
+       steadier side (at an edge the other side is another surface) */
+    "  float i0 = 1.0 / w0, ir = 1.0 / dist(v_uv + vec2(px.x, 0.0)), il = 1.0 / dist(v_uv - vec2(px.x, 0.0));\n"
+    "  float iu = 1.0 / dist(v_uv + vec2(0.0, px.y)), id = 1.0 / dist(v_uv - vec2(0.0, px.y));\n"
+    "  vec2 g = vec2(abs(ir - i0) < abs(i0 - il) ? ir - i0 : i0 - il, abs(iu - i0) < abs(i0 - id) ? iu - i0 : i0 - id) / px;\n"
+    "  float ang = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) * 6.2832, occ = 0.0;\n"
+    "  for (int i = 0; i < 12; i++) {\n"
+    "    float t = (float(i) + 0.5) / 12.0, a = ang + float(i) * 2.39996;\n"
+    "    vec2 off = vec2(cos(a), sin(a)) * rad * sqrt(t);\n"
+    "    float ip = i0 + dot(g, off);\n"   /* the plane there */
+    "    if (ip <= 0.0) continue;\n"
+    "    float diff = 1.0 / ip - dist(v_uv + off);\n"   /* how far the sample stands in front of it */
+    "    if (diff > bias) occ += 1.0 - smoothstep(range * 0.5, range, diff);\n"
+    "  }\n"
+    "  o = vec4(vec3(clamp(1.0 - u_aok.w * occ / 8.0, 0.0, 1.0)), 1.0);\n"
+    "}\n";
+static const char* ao_blur_fs =
+    "#version 330 core\n"
+    "in vec2 v_uv; uniform sampler2D u_tex; uniform vec2 u_texel; out vec4 o;\n"
+    "void main(){\n"
+    "  float s = 0.0;\n"
+    "  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) s += texture(u_tex, v_uv + vec2(x, y) * u_texel).r;\n"
+    "  o = vec4(vec3(s / 9.0), 1.0);\n"
     "}\n";
 
 /* HDR output (render/hdr.h): the displayed image (u_game, present_fs's SDR output) and the
@@ -313,11 +558,18 @@ void gs_renderer_init(void)
 #define U(n) u_##n = glGetUniformLocation(prog, "u_" #n)
     U(rt_size); U(rt_margin); U(tme); U(tfx); U(tcc); U(fst); U(texsize); U(fge); U(fogcol); U(ate); U(atst); U(aref);
     U(tex); U(tex_alpha_scale); U(texofs); U(premul); U(zscale); U(clamp_mode); U(clamp_vals); U(afail_pass); U(rt16);
+    U(lights); U(lopt); U(mat); U(dith);
 #undef U
     present_prog = compile(present_vs, present_fs);
     up_tex = glGetUniformLocation(present_prog, "u_tex");
     up_rect = glGetUniformLocation(present_prog, "u_rect");
     up_pic = glGetUniformLocation(present_prog, "u_pic");
+    up_bloom = glGetUniformLocation(present_prog, "u_bloom");
+    up_post = glGetUniformLocation(present_prog, "u_post");
+    up_tone = glGetUniformLocation(present_prog, "u_tone");
+    up_ao = glGetUniformLocation(present_prog, "u_ao");
+    up_pre = glGetUniformLocation(present_prog, "u_pre");
+    up_aoon = glGetUniformLocation(present_prog, "u_aoon");
 
     glGenVertexArrays(1, &vao);
     glGenVertexArrays(1, &svao);
@@ -333,6 +585,9 @@ void gs_renderer_init(void)
         glEnableVertexAttribArray(2); glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, r));
         glEnableVertexAttribArray(3); glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, fog));
         glEnableVertexAttribArray(4); glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, clip));
+        glEnableVertexAttribArray(5); glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, vpos));
+        glEnableVertexAttribArray(6); glVertexAttribPointer(6, 3, GL_FLOAT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, nrm));
+        glEnableVertexAttribArray(7); glVertexAttribPointer(7, 1, GL_FLOAT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, light));
     }
     glBindVertexArray(vao);
 
@@ -820,6 +1075,27 @@ static void uni2f(GLint l, float a, float b) { float v[2] = { a, b }; if (uni_ch
 static void uni4f(GLint l, float a, float b, float c, float d) { float v[4] = { a, b, c, d }; if (uni_changed(l, v, 4)) glUniform4f(l, a, b, c, d); }
 static void uni4i(GLint l, int a, int b, int c, int d) { int v[4] = { a, b, c, d }; if (uni_changed(l, v, 4)) glUniform4i(l, a, b, c, d); }
 
+/* anisotropic filtering (Anisotropic filtering, g_config.aniso: 0 off, else 2^aniso samples): the
+   bound texture's minifying filter for the game's filt. A texture with mip levels (textures.c
+   ntex_mips: native decodes and HD replacements without cut-outs; GL_TEXTURE_MAX_LEVEL 1..999)
+   is sampled through them when the game filters it bilinearly, else as the game asks. fs_src
+   takes the mip level from the texture coordinates before the GS's clamp and repeat regions
+   (textureGrad), so their seams do not pick the smallest level. */
+static GLint aniso_filter(GLint filt)
+{
+    static float max_aniso = -1.0f;
+    GLint levels = 0;
+    if (max_aniso < 0.0f) {   /* EXT/ARB_texture_filter_anisotropic: without it 0 (an error, cleared) */
+        max_aniso = 0.0f;
+        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max_aniso);
+        while (glGetError()) {}
+    }
+    glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, &levels);
+    if (levels <= 0 || levels >= 1000) return filt;
+    if (max_aniso >= 1.0f) glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, g_config.aniso > 0 && filt == GL_LINEAR ? SDL_min((float)(1 << g_config.aniso), max_aniso) : 1.0f);
+    return g_config.aniso > 0 && filt == GL_LINEAR ? GL_LINEAR_MIPMAP_LINEAR : filt;
+}
+
 /* the pending batch is drawn in two passes (alpha test with a fail mode that still writes) */
 static int two_pass(uint64_t test) { return (test & 1) && ((test >> 12) & 3) != 0 && ((test >> 1) & 7) != 1; }
 int gs_batch_two_pass(void) { return batch_valid && vcount && two_pass(batch_state.ctx.test); }
@@ -1037,6 +1313,46 @@ static void reload_replay(RenderTarget* rt, uint32_t epoch)
 static struct { GLuint tex, fbo; int pw, ph; } img[2];
 static int fin, sti, fin_fresh;    /* final and start image; fin_fresh: img[fin] is the display target */
 static uint32_t fin_fbp, fin_fbw;
+/* bloom: the target before its first text ([0] executed frame, [1] replay; pretext_capture), and the
+   shown frame is no play (gs_post_frame) */
+static struct { GLuint tex, fbo; int pw, ph, valid; } pretext[2];
+/* ambient occlusion ([0] while a frame executes, [1] in a replay): the depth native 3D wrote into
+   a full-screen target (src: tex 0 none; zmax: the GS range of its format; dirty: written since
+   the copy), and its copy (ao_keep), made before a draw that is not native 3D writes the same
+   depth (the camera filter and fades overwrite it with a flat value) or at the frame's end */
+static struct { GLuint tex; int pw, ph; float zmax; int dirty; } ao_src[2];
+static struct { GLuint tex, fbo; int pw, ph, ok; float zmax; } ao_copy[2];
+static GLuint cur_dt, ao_read_fbo;
+static uint32_t mat_hl;   /* the material picker's highlighted texture (gs_mat_highlight) */
+#define GL_NONE 0
+static void ao_keep(int k)
+{
+    const int pw = ao_src[k].pw, ph = ao_src[k].ph;
+    ao_src[k].dirty = 0;
+    if (!ao_read_fbo) glGenFramebuffers(1, &ao_read_fbo);
+    if (!ao_copy[k].tex || ao_copy[k].pw != pw || ao_copy[k].ph != ph) {
+        if (!ao_copy[k].tex) { glGenTextures(1, &ao_copy[k].tex); glGenFramebuffers(1, &ao_copy[k].fbo); }
+        glBindTexture(GL_TEXTURE_2D, ao_copy[k].tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, pw, ph, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glBindFramebuffer(GL_FRAMEBUFFER, ao_copy[k].fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, ao_copy[k].tex, 0);
+        glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
+        ao_copy[k].pw = pw; ao_copy[k].ph = ph;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, ao_read_fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, ao_src[k].tex, 0);
+    glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, ao_read_fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, ao_copy[k].fbo);
+    glDisable(GL_SCISSOR_TEST);
+    glDepthMask(GL_TRUE);
+    glBlitFramebuffer(0, 0, pw, ph, 0, 0, pw, ph, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    ao_copy[k].zmax = ao_src[k].zmax;
+    ao_copy[k].ok = 1;
+}
+static int post_menu;
 static int start_valid;
 static uint32_t start_fbp, start_fbw;
 static int rtstart_enabled(void)
@@ -1135,6 +1451,8 @@ static GLuint replay_capture_for(GLuint t)
 void gs_replay_begin(void)
 {
     rcap[0].live = rcap[1].live = 0;
+    pretext[1].valid = 0;
+    ao_src[1].tex = 0; ao_src[1].dirty = 0; ao_copy[1].ok = 0;
     RenderTarget* disp = start_valid ? rt_find(start_fbp, start_fbw) : NULL;
     if (disp && (disp->pw != img[sti].pw || disp->ph != img[sti].ph)) disp = NULL;
     for (int i = 0; i < nreloads; i++) reloads[i].applied = 0;
@@ -1162,6 +1480,33 @@ void gs_replay_begin(void)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     gt_mark(GT_RB);
 }
+
+/* bloom leaves text out (subtitles, messages, item names, the ammo counter): at the first draw from
+   a font page (ntex_is_font) into a full-screen target, the target is copied, [0] while a frame
+   executes, [1] in a replay, and draw_display takes bloom from that copy and keeps ambient
+   occlusion off what differs from it. Only with bloom or AO on and in play (post_menu). */
+static void pretext_capture(GLuint t)
+{
+    int k = gs_replaying ? 1 : 0;
+    if (pretext[k].valid || (g_config.bloom <= 0 && g_config.ao <= 0) || post_menu || !cur_rt || cur_rt->vw < 640 || cur_rt->vh < 448 || (t && !ntex_is_font(t))) return;
+    ensure_target(&pretext[k].tex, &pretext[k].fbo, &pretext[k].pw, &pretext[k].ph, cur_rt->pw, cur_rt->ph);
+    glDisable(GL_SCISSOR_TEST);
+    blit_color(cur_rt->fbo, pretext[k].fbo, cur_rt->pw, cur_rt->ph);
+    glBindFramebuffer(GL_FRAMEBUFFER, cur_rt->fbo);
+    glEnable(GL_SCISSOR_TEST);   /* gs_flush has set it, with its box */
+    pretext[k].valid = 1;
+}
+/* the port's HUD (the flashlight's battery) begins: what was drawn so far is drawn, and the
+   target copied as at the first text (t 0: no font test) */
+void gs_pretext_mark(void)
+{
+    gs_flush();
+    if (cur_rt) pretext_capture(0);
+}
+/* the copy before the text for a displayed image pw x ph (k: 0 the executed frame, 1 a replay), or 0.
+   The game draws into one buffer and copies it to the displayed one at the swap (PS2_swap), so the
+   copy is of a full-screen target of the same size, not of the displayed buffer itself. */
+static GLuint pretext_for(int k, int pw, int ph) { return pretext[k].valid && pretext[k].pw == pw && pretext[k].ph == ph ? pretext[k].tex : 0; }
 
 void gs_flush(void)
 {
@@ -1191,6 +1536,7 @@ void gs_flush(void)
         uint32_t zbp = st->ctx.zbuf & 0x1FF;
         GLuint dt = depth_for(zbp, cur_rt->pw, cur_rt->ph);
         attach_depth(cur_rt->fbo, dt);
+        cur_dt = dt;
     }
     glViewport(0, 0, cur_rt->pw, cur_rt->ph);
     {
@@ -1247,6 +1593,19 @@ void gs_flush(void)
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(zte ? zf[ztst] : GL_ALWAYS);
         glDepthMask(zmsk ? GL_FALSE : GL_TRUE);
+        if (g_config.ao > 0 && zte && !zmsk && cur_rt->vw >= 640 && cur_rt->vh >= 448) {   /* ambient occlusion: the 3D depth */
+            int k = gs_replaying ? 1 : 0;
+            if (nsruns || (vcount && vbuf[0].w != 1.0f)) {   /* native 3D (homogeneous positions) */
+                uint32_t zpsm = (st->ctx.zbuf >> 24) & 0xF;
+                ao_src[k].tex = cur_dt; ao_src[k].pw = cur_rt->pw; ao_src[k].ph = cur_rt->ph;
+                ao_src[k].zmax = zpsm == 0 ? 4294967296.0f : zpsm == 1 ? 16777216.0f : 65536.0f;
+                ao_src[k].dirty = 1;
+            } else if (ao_src[k].dirty && ao_src[k].tex == cur_dt) {   /* about to be overwritten: copied first */
+                ao_keep(k);
+                glBindFramebuffer(GL_FRAMEBUFFER, cur_rt->fbo);
+                glEnable(GL_SCISSOR_TEST);   /* gs_flush has set it, with its box */
+            }
+        }
     }
     /* color mask from FBMSK (whole channels only) */
     glColorMask((fbmsk & 0xFF) != 0xFF, (fbmsk & 0xFF00) != 0xFF00, (fbmsk & 0xFF0000) != 0xFF0000,
@@ -1263,6 +1622,14 @@ void gs_flush(void)
         if (notex) { tme = 0; glDisable(GL_BLEND); }
     }
     uni1i(u_tme, tme);
+    {   /* the texture's material (materials.c) and the picker's highlight */
+        uint32_t h = tme && (mat_hl || (g_config.mat_shine > 0 && mat_active())) ? ntex_hash_of(st->ctx.tex0) : 0;
+        float shine = 0, strength = 0, hl = 0;
+        int metal = 0, cls = h && g_config.mat_shine > 0 ? mat_get(h) : 0;
+        if (cls) mat_class_params(cls, &shine, &strength, &metal);
+        if (h && h == mat_hl) hl = 0.3f + 0.2f * SDL_sinf((float)SDL_GetTicks() * 0.008f);
+        uni4f(u_mat, shine, strength, (float)metal, hl);
+    }
     if (tme) {
         uint64_t tex0 = st->ctx.tex0;
         uint32_t tbp = tex0 & 0x3FFF, tpsm = (tex0 >> 20) & 0x3F;
@@ -1305,12 +1672,13 @@ void gs_flush(void)
                 t = tex_get(tex0, st->texa, &w, &h, &ascale);
                 if (record_memo && record_memo->rt < 0) { record_memo->tex = t; record_memo->w = w; record_memo->h = h; record_memo->ascale = ascale; }
             }
+            pretext_capture(t);
             glBindTexture(GL_TEXTURE_2D, hdpack_bind(t, &ascale));   /* a replacement keeps the texture's UV space */
             uni4f(u_texofs, 1.0f / (float)w, 1.0f / (float)h, 0.0f, 0.0f);
             uni1f(u_tex_alpha_scale, ascale);
             uni4f(u_rt16, 0, 0, 0, 0);
         }
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, srt ? filt : aniso_filter(filt));
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (wms == 0 && !srt) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (wmt == 0 && !srt) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
@@ -1323,6 +1691,7 @@ void gs_flush(void)
         uni4f(u_clamp_vals, (float)((st->ctx.clamp >> 4) & 0x3FF), (float)((st->ctx.clamp >> 14) & 0x3FF),
                     (float)((st->ctx.clamp >> 24) & 0x3FF), (float)((st->ctx.clamp >> 34) & 0x3FF));
     }
+    uni1f(u_dith, g_config.dither ? 1.0f : 0.0f);
     uni1i(u_fge, (int)((st->prim >> 5) & 1));
     {
         float fr = (float)(st->fogcol & 0xFF), fg = (float)((st->fogcol >> 8) & 0xFF), fb = (float)((st->fogcol >> 16) & 0xFF);
@@ -1381,6 +1750,8 @@ static void push(const GsVertex* v, const GsVertex* attr, float s, float t)
     GlVertex* o = &vbuf[vcount++];
     o->x = v->x; o->y = v->y; o->z = attr->z; o->w = 1.0f;
     o->clip[0] = o->clip[1] = 1.0f;
+    o->vpos[0] = o->vpos[1] = o->vpos[2] = o->nrm[0] = o->nrm[1] = o->nrm[2] = 0.0f;
+    o->light = 0.0f;
     o->s = s; o->t = t; o->q = attr->q;
     const float* u = u8_unit();
     o->r = u[attr->r]; o->g = u[attr->g]; o->b = u[attr->b]; o->a = u[attr->a];
@@ -1484,6 +1855,9 @@ static void native_to_gl(unsigned int prim, const NativeVertex* v, int n, GlVert
             o->r = u[p->r]; o->g = u[p->g]; o->b = u[p->b]; o->a = u[p->a];
             o->fog = (float)((int32_t)q->fog & 0xFF);   /* XYZF2 F: FTOI4, low 8 bits */
             o->clip[0] = q->near_d; o->clip[1] = q->far_d;
+            o->vpos[0] = q->vx; o->vpos[1] = q->vy; o->vpos[2] = q->vz;
+            o->nrm[0] = q->nx; o->nrm[1] = q->ny; o->nrm[2] = q->nz;
+            o->light = flat ? 0.0f : (float)q->light;   /* flat shading keeps its one colour */
         }
 }
 
@@ -1530,11 +1904,41 @@ void gs_native_cache_begin(size_t nev)
     memset(ncache_at, 0xFF, nev * sizeof(*ncache_at));
 }
 
+/* the material picker (materials.h): a request at GS x, y (the 640 x 480 picture, the hor+ margins
+   outside), the nearest textured native 3D triangle there in the executed frame (GS depth: larger
+   is nearer), its texture's hash once the frame is done; and the highlighted texture */
+static int pick_req, pick_ready;
+static float pick_x, pick_y, pick_z;
+static uint32_t pick_hash, pick_out;
+void gs_pick_request(float x, float y) { pick_x = x; pick_y = y; pick_req = 1; pick_z = -1e30f; pick_hash = 0; }
+int gs_pick_result(uint32_t* hash) { if (!pick_ready) return 0; pick_ready = 0; *hash = pick_out; return 1; }
+void gs_mat_highlight(uint32_t hash) { mat_hl = hash; }
+
+static void pick_test(unsigned int prim, const NativeVertex* v, int n)
+{
+    const GsContext* c = &gs.ctx[(prim >> 9) & 1];
+    float ofx = (float)(c->xyoffset & 0xFFFF) / 16.0f, ofy = (float)((c->xyoffset >> 32) & 0xFFFF) / 16.0f;
+    if (!((prim >> 4) & 1)) return;   /* untextured */
+    for (int i = 0; i + 2 < n; i += 3) {
+        float x[3], y[3], z[3], d, a, b, g;
+        for (int k = 0; k < 3; k++) { x[k] = v[i + k].x / v[i + k].w - ofx; y[k] = v[i + k].y / v[i + k].w - ofy; z[k] = v[i + k].z / v[i + k].w; }
+        d = (y[1] - y[2]) * (x[0] - x[2]) + (x[2] - x[1]) * (y[0] - y[2]);
+        if (d == 0.0f) continue;
+        a = ((y[1] - y[2]) * (pick_x - x[2]) + (x[2] - x[1]) * (pick_y - y[2])) / d;
+        b = ((y[2] - y[0]) * (pick_x - x[2]) + (x[0] - x[2]) * (pick_y - y[2])) / d;
+        g = 1.0f - a - b;
+        if (a < 0 || b < 0 || g < 0) continue;
+        d = a * z[0] + b * z[1] + g * z[2];
+        if (d > pick_z) { pick_z = d; pick_hash = ntex_hash_of(c->tex0); }
+    }
+}
+
 /* draw n triangle vertices; ev >= 0: the executed frame's strip of that event (kept) */
 void gs_draw_native(unsigned int prim, const NativeVertex* v, int n, long ev)
 {
     static GlVertex tmp[64 * 9];
     GlVertex* o = tmp;
+    if (pick_req && !gs_replaying) pick_test(prim, v, n);
     if (ev >= 0) {
         GROW_TO(ncache, nncache + (size_t)n, cncache);
         o = ncache + nncache;
@@ -1601,11 +2005,188 @@ static int out_w, out_h, ui_w, ui_h;
 static GLint uh_game, uh_ui, uh_hdr;
 static void ensure_target(GLuint* tex, GLuint* fbo, int* cw, int* ch, int w, int h);
 
-/* the 640x480 display area of a render-target texture to the window */
-static void draw_display(GLuint tex, int rt_vw, int rt_vh)
+/* post-processing in the present pass (present_fs u_post): bloom's levels (bloom_chain), and
+   whether the shown frame gets no bloom: a movie (gs_movie_bind) or a menu task (the status
+   screen and the map, pc_frame_menu; their text and panels would glow) */
+#define BLOOM_LEVELS 6
+/* Bloom on (g_config.bloom): strength and threshold (% of white, linear light by gamma 2.2), and
+   the warmth that goes with it (u_post.z x 250; saturation stays the original's) */
+#define BLOOM_STRENGTH 50
+#define BLOOM_THRESHOLD 75
+#define BLOOM_WARMTH 10
+/* Colour grading on (g_config.grading): highlight rolloff, shadow depth and split toning, % (u_tone) */
+#define GRADE_ROLLOFF 60
+#define GRADE_SHADOWS 30
+#define GRADE_SPLIT 20
+/* Ambient occlusion on (g_config.ao): strength %, radius % of the screen's height (ao_pass) */
+#define AO_STRENGTH 60
+#define AO_RADIUS 2
+static GLuint bloom_tex[BLOOM_LEVELS], bloom_fbo[BLOOM_LEVELS], bloom_pre, bloom_down, bloom_up;
+static int bloom_w[BLOOM_LEVELS], bloom_h[BLOOM_LEVELS], post_movie;
+static GLint ub_pre_tex, ub_pre_rect, ub_pre_texel, ub_pre_thr, ub_down_tex, ub_down_texel, ub_up_tex, ub_up_texel;
+void gs_post_frame(int menu) { post_menu = menu; }
+
+/* per-pixel lighting: the executed frame's light sets (stream.h STREAM_LSET floats each) as rows
+   of an RGBA32F texture on unit LIGHT_UNIT, which fs_src reads by NativeVertex.light (row 0
+   unused); replays draw with the same. u_lopt: the lighting options as light_glue.c uses them. */
+#define LIGHT_UNIT 4
+int pc_light_main(void);   /* host.c: the Lighting mode's main light, % */
+int pc_light_soft(void);   /* host.c: Soft shading, % */
+#define GL_RGBA32F 0x8814
+void gs_light_sets(const float* sets, size_t n)
 {
-    int ww, wh;
+    static GLuint tex;
+    static int rows;
+    if (!n) return;
+    if (!tex) {
+        glGenTextures(1, &tex);
+        glActiveTexture(GL_TEXTURE0 + LIGHT_UNIT);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
+    glActiveTexture(GL_TEXTURE0 + LIGHT_UNIT);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    if ((int)n + 1 > rows) {
+        rows = (int)n + 1 < 64 ? 64 : (int)n + 1;
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, STREAM_LSET / 4, rows, 0, GL_RGBA, GL_FLOAT, NULL);
+    }
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 1, STREAM_LSET / 4, (GLsizei)n, GL_RGBA, GL_FLOAT, sets);
+    glActiveTexture(GL_TEXTURE0);
+    glUseProgram(prog);
+    glUniform1i(u_lights, LIGHT_UNIT);
+    glUniform4f(u_lopt, pc_light_soft() / 100.0f, g_config.light_falloff ? 1.0f : 0.0f, pc_light_main() / 100.0f, g_config.light_pixel ? 1.0f : 0.0f);
+}
+
+/* the display area rect (u_rect) of tex, vw x vh window pixels, into the bloom levels; returns
+   how many there are (level 0 holds the sum of all), 0 for none */
+static int bloom_chain(GLuint tex, const float rect[4], int vw, int vh)
+{
+    int n = 0, w = vw / 2, h = vh / 2;
+    float thr = SDL_powf(BLOOM_THRESHOLD / 100.0f, 2.2f);
+    if (!bloom_pre) {
+        bloom_pre = compile(present_vs, bloom_pre_fs);
+        ub_pre_tex = glGetUniformLocation(bloom_pre, "u_tex"); ub_pre_rect = glGetUniformLocation(bloom_pre, "u_rect");
+        ub_pre_texel = glGetUniformLocation(bloom_pre, "u_texel"); ub_pre_thr = glGetUniformLocation(bloom_pre, "u_thr");
+        bloom_down = compile(quad_vs, bloom_down_fs);
+        ub_down_tex = glGetUniformLocation(bloom_down, "u_tex"); ub_down_texel = glGetUniformLocation(bloom_down, "u_texel");
+        bloom_up = compile(quad_vs, bloom_up_fs);
+        ub_up_tex = glGetUniformLocation(bloom_up, "u_tex"); ub_up_texel = glGetUniformLocation(bloom_up, "u_texel");
+    }
+    for (; n < BLOOM_LEVELS && w >= 4 && h >= 4; n++, w /= 2, h /= 2) ensure_target(&bloom_tex[n], &bloom_fbo[n], &bloom_w[n], &bloom_h[n], w, h);
+    if (!n) return 0;
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    clip_distances(0);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glBindVertexArray(present_vao);
+    glActiveTexture(GL_TEXTURE0);
+    glBindFramebuffer(GL_FRAMEBUFFER, bloom_fbo[0]);
+    glViewport(0, 0, bloom_w[0], bloom_h[0]);
+    glUseProgram(bloom_pre);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glUniform1i(ub_pre_tex, 0);
+    glUniform4f(ub_pre_rect, rect[0], rect[1], rect[2], rect[3]);
+    glUniform2f(ub_pre_texel, (rect[2] - rect[0]) / bloom_w[0] * 0.5f, (rect[3] - rect[1]) / bloom_h[0] * 0.5f);
+    glUniform2f(ub_pre_thr, thr, thr * 0.5f);
+    glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
+    glUseProgram(bloom_down);
+    glUniform1i(ub_down_tex, 0);
+    for (int i = 1; i < n; i++) {
+        glBindFramebuffer(GL_FRAMEBUFFER, bloom_fbo[i]);
+        glViewport(0, 0, bloom_w[i], bloom_h[i]);
+        glBindTexture(GL_TEXTURE_2D, bloom_tex[i - 1]);
+        glUniform2f(ub_down_texel, 1.0f / bloom_w[i - 1], 1.0f / bloom_h[i - 1]);
+        glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
+    }
+    glUseProgram(bloom_up);
+    glUniform1i(ub_up_tex, 0);
+    glEnable(GL_BLEND);
+    glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+    glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ONE);
+    for (int i = n - 1; i > 0; i--) {
+        glBindFramebuffer(GL_FRAMEBUFFER, bloom_fbo[i - 1]);
+        glViewport(0, 0, bloom_w[i - 1], bloom_h[i - 1]);
+        glBindTexture(GL_TEXTURE_2D, bloom_tex[i]);
+        glUniform2f(ub_up_texel, 0.5f / bloom_w[i], 0.5f / bloom_h[i]);
+        glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
+    }
+    glDisable(GL_BLEND);
+    return n;
+}
+
+/* ambient occlusion: the frame's projection (gs_ao_frame) and the half-size AO and its blur */
+static GLuint ao_tex[2], ao_fbo[2], ao_prog, ao_blur_prog;
+static int ao_w[2], ao_h[2];
+static float ao_cam[4];   /* kx, ky (GS pixels per unit at distance 1), depth a, b (w = -b / (Z + a)) */
+static GLint ua_depth, ua_rect, ua_aoz, ua_aok, ub_tex, ub_texel;
+
+void gs_ao_frame(const float* cam) { ao_cam[0] = cam[12]; ao_cam[1] = cam[13]; ao_cam[2] = cam[16]; ao_cam[3] = cam[17]; }
+
+/* the AO of depth (zmax: its GS range) over the display area rect of a target rt_vw x rt_vh GS
+   pixels into ao_tex[1], half of vw x vh; 0 if there is none */
+static int ao_pass(GLuint depth, float zmax, const float rect[4], int rt_vw, int rt_vh, int vw, int vh)
+{
+    int w = vw / 2, h = vh / 2;
+    if (!depth || w < 4 || h < 4 || ao_cam[3] == 0.0f) return 0;
+    if (!ao_prog) {
+        ao_prog = compile(present_vs, ao_fs);
+        ua_depth = glGetUniformLocation(ao_prog, "u_depth"); ua_rect = glGetUniformLocation(ao_prog, "u_rect");
+        ua_aoz = glGetUniformLocation(ao_prog, "u_aoz"); ua_aok = glGetUniformLocation(ao_prog, "u_aok");
+        ao_blur_prog = compile(quad_vs, ao_blur_fs);
+        ub_tex = glGetUniformLocation(ao_blur_prog, "u_tex"); ub_texel = glGetUniformLocation(ao_blur_prog, "u_texel");
+    }
+    for (int i = 0; i < 2; i++) ensure_target(&ao_tex[i], &ao_fbo[i], &ao_w[i], &ao_h[i], w, h);
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    clip_distances(0);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glBindVertexArray(present_vao);
+    glActiveTexture(GL_TEXTURE0);
+    glBindFramebuffer(GL_FRAMEBUFFER, ao_fbo[0]);
+    glViewport(0, 0, w, h);
+    glUseProgram(ao_prog);
+    glBindTexture(GL_TEXTURE_2D, depth);
+    glUniform1i(ua_depth, 0);
+    glUniform4f(ua_rect, rect[0], rect[1], rect[2], rect[3]);
+    glUniform4f(ua_aoz, zmax, ao_cam[2], ao_cam[3], 0.0f);
+    glUniform4f(ua_aok, 4.8f * AO_RADIUS / rt_vw, 4.8f * AO_RADIUS / rt_vh, fabsf(ao_cam[3]), AO_STRENGTH / 100.0f);   /* % of 480 lines */
+    glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
+    glBindFramebuffer(GL_FRAMEBUFFER, ao_fbo[1]);
+    glUseProgram(ao_blur_prog);
+    glBindTexture(GL_TEXTURE_2D, ao_tex[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glUniform1i(ub_tex, 0);
+    glUniform2f(ub_texel, 1.0f / w, 1.0f / h);
+    glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
+    return 1;
+}
+
+/* the 640x480 display area of a render-target texture to the window; bloom from pre (the same
+   target before its text, pretext_for) if not 0; replay: an in-between image (its AO from the
+   replay's depth, else the executed frame's copy) */
+static void draw_display(GLuint tex, int rt_vw, int rt_vh, GLuint pre, int replay)
+{
+    int ww, wh, vx = 0, vy = 0, vw = 0, vh = 0, levels = 0, ao_on = 0;
+    float dw = 640.0f, dh = 480.0f, rect[4] = { 0, 0, 1, 1 };
     SDL_GetWindowSizeInPixels(g_window, &ww, &wh);
+    if (tex) {
+        float x0;
+        display_rect(ww, wh, &vx, &vy, &vw, &vh, &dw);
+        x0 = g_margin_x && dw > 640.0f ? 0.0f : (float)g_margin_x;
+        rect[0] = x0 / rt_vw; rect[1] = 0.0f; rect[2] = (x0 + dw) / rt_vw; rect[3] = dh / rt_vh;
+        if (g_config.bloom > 0 && !post_movie && !post_menu) levels = bloom_chain(pre ? pre : tex, rect, vw, vh);
+        if (g_config.ao > 0 && !post_movie && !post_menu) {
+            int k = replay ? 1 : 0;
+            if (ao_src[k].dirty) ao_keep(k);   /* nothing overwrote it: as the frame ended */
+            if (ao_copy[k].ok) ao_on = ao_pass(ao_copy[k].tex, ao_copy[k].zmax, rect, rt_vw, rt_vh, vw, vh);
+        }
+    }
     if (hdr_active() && ww > 0 && wh > 0) ensure_target(&out_tex, &out_fbo, &out_w, &out_h, ww, wh);
     glBindFramebuffer(GL_FRAMEBUFFER, out_fbo);
     glDisable(GL_SCISSOR_TEST);
@@ -1617,26 +2198,37 @@ static void draw_display(GLuint tex, int rt_vw, int rt_vh)
     glClearColor(0, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
     if (tex) {
-        float dw, dh = 480.0f;
-        int vx, vy, vw, vh;
-        display_rect(ww, wh, &vx, &vy, &vw, &vh, &dw);
         glViewport(vx, vy, vw, vh);
         glUseProgram(present_prog);
+        glActiveTexture(GL_TEXTURE0 + 1);
+        glBindTexture(GL_TEXTURE_2D, levels ? bloom_tex[0] : 0);
+        glActiveTexture(GL_TEXTURE0 + 2);
+        glBindTexture(GL_TEXTURE_2D, ao_on ? ao_tex[1] : 0);
+        glActiveTexture(GL_TEXTURE0 + 3);
+        glBindTexture(GL_TEXTURE_2D, ao_on && pre ? pre : 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, tex);
         /* a replay target may have been sampled by a draw with TEX1's NEAREST filter */
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glUniform1i(up_tex, 0);
+        glUniform1i(up_bloom, 1);
+        glUniform1i(up_ao, 2);
+        glUniform1i(up_pre, 3);
+        glUniform2f(up_aoon, ao_on ? 1.0f : 0.0f, ao_on && pre ? 1.0f : 0.0f);
         {
             float b, k, ig;
             int on = picture(&b, &k, &ig);
             glUniform4f(up_pic, b, k, ig, on ? 1.0f : 0.0f);
         }
-        {
-            float x0 = g_margin_x && dw > 640.0f ? 0.0f : (float)g_margin_x;
-            glUniform4f(up_rect, x0 / rt_vw, 0.0f, (x0 + dw) / rt_vw, dh / rt_vh);
+        {   /* level 0 holds the sum of the levels: 100% adds their mean four times */
+            float bloom = levels ? BLOOM_STRENGTH / 100.0f * 4.0f / levels : 0.0f, warmth = g_config.bloom ? BLOOM_WARMTH : 0;
+            int on = levels || ao_on || warmth != 0 || g_config.grading;
+            glUniform4f(up_post, bloom, 1.0f, warmth / 250.0f, on ? 1.0f : 0.0f);
+            const float g = g_config.grading ? 0.01f : 0.0f;
+            glUniform4f(up_tone, GRADE_ROLLOFF * g, GRADE_SHADOWS * g, GRADE_SPLIT * g, g_config.dither ? 1.0f : 0.0f);
         }
+        glUniform4f(up_rect, rect[0], rect[1], rect[2], rect[3]);
         glBindVertexArray(present_vao);
         glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
     }
@@ -2009,6 +2601,8 @@ void gs_frame_begin(void)
     if (ndoomed) { for (size_t i = 0; i < ndoomed; i++) hdpack_forget(doomed[i]); glDeleteTextures((GLsizei)ndoomed, doomed); ndoomed = 0; }
     nreloads = 0;
     mv_tbp = UINT32_MAX;   /* a movie frame binds it again (EV_MOVIE) */
+    pretext[0].valid = 0;
+    ao_src[0].tex = 0; ao_src[0].dirty = 0; ao_copy[0].ok = 0;
     snapshot_valid = 0;   /* no replays of the previous frame while this one is half executed (download) */
     memset(first, 0, sizeof(first));
     gs_set_scale(gs_wanted_scale());
@@ -2064,6 +2658,9 @@ void gs_frame_executed(int interpolate)
         if (e && nerr++ < 10) host_log("gl error 0x%x in frames %llu..%llu\n", e, (unsigned long long)(frame_no > 63 ? frame_no - 63 : 1), (unsigned long long)frame_no + 1);
     }
     frame_no++;
+    post_movie = mv_tbp != UINT32_MAX;   /* the frame shows a movie: no bloom on it */
+    if (ao_src[0].dirty) ao_keep(0);   /* its replays draw into the same depth before its own image is shown */
+    if (pick_req) { pick_req = 0; pick_out = pick_hash; pick_ready = 1; }   /* the material picker */
     rt = rt_find(gs.disp_fbp, gs.disp_fbw ? gs.disp_fbw : 10);
     disp_end = rt ? (int)(rt - rts) : -1;
     snapshot_valid = 0;
@@ -2075,7 +2672,7 @@ void gs_frame_executed(int interpolate)
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         fin_fresh = 1; fin_fbp = rt->fbp; fin_fbw = rt->fbw;
         final_vw = rt->vw; final_vh = rt->vh;
-        if (dump_on()) { draw_display(img[fin].tex, final_vw, final_vh); dump_frame(0); }   /* RECVX_DUMP_FRAMES: the real image */
+        if (dump_on()) { draw_display(img[fin].tex, final_vw, final_vh, pretext_for(0, img[fin].pw, img[fin].ph), 0); dump_frame(0); }   /* RECVX_DUMP_FRAMES: the real image */
         final_dumped = 1;
         if (interpolate) { snapshot_valid = rt_snapshot(); gs_native_cache_upload(); }
     } else {
@@ -2125,9 +2722,24 @@ void gs_replay_check(const struct Frame* cur)
 
 /* show the frame at position t between the previous and the executed frame (t >= 1 or no
    replay: the frame itself); returns how long the buffer swap blocked (ns) */
+/* test aid: RECVX_MATPICK="frame:x:y:class" picks at x, y (the game's 640 x 480 screen space) once
+   that executed frame is reached, gives the texture class `class` (materials.c order) and keeps it
+   highlighted; logs the hash */
+static void matpick_test(void)
+{
+    static int f = -2, cls;
+    static float x, y;
+    uint32_t h;
+    if (f == -2) { const char* e = SDL_getenv("RECVX_MATPICK"); f = -1; if (e && SDL_sscanf(e, "%d:%f:%f:%d", &f, &x, &y, &cls) != 4) f = -1; }
+    if (f < 0) return;
+    if ((int)frame_no == f) { gs_pick_request(x, y); f = 0; }
+    if (gs_pick_result(&h)) { host_log("matpick: texture %08x at %.0f %.0f -> class %d\n", h, x, y, cls); if (h) { mat_set(h, cls); gs_mat_highlight(h); } f = -1; }
+}
+
 uint64_t gs_present(const struct Frame* cur, float t)
 {
     uint64_t swap;
+    matpick_test();
     int inbetween = cur && snapshot_valid && t < 1.0f, hdr = hdr_active(), ww, wh;
     prof_push(PROF_PRESENT);
     gt_present_begin();
@@ -2137,9 +2749,9 @@ uint64_t gs_present(const struct Frame* cur, float t)
         stream_replay(cur, t);
         gt_mark(GT_RD);
         rt = rt_find(gs.disp_fbp, gs.disp_fbw ? gs.disp_fbw : 10);
-        draw_display(rt ? rt->tex : 0, rt ? rt->vw : 640, rt ? rt->vh : 512);
+        draw_display(rt ? rt->tex : 0, rt ? rt->vw : 640, rt ? rt->vh : 512, rt ? pretext_for(1, rt->pw, rt->ph) : 0, 1);
     } else {
-        draw_display(final_vw ? img[fin].tex : 0, final_vw ? final_vw : 640, final_vw ? final_vh : 512);
+        draw_display(final_vw ? img[fin].tex : 0, final_vw ? final_vw : 640, final_vw ? final_vh : 512, final_vw ? pretext_for(0, img[fin].pw, img[fin].ph) : 0, 0);
     }
     if (hdr && ww > 0 && wh > 0) {   /* the overlay on its own, composed at paper white */
         ensure_target(&ui_tex, &ui_fbo, &ui_w, &ui_h, ww, wh);

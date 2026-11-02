@@ -245,8 +245,75 @@ static void inventory(void)
     CHECK(!pc_to_special(d, 0x08, 55, 50));                /* the knife (count 0) is no special-slot item */
 }
 
+/* bloom only in play (tasks 7 game, 8 event, 11 door animation), never with a 2D screen running */
+static void post(void)
+{
+    CHECK(pc_post_bloom(1u << 7, 0));
+    CHECK(pc_post_bloom(1u << 8, 0));
+    CHECK(pc_post_bloom(1u << 11, 0));
+    CHECK(pc_post_bloom(0x0073dfc0u, 0x0003de00u));          /* play as logged: monitors and screen saver (20..22) run too */
+    CHECK(!pc_post_bloom(0x00300008u, 0));                    /* the start-up and title phase as logged */
+    CHECK(!pc_post_bloom(0x0073dfc0u, 0x0003dc00u));          /* ... and with the status screen running */
+    CHECK(!pc_post_bloom(1u << 4, 0));                        /* the title screen */
+    CHECK(!pc_post_bloom((1u << 7) | (1u << 9), 1u << 7));    /* the status screen over the game */
+    CHECK(!pc_post_bloom((1u << 7) | (1u << 10), 1u << 7));   /* the map */
+    CHECK(!pc_post_bloom((1u << 7) | (1u << 15), 1u << 7));   /* typewriter */
+    CHECK(!pc_post_bloom((1u << 7) | (1u << 16), 1u << 7));   /* OPTION */
+    CHECK(!pc_post_bloom((1u << 7) | (1u << 12), 0));         /* a movie */
+    CHECK(!pc_post_bloom(1u << 14, 0));                       /* game over */
+    CHECK(!pc_post_bloom(1u << 7, 1u << 7));                  /* the game suspended, nothing else */
+    CHECK(!pc_post_bloom(0, 0));                              /* boot */
+}
+
+/* vertex lighting: the options at 0 give the original sum (ps2_NinjaCnk.c njCnkCvVn), Smooth fades a
+   point light out at its far range, Soft lights the shadow side */
+static void lighting(void)
+{
+    CNK_LIGHT l[2];
+    const float up[3] = { 0, 1, 0 }, down[3] = { 0, -1, 0 }, o[3] = { 0, 0, 0 };
+    float rgb[3];
+    memset(l, 0, sizeof(l));
+    l[0].ulState = 1; l[0].ulMode = 0; l[0].fCx = 0; l[0].fCy = 1; l[0].fCz = 0; l[0].fI = 0.5f; l[0].fR = 1; l[0].fG = 0.5f; l[0].fB = 0.25f;
+    l[1].ulState = 1; l[1].ulMode = 1; l[1].fCx = 0; l[1].fCy = 10; l[1].fCz = 0; l[1].fNearRR = 25; l[1].fFarRR = 400; l[1].fR = 1; l[1].fG = 1; l[1].fB = 1;
+    pc_light_vertex(l, 2, o, up, 0, 0, 1.0f, rgb);    /* parallel 0.5 + point 25/100 */
+    CHECK(fabsf(rgb[0] - 0.75f) < 1e-6f && fabsf(rgb[1] - 0.5f) < 1e-6f && fabsf(rgb[2] - 0.375f) < 1e-6f);
+    pc_light_vertex(l, 2, o, down, 0, 0, 1.0f, rgb);  /* facing away: nothing */
+    CHECK(rgb[0] == 0 && rgb[1] == 0 && rgb[2] == 0);
+    pc_light_vertex(l, 2, o, down, 0.5f, 0, 1.0f, rgb);   /* Soft: the shadow side gets none at N.L = -1 with wrap < 1 */
+    CHECK(rgb[0] == 0);
+    {
+        const float side[3] = { 1, 0, 0 };
+        pc_light_vertex(l, 1, o, side, 0, 0, 1.0f, rgb);
+        CHECK(rgb[0] == 0);
+        pc_light_vertex(l, 1, o, side, 0.5f, 0, 1.0f, rgb);   /* ... but some at the terminator */
+        CHECK(rgb[0] > 0.1f);
+        pc_light_vertex(l, 1, o, up, 0.5f, 0, 1.0f, rgb);     /* the lit side's peak stays */
+        CHECK(fabsf(rgb[0] - 0.5f) < 1e-6f);
+    }
+    {
+        const float near_far[3] = { 0, 10 - 19.9f, 0 };   /* d = 19.9 of far 20 */
+        pc_light_vertex(l + 1, 1, near_far, up, 0, 0, 1.0f, rgb);
+        CHECK(rgb[0] > 0.05f);                          /* original: still lit right before the step */
+        pc_light_vertex(l + 1, 1, near_far, up, 0, 1, 1.0f, rgb);
+        CHECK(rgb[0] < 0.001f);                         /* Smooth: faded out */
+        pc_light_vertex(l + 1, 1, o, up, 0, 1, 1.0f, rgb);
+        CHECK(fabsf(rgb[0] - 0.25f) < 1e-6f);          /* half the range: the original */
+        {
+            const float p15[3] = { 0, 10 - 15.0f, 0 }, p175[3] = { 0, 10 - 17.5f, 0 };
+            pc_light_vertex(l + 1, 1, p15, up, 0, 1, 1.0f, rgb);   /* d = 15, where the quarter's fade starts: the original */
+            CHECK(fabsf(rgb[0] - 25.0f / (15.0f * 15.0f)) < 1e-6f);
+            pc_light_vertex(l + 1, 1, p175, up, 0, 1, 1.0f, rgb);  /* d = 17.5, half way through it */
+            CHECK(fabsf(rgb[0] - 0.5f * 25.0f / (17.5f * 17.5f)) < 1e-5f);
+        }
+    }
+    pc_light_vertex(l, 2, o, up, 0, 0, 0.5f, rgb);     /* Main light 50%: the parallel light halved, the point light kept */
+    CHECK(fabsf(rgb[0] - (0.25f + 0.25f)) < 1e-6f && fabsf(rgb[2] - (0.0625f + 0.25f)) < 1e-6f);
+}
+
 int main(void)
 {
+    post();
+    lighting();
     enemies();
     dual();
     precise();

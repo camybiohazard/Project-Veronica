@@ -219,6 +219,9 @@ static void take_view(void)
    texture packs wait for replacements first drawn then, else they are loaded in the background
    (hdpack.c) */
 int pc_frame_fade(void) { return sys->fade_an > 0.0f && sys->fade_an < 255.0f; }
+/* stream submit: 1 unless the frame is play (pc_rules.h pc_post_bloom): title, menus and other 2D
+   screens get no bloom in the present pass (gs_gl.c draw_display) */
+int pc_frame_menu(void) { return !pc_post_bloom(sys->tk_flg, sys->ts_flg); }
 
 /* stream_submit: the scene and view (eye, direction) of the frame being submitted */
 uint64_t pc_frame_view(float view[6], float camera[STREAM_CAM])

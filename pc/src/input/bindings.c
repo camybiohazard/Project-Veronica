@@ -29,6 +29,7 @@ const BindRow bind_rows[B_COUNT] = {
     [B_QUICKKNIFE] = { "quickknife", "Quick knife (hold)", BG_GAME, 1 },
     [B_RELOAD] = { "reload", "Reload", BG_GAME, 1 },
     [B_WPN_PREV] = { "weapon_prev", "Previous weapon", BG_GAME, 1 }, [B_WPN_NEXT] = { "weapon_next", "Next weapon", BG_GAME, 1 },
+    [B_FLASHLIGHT] = { "flashlight", "Flashlight on/off", BG_GAME, 1 },
     [B_TPS_FWD] = { "tps_forward", "Forward", BG_TPS, 0 },   [B_TPS_BACK] = { "tps_back", "Back", BG_TPS, 0 },
     [B_TPS_LEFT] = { "tps_left", "Turn left", BG_TPS, 0 },   [B_TPS_RIGHT] = { "tps_right", "Turn right", BG_TPS, 0 },
     [B_TPS_RUN] = { "tps_run", "Run", BG_TPS, 1 },           [B_TPS_ACTION] = { "tps_action", "Action / confirm", BG_TPS, 1 },
@@ -49,7 +50,7 @@ const BindRow bind_rows[B_COUNT] = {
 
 const int bind_order[B_COUNT] = {
     B_UP, B_DOWN, B_LEFT, B_RIGHT, B_CROSS, B_SQUARE, B_CIRCLE, B_TRIANGLE, B_R1, B_L1, B_R2, B_L2,
-    B_START, B_SELECT, B_R3, B_L3, B_QUICKTURN, B_QUICKKNIFE, B_RELOAD, B_WPN_PREV, B_WPN_NEXT,
+    B_START, B_SELECT, B_R3, B_L3, B_QUICKTURN, B_QUICKKNIFE, B_RELOAD, B_WPN_PREV, B_WPN_NEXT, B_FLASHLIGHT,
     B_TPS_FWD, B_TPS_BACK, B_TPS_LEFT, B_TPS_RIGHT, B_TPS_RUN, B_TPS_ACTION, B_TPS_CANCEL, B_TPS_STATUS,
     B_TPS_MAP, B_TPS_AIM, B_TPS_FIRE, B_TPS_RELOAD, B_TPS_QUICKTURN, B_TPS_KNIFE, B_TPS_OPTIONS, B_TPS_RECENTER,
     B_TPS_TOGGLE, B_SETTINGS, B_CHEATS, B_FULLSCREEN, B_NOCLIP_UP, B_NOCLIP_DOWN,
@@ -66,12 +67,14 @@ static const int defaults[2][B_COUNT][BIND_SLOTS] = {
         [B_TPS_STATUS] = { SC(TAB) }, [B_TPS_MAP] = { SC(M) }, [B_TPS_AIM] = { MB(SDL_BUTTON_RIGHT) },
         [B_TPS_FIRE] = { MB(SDL_BUTTON_LEFT) }, [B_TPS_RELOAD] = { SC(R) },
         [B_QUICKKNIFE] = { SC(SPACE) }, [B_RELOAD] = { SC(R) },   /* R: no game key in any key type */
+        [B_FLASHLIGHT] = { SC(L) },
         [B_WPN_PREV] = { SC(1) }, [B_WPN_NEXT] = { SC(2) },
         [B_TPS_TOGGLE] = { SC(F5) }, [B_SETTINGS] = { SC(F1) }, [B_CHEATS] = { SC(F2) },
         [B_FULLSCREEN] = { SC(F11) }, [B_NOCLIP_UP] = { SC(PAGEUP) }, [B_NOCLIP_DOWN] = { SC(F), SC(PAGEDOWN) },
     },
     [BIND_PAD] = {
-        [B_SELECT] = { GB(BACK) }, [B_L3] = { GB(LEFT_STICK) }, [B_R3] = { GB(RIGHT_STICK) }, [B_START] = { GB(START) },
+        /* the stick click is the flashlight's: L3 has no game action */
+        [B_SELECT] = { GB(BACK) }, [B_FLASHLIGHT] = { GB(LEFT_STICK) }, [B_R3] = { GB(RIGHT_STICK) }, [B_START] = { GB(START) },
         [B_UP] = { GB(DPAD_UP) }, [B_RIGHT] = { GB(DPAD_RIGHT) }, [B_DOWN] = { GB(DPAD_DOWN) }, [B_LEFT] = { GB(DPAD_LEFT) },
         [B_L2] = { GA(LEFT_TRIGGER, 0) },   /* R2 is no game action in any key type: the right trigger is the quick knife */
         [B_L1] = { GB(LEFT_SHOULDER) }, [B_R1] = { GB(RIGHT_SHOULDER) },

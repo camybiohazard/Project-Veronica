@@ -22,6 +22,7 @@ enum {
        with the other game and third-person rows: in play with the weapon down (g_wpn_take) their inputs are the shortcuts'
        alone, elsewhere (menus, aiming) the others' */
     B_WPN_PREV, B_WPN_NEXT,
+    B_FLASHLIGHT,                      /* press: the flashlight on / off (pc/glue/light_glue.c) */
     /* third person: keyboard and mouse; the gamepad set has its own (modern scheme, g_tps.pad_modern:
        run .. quick turn, knife, options, recenter; the classic scheme drives it through the DS2 rows) */
     B_TPS_FWD, B_TPS_BACK, B_TPS_LEFT, B_TPS_RIGHT, B_TPS_RUN, B_TPS_ACTION, B_TPS_CANCEL,
@@ -72,6 +73,7 @@ const bool* bind_keys(void);           /* SDL keyboard state plus scripted keys 
 int  bind_quickturn(int which, int held);   /* which 0 game, 1 third person: 0 off, 1 hold back, 2 back + run (pad.c) */
 int  pad_quick_knife(void);            /* the quick-knife row is held (pad.c) */
 int  pad_reload(void);                 /* a reload row is held (pad.c) */
+int  pad_flashlight(void);             /* the flashlight row is held (pad.c) */
 int  pad_report_bits(void);            /* the DS2 buttons held in the last pad report (pad.c) */
 /* weapon shortcuts (pc/glue/weapon_glue.c), game thread */
 #define WPN_KEYS 2                     /* B_WPN_PREV, B_WPN_NEXT */

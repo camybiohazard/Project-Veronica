@@ -55,6 +55,7 @@ typedef struct {
     int flags;                    /* NTEX_FONT, NTEX_KEEP (texture_glue.c) */
     GLuint capture;               /* a render texture (StoreRenderTex): this texture, no GS data */
     int cw, ch;                   /* its size in GS texels */
+    uint32_t hash;                /* its image data's (materials.c: the same texture's in every room and run), 0 none */
 } Def;
 
 static Def defs[NTEX_ID_SLOTS];
@@ -82,6 +83,33 @@ _Static_assert(sizeof(alias) + sizeof(pending) + sizeof(int) <= NTEX_STATE_SIZE,
 typedef struct { uint32_t id; uint64_t key, texa; uint32_t pal; GLuint tex; int w, h; uint64_t last; int used; } NTex;
 static NTex ntex[MAX_NTEX];
 static uint64_t use_clock, ntex_bytes;
+
+/* the decodes of font definitions (NTEX_FONT) and text pages (text_page) alive: the present pass
+   takes bloom from the picture before the first text (gs_gl.c pretext_capture) */
+#define MAX_FONT_TEX 64
+static GLuint font_tex[MAX_FONT_TEX];
+static int nfont_tex;
+static void font_forget(GLuint tex)
+{
+    for (int i = 0; i < nfont_tex; i++) if (font_tex[i] == tex) { font_tex[i] = font_tex[--nfont_tex]; return; }
+}
+/* full-screen text pages counted as text as well, by their image hash: the new game's opening
+   crawl (task 7 and an event run under it, so pc_post_bloom takes it for play) */
+static int text_page(uint32_t hash)
+{
+    static const uint32_t pages[] = {
+        0x082b5251,   /* "The American mid-western town, Raccoon City ..." */
+        0x93f0d3e7,   /* "Claire Redfield, who arrived in Raccoon City ..." */
+        0xac930ec4,   /* "3 months later..." */
+    };
+    for (size_t i = 0; i < sizeof(pages) / sizeof(pages[0]); i++) if (pages[i] == hash) return 1;
+    return 0;
+}
+int ntex_is_font(unsigned int tex)
+{
+    for (int i = 0; i < nfont_tex; i++) if (font_tex[i] == tex) return 1;
+    return 0;
+}
 
 /* the definition `id`, if it is the one its slot holds and complete */
 static Def* def_find(uint32_t id)
@@ -200,6 +228,11 @@ void ntex_define_end(void)
     if (cur_in_clut) cur->clut_end = cur->nop;   /* only a CLUT */
     cur->full_pages = full_pages(cur);
     cur->valid = cur->ndata > 0 && !cur->oom;
+    {   /* FNV-1a over the uploads (image and CLUT), never 0 */
+        uint32_t h = 2166136261u;
+        for (uint32_t i = 0; i < cur->ndata; i++) { h ^= cur->data[i]; h *= 16777619u; }
+        cur->hash = h ? h : 1;
+    }
     if (cur->oom) fprintf(stderr, "ntex: out of memory recording texture %u, drawn from GS memory\n", cur->id);
     cur = NULL;
 }
@@ -212,6 +245,16 @@ void ntex_define_capture(uint32_t id, unsigned int gl_tex, int w, int h)
     d->nop = 0; d->ndata = 0; d->clut_end = 0; d->oom = 0; d->full_pages = 0;
     d->image_pages = ((uint32_t)w * (uint32_t)h * 4u + 8191u) / 8192u;   /* CT32 */
     d->valid = 1;
+}
+
+/* the image hash of the texture bound where TEX0 points (materials.c), 0 none or a capture */
+uint32_t ntex_hash_of(uint64_t tex0)
+{
+    uint32_t tbp = tex0 & 0x3FFF;
+    const Def* d;
+    for (int i = 0; i < MAX_ALIAS; i++)
+        if (alias[i].used && alias[i].tbp == tbp) return (d = def_find(alias[i].id)) && !d->capture ? d->hash : 0;
+    return 0;
 }
 
 unsigned int ntex_capture_tex(uint32_t id)
@@ -350,7 +393,7 @@ static void def_drop(Def* d)
     for (int i = 0; i < MAX_ALIAS; i++) if (alias[i].used && alias[i].id == id) alias[i].used = 0;
     if (d->capture) gs_tex_delete(d->capture);
     for (int i = 0; i < MAX_NTEX; i++)
-        if (ntex[i].used && ntex[i].id == id) { gs_tex_delete(ntex[i].tex); ntex_bytes -= (uint64_t)ntex[i].w * ntex[i].h * 4; ntex[i].used = 0; }
+        if (ntex[i].used && ntex[i].id == id) { font_forget(ntex[i].tex); gs_tex_delete(ntex[i].tex); ntex_bytes -= (uint64_t)ntex[i].w * ntex[i].h * 4; ntex[i].used = 0; }
     free(d->op); free(d->data);
     memset(d, 0, sizeof(*d));
 }
@@ -384,6 +427,20 @@ static uint32_t palette_hash(uint64_t tex0, uint64_t texa)
 
 /* the image from the definition (replayed into scratch GS memory at its own address), the
    palette from the current CLUT buffer */
+/* mip levels of the bound texture (w x h RGBA8, rows stride texels apart) for anisotropic
+   filtering (gs_gl.c gs_flush): only without cut-outs, one alpha throughout (averaged alpha would
+   thin railings and fences out with distance). GL_TEXTURE_MAX_LEVEL says which (0: none). */
+void ntex_mips(const uint32_t* px, int w, int h, int stride)
+{
+    int levels = 0;
+    for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++)
+            if ((px[y * stride + x] ^ px[0]) >> 24) { glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0); return; }
+    while ((w | h) >> (levels + 1)) levels++;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, levels);
+    if (levels) glGenerateMipmap(GL_TEXTURE_2D);
+}
+
 static GLuint decode(const Def* d, uint64_t tex0, uint64_t texa, int* w, int* h)
 {
     uint32_t tw = (tex0 >> 26) & 0xF, th = (tex0 >> 30) & 0xF;
@@ -399,6 +456,7 @@ static GLuint decode(const Def* d, uint64_t tex0, uint64_t texa, int* w, int* h)
     glBindTexture(GL_TEXTURE_2D, t);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)W, (GLsizei)H, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    ntex_mips(px, (int)W, (int)H, (int)W);
     {   /* RECVX_DUMP_TEX=dir: also the native decodes */
         static const char* dd; static int chk, ndump;
         if (!chk++) dd = getenv("RECVX_DUMP_TEX");
@@ -441,6 +499,7 @@ int ntex_lookup(uint64_t tex0, uint64_t texa, unsigned int* out_tex, int* out_w,
         NTex* o = NULL;
         for (int i = 0; i < MAX_NTEX; i++) if (ntex[i].used && (!o || ntex[i].last < o->last)) o = &ntex[i];
         if (!o) break;
+        font_forget(o->tex);
         gs_tex_delete(o->tex);
         ntex_bytes -= (uint64_t)o->w * o->h * 4;
         o->used = 0;
@@ -448,6 +507,7 @@ int ntex_lookup(uint64_t tex0, uint64_t texa, unsigned int* out_tex, int* out_w,
     }
     e->tex = decode(d, tex0, texa, &e->w, &e->h);
     if (!e->tex) return 0;
+    if (((d->flags & NTEX_FONT) || text_page(d->hash)) && nfont_tex < MAX_FONT_TEX) font_tex[nfont_tex++] = e->tex;
     if (hdpack_active()) {   /* the PCSX2 key hashes GS memory as the GS would sample it */
         uint32_t tw = (tex0 >> 26) & 0xF, th = (tex0 >> 30) & 0xF;
         uint32_t p1 = gs_pixel_addr((int)psm, tbp, (tex0 >> 14) & 0x3F, (1u << (tw > 10 ? 10 : tw)) - 1, (1u << (th > 10 ? 10 : th)) - 1) / (psm == PSMT4 ? 2 : 1) / 8192 + 1;

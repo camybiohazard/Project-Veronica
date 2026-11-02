@@ -328,7 +328,6 @@ void hdpack_forget(unsigned int t)
 #define GL_COMPRESSED_RGBA_S3TC_DXT5_EXT 0x83F3
 #define GL_COMPRESSED_RGBA_BPTC_UNORM 0x8E8C
 #define GL_BGRA 0x80E1
-#define GL_TEXTURE_MAX_LEVEL 0x813D
 #define GL_TEXTURE_SWIZZLE_A 0x8E45
 typedef void (GLAPIENTRY* PFN_CompressedTexImage2D)(GLenum, GLint, GLenum, GLsizei, GLsizei, GLint, GLsizei, const void*);
 
@@ -391,7 +390,7 @@ static GLuint upload_rgba(SDL_Surface* c, uint32_t* out_bytes)
     glPixelStorei(GL_UNPACK_ROW_LENGTH, c->pitch / 4);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, c->w, c->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, c->pixels);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    ntex_mips((const uint32_t*)c->pixels, c->w, c->h, c->pitch / 4);   /* textures.c: for anisotropic filtering */
     *out_bytes = (uint32_t)(c->w * c->h * 4);
     return t;
 }

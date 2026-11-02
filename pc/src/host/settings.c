@@ -224,6 +224,28 @@ static const char* tenths(int v, char* b, int n) { snprintf(b, n, "%d.%d", v / 1
    while a SET_CALIB row is chosen: squares on a black and on a white strip, the faint ones at the ends */
 const unsigned char settings_calib[2][CALIB_STEPS] = { { 5, 10, 16, 24, 32 }, { 223, 231, 239, 245, 250 } };
 static void picture_reset(void) { g_config.brightness = 0; g_config.contrast = 100; g_config.gamma = 10; settings_save_later(); }
+/* post-processing (gs_gl.c draw_display, bloom_chain) */
+static void post_reset(void) { g_config.bloom = 0; g_config.grading = 0; g_config.ao = 0; settings_save_later(); }
+/* flashlight (pc/glue/light_glue.c) */
+/* Lighting Nightmare sets the fog (host.c pc_fog_scale): the row stays, locked, showing it */
+static const char* fog_locked(void) { return g_config.lighting == 3 ? "Lighting Nightmare sets the fog to 10%." : NULL; }
+static const char* fog_name(int v, char* b, int n)
+{
+    snprintf(b, n, "%d%%", g_config.lighting == 3 ? 10 : v);
+    return b;
+}
+static const char* aniso_name(int v, char* b, int n)
+{
+    if (v) snprintf(b, n, "%dx", 1 << v);
+    else snprintf(b, n, "Off");
+    return b;
+}
+static const char* bloom_name(int v, char* b, int n)
+{
+    if (v) snprintf(b, n, "%d%%", v);
+    else snprintf(b, n, "Off");
+    return b;
+}
 /* HDR output (Windows, Linux: render/hdr.h; gs_gl.c hdr_levels): paper white 80..480 nits by 10 and
    peak 400..4000 by 100, row 0 Auto (the window's display, as SDL reports it) */
 #if defined(_WIN32) || defined(__linux__)
@@ -357,13 +379,17 @@ const Setting g_settings[] = {
     { SP_DISPLAY, "Show frame rate", V(g_config.show_fps), 0, 1, 1 },
     { SP_DISPLAY, "Aspect ratio", V(g_config.aspect), 0, 2, 1, aspects, .help = "Widescreen: 3D fills the window, 2D and menus stay 4:3 in the middle.", .group = "PICTURE" },
     { SP_DISPLAY, "Internal resolution", V(g_config.scale), 0, 8, 1, .name = scale_name, .help = "The resolution the game is drawn at; Auto follows the window." },
+    { SP_DISPLAY, "Anisotropic filtering", V(g_config.aniso), 0, 4, 1, .name = aniso_name,
+      .help = "Floors, walls and ceilings seen at a shallow angle stay sharp into the distance instead of blurring, without shimmering. Textures with cut-outs (railings, fences, foliage) are left as they are. Needs Native textures or HD textures." },
+    { SP_DISPLAY, "Dithering", V(g_config.dither), 0, 1, 1,
+      .help = "Smooths the colour banding of dark gradients (lamplight falloff, fog, the tone curve) with a fine fixed noise too small to see." },
     { SP_DISPLAY, "Display-rate frames", V(g_config.interpolate), 0, 1, 1, .help = "In-between frames blended from the last two game frames. The game still runs at 30 FPS; half a frame of latency." },
     { SP_DISPLAY, "Frame blend (trail)", V(g_config.frame_blend), -1, 1, 1, onoff_auto, .help = "As on the PS2: each frame mixed over the previous one. Auto: on in vanilla, off with display-rate frames." },
     { SP_DISPLAY, "Cutscene bars", V(g_config.cinema_bars), 0, 2, 1, modes3, .help = "Original keeps them 4:3 in widescreen; fades always fill the screen.", .group = "WIDESCREEN" },
     { SP_DISPLAY, "Camera vignette", V(g_config.screen_filter), 0, 2, 1, modes3, .help = "Original keeps it 4:3 in widescreen." },
     { SP_DISPLAY, "Screen effects", V(g_config.screen_effects), 0, 2, 1, modes3, .help = "Full-screen effect layers and the scope's tint. Original keeps them 4:3 in widescreen. The oil pressure puzzle's screen stays with Off (4:3)." },
     { SP_DISPLAY, "Movie zoom", V(g_config.movie_zoom), 0, 1, 1, .help = "Widescreen: movies grow, without stretching, until their black bars leave the screen (or the picture fills the width)." },
-    { SP_DISPLAY, "Fog intensity", V(g_config.fog_intensity), 0, 100, 5, .fmt = "%d%%", .group = "FOG AND BRIGHTNESS",
+    { SP_DISPLAY, "Fog intensity", V(g_config.fog_intensity), 0, 100, 5, .name = fog_name, .locked = fog_locked, .group = "FOG AND BRIGHTNESS",
       .help = "The fog and the black fog of dark rooms: 100% as on the PS2, 50% pushes it twice as far away, 0% removes it." },
     { SP_DISPLAY, "Brightness", V(g_config.brightness), -50, 50, 1, .fmt = "%+d", .flags = SET_CALIB,
       .help = "Lifts or lowers the dark end of the game's picture. Black strip: the left square should be barely visible." },
@@ -373,6 +399,28 @@ const Setting g_settings[] = {
       .help = "Higher brightens the mid-tones, lower darkens them; black and white stay." },
     { SP_DISPLAY, "Reset picture calibration", NULL, .flags = SET_ACTION | SET_NOW, .apply = picture_reset,
       .help = "Brightness, contrast and gamma back to neutral: the original picture." },
+    { SP_DISPLAY, "Bloom", V(g_config.bloom), 0, 1, 1, .group = "POST-PROCESSING",
+      .help = "Bright parts of the picture (fire, lamps, flashes, snow) glow onto their surroundings, with a slightly warmer tint. Text does not glow. Only in play: not on the title screen, menus, movies and other 2D screens. Off: the original picture." },
+    { SP_DISPLAY, "Colour grading", V(g_config.grading), 0, 1, 1,
+      .help = "A filmic look: bright parts (fire, lamps, bloom) ease towards white instead of clipping, the darkest tones go a little deeper, and shadows lean cool teal while highlights lean warm. Off: the original picture." },
+    { SP_DISPLAY, "Ambient occlusion", V(g_config.ao), 0, 1, 1,
+      .help = "Darkens creases, corners and where objects meet the floor, from the depth of the 3D picture. Only in play; text is left alone." },
+    { SP_DISPLAY, "Reset post-processing", NULL, .flags = SET_ACTION | SET_NOW, .apply = post_reset,
+      .help = "Bloom, colour grading and ambient occlusion off: the original picture." },
+    { SP_DISPLAY, "Lighting", V(g_config.lighting), 0, 3, 1, (const char* const[]){ "Original", "Balanced", "Horror", "Nightmare" }, .group = "LIGHTING",
+      .help = "How bright the rooms are; lamps, fires and the flashlight keep their strength. Original: as on the PS2. Balanced: main and ambient light 75%. Horror: main light 50%, ambient 25%, deep shadows. Nightmare: main and ambient light 5%, almost only lamps, fires and the flashlight light the way, and the fog thins to 10% (Fog intensity is locked at 10%)." },
+    { SP_DISPLAY, "Per-pixel lighting", V(g_config.light_pixel), 0, 1, 1,
+      .help = "The game's lights computed for every pixel instead of at the corners of each polygon: round pools of lamplight on large floors and walls, smooth shading on characters. Needs the native 3D renderer." },
+    { SP_DISPLAY, "Wet surfaces", V(g_config.wet), 0, 1, 1,
+      .help = "Where it rains, floors and other up-facing surfaces are wet: lamps, fires and the flashlight glint on them, darker grime more than the rest. Needs the native 3D renderer." },
+    { SP_DISPLAY, "Material shine", V(g_config.mat_shine), 0, 1, 1,
+      .help = "Highlights of the surface materials in mods/materials.ini (metal, tile, wood, ...; assigned with the picker in the F2 window). Off: none. Needs the native 3D renderer." },
+    { SP_DISPLAY, "Flashlight", V(g_config.flashlight), 0, 1, 1,
+      .help = "A flashlight switched on and off with Flashlight on/off in CONTROLS (L, the left stick click), in play only, with the native 3D renderer. It runs on a battery that lasts 4 minutes and recharges in 3 while off: low, the beam dims and flickers; empty, it goes out. Off: no flashlight." },
+    { SP_DISPLAY, "Light falloff", V(g_config.light_falloff), 0, 1, 1, (const char* const[]){ "Original", "Smooth" },
+      .help = "Lamps, fires and other point lights. Original: they end at their range at a step, so something leaving the light darkens at once. Smooth: they fade out over the outer quarter of it." },
+    { SP_DISPLAY, "Soft shading", V(g_config.light_soft), 0, 1, 1,
+      .help = "Light reaches further round the shadow side of characters and objects, so the edge between lit and unlit is softer. Off: the original." },
     { SP_DISPLAY, "HDR output", V(g_config.hdr), 0, 1, 1, .flags = SET_RESTART, .shown = hdr_platform, .group = "HDR",
       .help = "For HDR displays (HDR on in the system's display settings; Linux: a Wayland desktop with HDR, such as GNOME 48+ or KDE Plasma 6): the picture's highlights are expanded into HDR, the overlay stays at paper white. Presented through Direct3D 11 (Windows) or Vulkan (Linux)." },
     { SP_DISPLAY, "Paper white", NULL, 0, 41, 1, .get = pw_get, .set = pw_set, .name = pw_name, .shown = hdr_shown,

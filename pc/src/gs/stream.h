@@ -19,6 +19,11 @@ void     stream_tex_forget(uint32_t id);
 void     stream_rtex_capture(uint32_t id, uint32_t fbp, uint32_t fbw, uint32_t w, uint32_t h, int wide);
 void     stream_movie(uint32_t tbp, int index);    /* movie frame index is the texture at tbp */
 void     stream_submit(void);                       /* end of frame (buffer swap) */
+/* per-pixel lighting: a light set, STREAM_LSET floats (layout: gs_gl.c fs_src light_sum), into the
+   frame; returns its number for NativeVertex.light (0: the table is full) */
+#define  STREAM_LSET 104
+#define  STREAM_LSET_MAX 4095
+uint32_t stream_light_set(const float* set);
 #define  STREAM_CAM 20                              /* view_glue.c pc_frame_view: the frame's camera and projection */
 void     stream_download(void* dst, uint32_t len);  /* StoreImage: waits for the pixels */
 uint64_t stream_game_frames(void);

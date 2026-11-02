@@ -9,6 +9,7 @@ documents the formats and the tools:
 | [ROOM_FORMAT.md](ROOM_FORMAT.md) | room file (`RM_xxxx.RDX`) format, load path, records, event scripts, limits |
 | [BUILDING_ROOMS.md](BUILDING_ROOMS.md) | building rooms with `rdxbuild.py`, the example areas, validation, headless testing |
 | [RE4_VILLAGE.md](RE4_VILLAGE.md) | converting an RE4 village export into rooms |
+| [MATERIALS.md](MATERIALS.md) | surface materials (`mods/materials.ini`) and the F2 picker |
 
 Related: [../ACTORS.md](../ACTORS.md) (models, skeletons, motions, enemy records),
 [../ENEMIES.md](../ENEMIES.md) (enemy scripts, kill flags, budgets).

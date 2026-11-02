@@ -11,6 +11,8 @@ extern "C" {
 #include "cheat.h"
 #include "actors.h"
 #include "../gs/stream.h"
+#include "../gs/materials.h"
+extern "C" void gs_window_to_screen(float px, float py, float* x, float* y);
 #include "tps.h"
 #include "menu_mouse.h"
 #include "bindings.h"
@@ -333,6 +335,37 @@ static void teleport_pick(CheatState* c)
     ImGui::SameLine();
 }
 
+/* surface materials (gs/materials.c): picking a textured 3D surface in the game picture with the
+   mouse (overlay_render takes the click), its class, and its surfaces highlighted */
+static bool mat_picking, mat_highlight = true, mat_was_open;
+static uint32_t mat_sel;
+static void material_section(void)
+{
+    uint32_t h;
+    ImGui::SeparatorText("Surface materials");
+    if (gs_pick_result(&h)) mat_sel = h;
+    ImGui::Checkbox("Pick a surface with the mouse", &mat_picking);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Click a wall, floor or object in the game picture (outside this window) to choose its texture.\n"
+                          "Only textured 3D surfaces can be picked. Classes are saved to mods/materials.ini at once\n"
+                          "and shine with Material shine (DISPLAY) and the native 3D renderer.");
+    if (mat_sel) {
+        int cls = mat_get(mat_sel);
+        ImGui::Text("Texture %08X", mat_sel);
+        ImGui::SameLine();
+        ImGui::Checkbox("Highlight", &mat_highlight);
+        if (ImGui::BeginCombo("Material", mat_class_name(cls))) {
+            for (int k = 0; k < mat_class_count(); k++)
+                if (ImGui::Selectable(mat_class_name(k), k == cls)) mat_set(mat_sel, k);
+            ImGui::EndCombo();
+        }
+    } else {
+        ImGui::TextDisabled(mat_picking ? "Click a surface in the game picture." : "No surface chosen.");
+    }
+    ImGui::TextDisabled("%d textures have a material (mods/materials.ini)", mat_count());
+    gs_mat_highlight(mat_sel && mat_highlight && cheats_visible ? mat_sel : 0);
+}
+
 static void cheat_window(void)
 {
     CheatState* c = &g_cheat;
@@ -405,6 +438,8 @@ static void cheat_window(void)
     ImGui::SameLine();
     if (ImGui::Button("Go")) __atomic_or_fetch(&c->request, CHEAT_TELEPORT, __ATOMIC_ACQ_REL);
     if (c->result) ImGui::TextDisabled("%s", c->result);
+
+    material_section();
     ImGui::End();
 }
 
@@ -430,6 +465,14 @@ void overlay_render(void)
     ImGui::NewFrame();
     if (visible) settings_window();
     if (cheats_visible) cheat_window();
+    else if (mat_was_open) gs_mat_highlight(0);   /* the window closed: no highlight */
+    mat_was_open = cheats_visible;
+    if (cheats_visible && mat_picking && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().WantCaptureMouse) {
+        ImVec2 m = ImGui::GetIO().MousePos, k = ImGui::GetIO().DisplayFramebufferScale;   /* to window pixels */
+        float x, y;
+        gs_window_to_screen(m.x * k.x, m.y * k.y, &x, &y);
+        gs_pick_request(x, y);
+    }
     if (crosshair) {   /* third person: the screen centre is where the shot goes (tps_glue.c) */
         ImDrawList* dl = ImGui::GetForegroundDrawList();
         ImVec2 c(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);

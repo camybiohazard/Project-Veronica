@@ -4,6 +4,51 @@
 #include "../src/gs/native.h"
 #include <math.h>
 
+/* ---------------------------------------------------------------- post-processing (gs_gl.c draw_display) */
+/* the frame gets bloom: the game (task 7), an in-engine event (8) or a door animation (11) runs
+   (running: tk_flg set, ts_flg not; main.c njUserMain) and none of the 2D screens: the title (4),
+   the status screen (9), the map (10), movies, the ending, game over, typewriter, OPTION,
+   computer screens, disc change and the sound museum (12..19). Otherwise text, panels and title
+   art would glow. The monitors and the screen saver (20..22) run all the time. */
+static inline int pc_post_bloom(unsigned int tk_flg, unsigned int ts_flg)
+{
+    unsigned int run = tk_flg & ~ts_flg;
+    return (run & 0x980u) != 0 && (run & (0x10u | 0x600u | 0xFF000u)) == 0;
+}
+
+/* ---------------------------------------------------------------- vertex lighting (light_glue.c) */
+/* the light sum of the nl chunk-model lights l at view position p with view normal n, into rgb, as
+   ps2_NinjaCnk.c njCnkCvVn (and VU0 CALCPOINT) sums it: a parallel light N.C x I, a point light
+   N.L / |L| while closer than its far range, x near^2 / d^2 beyond its near range; each x its colour.
+   wrap: N.L taken as (N.L + wrap) / (1 + wrap), light reaching round the shadow side (0: the
+   original). smooth: a point light fades out over the outer quarter of its far range
+   (smoothstep) instead of ending there at a step; closer it is the original. main: the parallel
+   lights x this (1: the original). wrap 0, smooth 0 and main 1 give the original sum. */
+static inline void pc_light_vertex(const CNK_LIGHT* l, int nl, const float p[3], const float n[3], float wrap, int smooth, float main, float rgb[3])
+{
+    rgb[0] = rgb[1] = rgb[2] = 0.0f;
+    for (int k = 0; k < nl; k++, l++) {
+        float f;
+        if (!l->ulState) continue;
+        if (l->ulMode == 0) {
+            f = (n[0] * l->fCx + n[1] * l->fCy + n[2] * l->fCz + wrap) / (1.0f + wrap);
+            if (!(f > 0.0f)) continue;
+            f *= l->fI * main;
+        } else {
+            const float dx = l->fCx - p[0], dy = l->fCy - p[1], dz = l->fCz - p[2], d2 = dx * dx + dy * dy + dz * dz;
+            if (!(l->fFarRR > d2) || !(d2 > 0.0f)) continue;
+            f = ((n[0] * dx + n[1] * dy + n[2] * dz) / sqrtf(d2) + wrap) / (1.0f + wrap);
+            if (!(f > 0.0f)) continue;
+            if (l->fNearRR < d2) f *= l->fNearRR / d2;
+            if (smooth) {
+                float t = (1.0f - sqrtf(d2 / l->fFarRR)) * 4.0f;
+                if (t < 1.0f) f *= t * t * (3.0f - 2.0f * t);
+            }
+        }
+        rgb[0] += f * l->fR; rgb[1] += f * l->fG; rgb[2] += f * l->fB;
+    }
+}
+
 /* ---------------------------------------------------------------- added enemies (decomp eneset.c) */
 typedef void (*PcEnemyProc)(BH_PWORK*);
 

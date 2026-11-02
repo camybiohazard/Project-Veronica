@@ -24,6 +24,10 @@ typedef ptrdiff_t GLsizeiptr; typedef ptrdiff_t GLintptr;
 #define GL_TEXTURE_WRAP_T 0x2803
 #define GL_NEAREST 0x2600
 #define GL_LINEAR 0x2601
+#define GL_LINEAR_MIPMAP_LINEAR 0x2703
+#define GL_TEXTURE_MAX_LEVEL 0x813D
+#define GL_TEXTURE_MAX_ANISOTROPY 0x84FE
+#define GL_MAX_TEXTURE_MAX_ANISOTROPY 0x84FF
 #define GL_REPEAT 0x2901
 #define GL_CLAMP_TO_EDGE 0x812F
 #define GL_TEXTURE0 0x84C0
@@ -249,6 +253,24 @@ extern PFN_glVertexAttribPointer gl_VertexAttribPointer;
 typedef void (GLAPIENTRY *PFN_glVertexAttribIPointer)(GLuint index, GLint size, GLenum type, GLsizei stride, const void* pointer);
 extern PFN_glVertexAttribIPointer gl_VertexAttribIPointer;
 #define glVertexAttribIPointer gl_VertexAttribIPointer
+typedef void (GLAPIENTRY *PFN_glDrawBuffer)(GLenum buf);
+extern PFN_glDrawBuffer gl_DrawBuffer;
+#define glDrawBuffer gl_DrawBuffer
+typedef void (GLAPIENTRY *PFN_glReadBuffer)(GLenum src);
+extern PFN_glReadBuffer gl_ReadBuffer;
+#define glReadBuffer gl_ReadBuffer
+typedef void (GLAPIENTRY *PFN_glGenerateMipmap)(GLenum target);
+extern PFN_glGenerateMipmap gl_GenerateMipmap;
+#define glGenerateMipmap gl_GenerateMipmap
+typedef void (GLAPIENTRY *PFN_glGetTexParameteriv)(GLenum target, GLenum pname, GLint* params);
+extern PFN_glGetTexParameteriv gl_GetTexParameteriv;
+#define glGetTexParameteriv gl_GetTexParameteriv
+typedef void (GLAPIENTRY *PFN_glTexParameterf)(GLenum target, GLenum pname, GLfloat param);
+extern PFN_glTexParameterf gl_TexParameterf;
+#define glTexParameterf gl_TexParameterf
+typedef void (GLAPIENTRY *PFN_glGetFloatv)(GLenum pname, GLfloat* data);
+extern PFN_glGetFloatv gl_GetFloatv;
+#define glGetFloatv gl_GetFloatv
 typedef void (GLAPIENTRY *PFN_glDrawArrays)(GLenum mode, GLint first, GLsizei count);
 extern PFN_glDrawArrays gl_DrawArrays;
 #define glDrawArrays gl_DrawArrays

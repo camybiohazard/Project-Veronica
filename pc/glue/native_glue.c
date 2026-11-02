@@ -28,6 +28,8 @@
 
 extern float fVu1AspectH, fVu1Projection, fVu1OffsetX, fVu1OffsetY;
 extern float Ps2_zbuff_b;
+int pc_light_normal(int idx, float n[3]);   /* light_glue.c: per-pixel lighting */
+uint32_t pc_light_set(int color_mode);
 extern int pc_margin_mesh;   /* view_glue.c: the mesh being drawn shows only in the hor+ margins (2, 3: pc_margin_reaches_43) */
 extern float pc_margin_player[2];
 
@@ -112,8 +114,13 @@ void pc_native_strip(const unsigned short* idx_uv, int n, const VU1_STRIP_BUF* v
     NativeVertex v[64];
     const float kx = fVu1AspectW * fVu1Projection, ky = fVu1AspectH * fVu1Projection;
     static int dbg = -1;
+    uint32_t light = pc_light_set(color_mode);   /* per-pixel lighting (light_glue.c): 0 off or no light */
     if (dbg < 0) dbg = getenv("RECVX_NATIVE_DEBUG") ? 20 : 0;
     if (n > 64) n = 64;
+    for (int i = 0; light && i < n; i++) {   /* a vertex without a normal: the strip keeps its colours */
+        float nv[3];
+        if (!pc_light_normal(idx_uv[i * 3], nv)) light = 0;
+    }
     for (int i = 0; i < n; i++) {
         const VU1_STRIP_BUF* p = &vbuf[idx_uv[i * 3]];
         const float in[4] = { p->fIr, p->fIg, p->fIb, p->fNz };
@@ -136,6 +143,10 @@ void pc_native_strip(const unsigned short* idx_uv, int n, const VU1_STRIP_BUF* v
         o->near_d = w - _fNaViwClipNear;
         o->far_d = _fNaViwClipFar - w;
         o->cull = (single && p->fNz > 0.0f) | (pc_margin_mesh ? 4 : 0);
+        o->vx = p->fVx; o->vy = p->fVy; o->vz = p->fVz;
+        o->nx = o->ny = o->nz = 0.0f;
+        if (light) { float nv[3]; pc_light_normal(idx_uv[i * 3], nv); o->nx = nv[0]; o->ny = nv[1]; o->nz = nv[2]; }
+        o->light = (uint16_t)light;
     }
     native_strip(prim, v, n);
 }
@@ -170,6 +181,7 @@ uint32_t pc_native_prim3d(unsigned int prim, const VU1_PRIM_BUF* in, int n, int 
         o->near_d = w - _fNaViwClipNear;
         o->far_d = _fNaViwClipFar - w;
         o->cull = ((p->ulKick & 0x8001) == 0x8001 ? 2 : 0) | (pc_margin_mesh ? 4 : 0);
+        o->vx = o->vy = o->vz = o->nx = o->ny = o->nz = 0.0f; o->light = 0;
     }
     *zavg = n ? zsum / (float)n : 0.0f;
     return native_defer(prim, v, n < 64 ? n : 64, deferred ? pc_cur_mesh : 0, pc_cur_mesh & 1 ? pc_cur_strip++ : pc_cur_strip);
@@ -216,6 +228,7 @@ uint32_t pc_native_prim(unsigned int prim, const unsigned int* dp, int n, int cl
         o->r = (uint8_t)dp[4]; o->g = (uint8_t)dp[5]; o->b = (uint8_t)dp[6]; o->a = (uint8_t)dp[7];
         o->fog = f2[3];
         o->cull = clip_3d_on && (dp[3] & 0x8000) ? 2 : 0;
+        o->vx = o->vy = o->vz = o->nx = o->ny = o->nz = 0.0f; o->light = 0;
     }
     return native_defer(prim, v, n, deferred ? pc_cur_mesh : 0, pc_cur_mesh & 1 ? pc_cur_strip++ : pc_cur_strip);   /* an effect's polygons by number */
 }

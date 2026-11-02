@@ -35,6 +35,18 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "brightness", &g_config.brightness, -50, 50 },
     { "contrast", &g_config.contrast, 50, 150 },
     { "gamma", &g_config.gamma, 5, 20 },
+    { "bloom", &g_config.bloom, 0, 1 },
+    { "color_grading", &g_config.grading, 0, 1 },
+    { "ao", &g_config.ao, 0, 1 },
+    { "light_falloff", &g_config.light_falloff, 0, 1 },
+    { "light_soft", &g_config.light_soft, 0, 1 },
+    { "lighting", &g_config.lighting, 0, 3 },
+    { "light_pixel", &g_config.light_pixel, 0, 1 },
+    { "wet", &g_config.wet, 0, 1 },
+    { "dither", &g_config.dither, 0, 1 },
+    { "anisotropic", &g_config.aniso, 0, 4 },
+    { "material_shine", &g_config.mat_shine, 0, 1 },
+    { "flashlight", &g_config.flashlight, 0, 1 },
     { "hdr", &g_config.hdr, 0, 1 },
     { "hdr_paper_white", &g_config.hdr_paper_white, 0, 480 },   /* nits, 0 = Windows' SDR content brightness */
     { "hdr_peak", &g_config.hdr_peak, 0, 4000 },                 /* nits, 0 = the display's */

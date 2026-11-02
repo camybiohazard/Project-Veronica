@@ -32,7 +32,7 @@
 
 #define NOEV 0xFFFFFFFFu
 #define NATIVE_KEY (1ull << 63)   /* Group.key0 of a native 3D strip (v0 = its event) */
-enum { EV_REG, EV_IMAGE, EV_DISP, EV_DOWNLOAD, EV_TAG, EV_STRIP, EV_NATIVE, EV_TEXDEF, EV_TEXDEF_END, EV_TEXBIND, EV_TEXFORGET, EV_RAW, EV_RTEX, EV_MOVIE, EV_TAGLAST };
+enum { EV_REG, EV_IMAGE, EV_DISP, EV_DOWNLOAD, EV_TAG, EV_STRIP, EV_NATIVE, EV_TEXDEF, EV_TEXDEF_END, EV_TEXBIND, EV_TEXFORGET, EV_RAW, EV_RTEX, EV_MOVIE, EV_TAGLAST, EV_PRETEXT };
 typedef struct { uint8_t kind, reg; uint32_t len; uint64_t v; } Ev;
 typedef struct { uint64_t key0; uint32_t v0, nv, strip, ord, sp; } Group;   /* sp: native strip's first Frame.spos */
 typedef struct { uint32_t mesh, g0, ng; } Inst;   /* a tagged mesh draw: groups g0.. */
@@ -45,6 +45,8 @@ struct Frame {
     float view[6];                           /* ... and the camera's eye and view direction */
     float cam[STREAM_CAM];                   /* ... and its matrix and projection (unmatched meshes move with it) */
     int fade;                                /* pc_frame_fade: the picture shows through a screen fade */
+    int menu;                                /* pc_frame_menu: a menu task runs (no bloom) */
+    float* lset; size_t nlset, clset;        /* per-pixel lighting: light sets, STREAM_LSET floats each (stream_light_set) */
     /* filled by the render thread when executed */
     Group* g; size_t ng, cg;
     Inst* in; size_t nin, cin;
@@ -112,11 +114,24 @@ static Frame* recording(void)
         SDL_UnlockMutex(mtx);
         prof_pop();
         rec->nev = rec->npool = 0;
+        rec->nlset = 0;
         rec->partial = 0;
         rec->continuation = continuation_next;
         continuation_next = 0;
     }
     return rec;
+}
+
+/* per-pixel lighting (light_glue.c pc_light_set): the light set of the native strips that follow
+   into the frame's table; returns its number (1..), the last one's if the same, 0 when full */
+uint32_t stream_light_set(const float* set)
+{
+    Frame* f = recording();
+    if (f->nlset && !memcmp(f->lset + (f->nlset - 1) * STREAM_LSET, set, STREAM_LSET * sizeof(float))) return (uint32_t)f->nlset;
+    if (f->nlset >= STREAM_LSET_MAX) return 0;
+    GROW(f->lset, f->nlset * STREAM_LSET, f->clset, STREAM_LSET);
+    memcpy(f->lset + f->nlset * STREAM_LSET, set, STREAM_LSET * sizeof(float));
+    return (uint32_t)++f->nlset;
 }
 
 static void push_ev(int kind, int reg, uint32_t len, uint64_t v)
@@ -172,6 +187,8 @@ static NativeVertex nv_blend_pos(const NativeVertex* a, const NativeVertex* b, f
     o.x = a->x + (b->x - a->x) * k; o.y = a->y + (b->y - a->y) * k;
     o.z = a->z + (b->z - a->z) * k; o.w = a->w + (b->w - a->w) * k;
     o.near_d = a->near_d + (b->near_d - a->near_d) * k; o.far_d = a->far_d + (b->far_d - a->far_d) * k;
+    o.vx = a->vx + (b->vx - a->vx) * k; o.vy = a->vy + (b->vy - a->vy) * k; o.vz = a->vz + (b->vz - a->vz) * k;   /* the lit point moves along */
+    o.nx = a->nx + (b->nx - a->nx) * k; o.ny = a->ny + (b->ny - a->ny) * k; o.nz = a->nz + (b->nz - a->nz) * k;
     return o;
 }
 
@@ -274,6 +291,7 @@ uint32_t native_defer(unsigned int prim, const NativeVertex* v, int n, uint32_t 
 void native_marker(uint64_t v)
 {
     const Deferred* d;
+    if ((uint32_t)v == NATIVE_PRETEXT) { push_ev(EV_PRETEXT, 0, 0, 0); return; }
     if ((uint32_t)v >= ndef) return;
     d = &deferred[(uint32_t)v];
     if (d->raw) {
@@ -298,10 +316,11 @@ void stream_disp(uint32_t fbp, uint32_t fbw, uint32_t psm) { push_ev(EV_DISP, 0,
 
 static void submit(int partial)
 {
-    extern int pc_frame_fade(void);
+    extern int pc_frame_fade(void), pc_frame_menu(void);
     Frame* f = recording();
     f->partial = partial;
     f->fade = pc_frame_fade();
+    f->menu = pc_frame_menu();
     rec = NULL;
     prof_push(PROF_QUEUE);
     SDL_LockMutex(mtx);
@@ -318,6 +337,7 @@ void stream_submit(void)
     extern void pc_view_changed(void);
     extern uint64_t pc_frame_view(float view[6], float cam[STREAM_CAM]);
     recording()->scene = pc_frame_view(rec->view, rec->cam);
+    { extern void pc_light_frame(void); pc_light_frame(); }   /* the flashlight's button (light_glue.c) */
     ndef = ndefv = ndefr = 0;   /* deferred native strips are drawn within their frame */
     submit(0);
     SDL_AddAtomicInt(&game_frames, 1);
@@ -394,6 +414,9 @@ void stream_exec(Frame* f)
     ntex_state_save(f->ntex_start);
     gs_tex_epoch = 0;
     hdpack_frame(f->fade);
+    gs_post_frame(f->menu);
+    gs_light_sets(f->lset, f->nlset);
+    gs_ao_frame(f->cam);
     for (size_t i = 0; i < f->nev; i++) {
         const Ev* e = &f->ev[i];
         if (tex_event(e)) gs_tex_epoch = (uint32_t)i + 1;
@@ -472,6 +495,9 @@ void stream_exec(Frame* f)
             break;
         case EV_MOVIE:
             gs_movie_bind((uint32_t)e->v, (int)e->len);
+            break;
+        case EV_PRETEXT:
+            gs_pretext_mark();
             break;
         case EV_DISP:
             gs.disp_fbp = (uint32_t)(e->v & 0xFFFF); gs.disp_fbw = (uint32_t)((e->v >> 16) & 0xFFFF); gs.disp_psm = (uint32_t)(e->v >> 32);
@@ -973,6 +999,7 @@ void stream_replay(const Frame* r, float t)
         if (in_def) continue;
         if (e->kind == EV_TEXBIND) { ntex_bind((uint32_t)e->v, (uint32_t)(e->v >> 32) & 0x3FFF, (uint32_t)(e->v >> 46) & 0x3FFF); continue; }
         if (e->kind == EV_MOVIE) { gs_movie_bind((uint32_t)e->v, (int)e->len); continue; }
+        if (e->kind == EV_PRETEXT) { gs_pretext_mark(); continue; }
         if (e->kind == EV_RTEX) {   /* this image's own capture, bound in place of the executed frame's (gs_gl.c rcap) */
             gs_replay_capture(ntex_capture_tex((uint32_t)e->v), (uint32_t)(e->v >> 32) & 0x1FF, (uint32_t)(e->v >> 48) & 0x3F, e->len & 0xFFFF, e->len >> 16, (int)(e->v >> 56) & 1);
             continue;

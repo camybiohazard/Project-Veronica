@@ -28,6 +28,9 @@ void ntex_forget(uint32_t id);   /* the game thread dropped a definition */
    render targets); replaces an earlier capture of the same id */
 void ntex_define_capture(uint32_t id, unsigned int gl_tex, int w, int h);
 unsigned int ntex_capture_tex(uint32_t id);   /* the GL texture of capture id (0: none) */
+void ntex_mips(const uint32_t* px, int w, int h, int stride);   /* mip levels of the bound texture, when it has no cut-outs */
+int  ntex_is_font(unsigned int tex);           /* tex is a decode of a font page (NTEX_FONT) */
+uint32_t ntex_hash_of(uint64_t tex0);         /* the image hash of the texture bound at TEX0 (materials.c), 0 none */
 /* the slot bindings (replays of a frame start from its starting state) */
 #define NTEX_STATE_SIZE 12288
 void ntex_state_save(void* out);

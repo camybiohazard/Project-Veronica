@@ -40,6 +40,18 @@ typedef struct {
     int  brightness;         /* picture calibration in the present pass (gs_gl.c draw_display): -50..50, 0 neutral */
     int  contrast;           /* 50..150 %, 100 neutral */
     int  gamma;              /* tenths, 5..20, 10 neutral */
+    int  bloom;              /* post-processing in the present pass (gs_gl.c draw_display): bloom and its warmth (BLOOM_*), 0/1 */
+    int  grading;            /* colour grading (gs_gl.c present_fs): the tone curve and split toning (GRADE_*), 0/1 */
+    int  ao;                 /* ambient occlusion (gs_gl.c ao_pass, AO_*), 0/1 */
+    int  light_falloff;      /* vertex lighting (pc/glue/light_glue.c): point lights 0 end at their range at a step, 1 fade out over its outer quarter */
+    int  lighting;           /* lighting mode (host.c pc_light_main, pc_light_ambient, pc_fog_scale): 0 original, 1 balanced, 2 horror, 3 nightmare */
+    int  light_pixel;        /* per-pixel lighting of the chunk models (light_glue.c, gs_gl.c fs_src), with the native 3D renderer */
+    int  wet;                /* wet surfaces in rain (light_glue.c, gs_gl.c fs_src): 0/1, on at WET_ON % */
+    int  dither;             /* dithering of the GS's 8 bits and the output (gs_gl.c fs_src, present_fs): 0/1 */
+    int  aniso;              /* anisotropic filtering (gs_gl.c aniso_filter): 0 off, else 2^aniso samples */
+    int  mat_shine;          /* surface materials' highlights (gs/materials.c, mods/materials.ini): 0/1 */
+    int  flashlight;              /* the flashlight (light_glue.c; host.c FLASH_*): 0/1, off: the button does nothing */
+    int  light_soft;         /* 0/1: light wraps round the shadow side (N.L + w) / (1 + w), w = SOFT_ON % / 100; 0 original */
     int  hdr;                /* Windows: HDR output through Direct3D 11 (render/hdr_win.c), at the next start */
     int  hdr_paper_white;    /* nits of the game's white (and the overlay), 0 = Windows' SDR content brightness */
     int  hdr_peak;           /* nits of the brightest highlight, 0 = the display's peak */

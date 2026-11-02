@@ -72,6 +72,7 @@ unsigned int pc_native_prim(unsigned int prim, const unsigned int* dp, int n, in
 unsigned int pc_native_prim_raw(unsigned int prim, const unsigned int* dp, int n, int clip_3d_on, float* last_sz);
 void  Ps2AddPrim3DExNative(unsigned long long prim, void* dp, unsigned int num, int mode);   /* 0 Ex, 1 Ex1P, 2 ExI */
 #define NATIVE_MARKER_REG 0x7F
+#define NATIVE_PRETEXT 0xFFFFFFFEu   /* NATIVE_MARKER_REG value: the HUD starts here (stream.c native_marker) */
 #define STREAM_TAG_REG 0x7E   /* gs/native.h */
 /* native textures (pc/glue/texture_glue.c) */
 int   pc_native_tex(void);
@@ -140,6 +141,12 @@ void  pc_mesh_end(void);
 void  pc_mesh_strip(const void* strip);   /* within a mesh: the following output is this strip */
 void  pc_margin_next(int mode);   /* the next mesh is drawn only outside the 4:3 screen (native 3D, hor+); mode: view_glue.c pc_margin_mesh */
 int   pc_margin_reaches_43(const struct VU1_STRIP_BUF* v, int n);   /* such a mesh would cover the view (native_glue.c): left out */
+/* lighting options (light_glue.c): on: ps2_NinjaCnk.c's vertex chunks compute the light sum again */
+int   pc_light_on(void);
+void  pc_light_relight(const float* in, int stride, int nofs, struct VU1_STRIP_BUF* out, int first, int n, int max_lights);
+void  pc_light_forget(int first, int n);   /* per-pixel lighting: vertices without a normal */
+struct VU1_COLOR;
+void  pc_light_ambient_scale(const struct VU1_COLOR* in, struct VU1_COLOR* out);   /* vu1SetAmbient: x the Ambient light option */
 void  pc_effect_tag(const void* op);      /* effect.c: the following output is this effect (O_WRK*, NULL: none) */
 unsigned long long pc_effect_poly(void); /* ps2_dummy.c Ps2AddOT: STREAM_TAG_REG value for an effect polygon (0: none) */
 int   pc_no_ink_ribbon(void);                 /* setting: typewriters save without an ink ribbon (host.c) */
