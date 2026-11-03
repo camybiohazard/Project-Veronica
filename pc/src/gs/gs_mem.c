@@ -400,17 +400,30 @@ void gs_clut_load(uint64_t tex0)
     case 5: load = cbp != cbp1; cbp1 = cbp; break;
     }
     if (!load) return;
-    gs_flush();
-    ntex_before_access(cbp / 32, cbp / 32 + 1);
-    for (uint32_t i = 0; i < (uint32_t)entries; i++) {
-        uint32_t x, y;
-        clut_pos(entries, i, &x, &y);
-        if (cpsm == 0) {
-            uint32_t c = gs_read_pixel(PSMCT32, cbp, 1, x, y), e = (csa * 16 + i) & 255;
-            clut_buf[e] = (uint16_t)c; clut_buf[256 + e] = (uint16_t)(c >> 16);
-        } else {
-            clut_buf[(csa * 16 + i) & 511] = (uint16_t)gs_read_pixel(cpsm == 2 ? PSMCT16 : PSMCT16S, cbp, 1, x, y);
+    if (ntex_access_pending(cbp / 32, cbp / 32 + 1)) {   /* a queued texture upload under it: written first */
+        gs_flush();
+        ntex_before_access(cbp / 32, cbp / 32 + 1);
+    }
+    /* The game rewrites TEX0 (CLD 1: always load) before each strip of a model, mostly with the
+       CLUT already loaded. Batched draws resolve their palette when flushed, so only a CLUT that
+       changes ends the batch: 540 more GL draws a frame facing the Antarctic Base pool room, which
+       on Windows' OpenGL took the frame from 7 to 30 ms. */
+    {
+        uint16_t buf[512];
+        memcpy(buf, clut_buf, sizeof(buf));
+        for (uint32_t i = 0; i < (uint32_t)entries; i++) {
+            uint32_t x, y;
+            clut_pos(entries, i, &x, &y);
+            if (cpsm == 0) {
+                uint32_t c = gs_read_pixel(PSMCT32, cbp, 1, x, y), e = (csa * 16 + i) & 255;
+                buf[e] = (uint16_t)c; buf[256 + e] = (uint16_t)(c >> 16);
+            } else {
+                buf[(csa * 16 + i) & 511] = (uint16_t)gs_read_pixel(cpsm == 2 ? PSMCT16 : PSMCT16S, cbp, 1, x, y);
+            }
         }
+        if (!memcmp(buf, clut_buf, sizeof(buf))) return;
+        gs_flush();
+        memcpy(clut_buf, buf, sizeof(buf));
     }
 }
 

@@ -60,7 +60,13 @@
   machines (the Antarctic Base pool room with the power on): an in-between image that would not
   be finished before the next game frame is due is left out, so the game keeps its speed and its
   own frames are shown. Matching a frame with the one before is also quicker where one object is
-  drawn hundreds of times (the carousel's lights).
+  drawn hundreds of times (the carousel's lights). When an in-between image is left out, the
+  game frame itself is shown instead of nothing (on high refresh rate displays it was never shown).
+- **Fewer draw calls in busy scenes**: the game sets a model's texture again before each of its
+  parts; the port now only ends a batch of drawing when the texture or its palette actually
+  changes. Facing the pool in the Antarctic Base pool room that is 233 instead of 1,294 draws a
+  frame (about half the time on Linux; on Windows, whose OpenGL drivers cost more per draw, it
+  froze the picture there with display-rate frames on). The picture is unchanged.
 - **Move while aiming** (THIRD PERSON, Modern gamepad, on by default): the left stick walks slowly
   any way while aiming and firing, the legs walking (or stepping back) under the aim.
 - **Fixed camera controls** start as Classic (tank), as the original; Modern (camera-relative) is

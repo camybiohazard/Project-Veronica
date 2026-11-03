@@ -323,6 +323,14 @@ void ntex_before_access(uint32_t page0, uint32_t page1)
         if (overlaps(pending[i].page0, pending[i].page1, page0, page1)) { execute_pending(i); i = -1; }
 }
 
+int ntex_access_pending(uint32_t page0, uint32_t page1)
+{
+    if (executing || gs_memp != gs_mem || gs_replaying) return 0;
+    for (int i = 0; i < npending; i++)
+        if (overlaps(pending[i].page0, pending[i].page1, page0, page1)) return 1;
+    return 0;
+}
+
 void ntex_bind(uint32_t id, uint32_t tbp, uint32_t cbp)
 {
     Def* d = def_find(id);

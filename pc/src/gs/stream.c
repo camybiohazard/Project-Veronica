@@ -85,6 +85,21 @@ static int tex_event(const Ev* e)
     }
 }
 
+/* A TEX0 write of the value the register has, the texture event before it a TEX0 write to the
+   same register: nothing since could have changed GS memory or the CLUT buffer (the other
+   context's TEX0 loads its own CLUT into it), so it would only load the same CLUT again. The game
+   rewrites TEX0 before each strip of a model (1,267 of 1,383 writes a frame facing the pool in
+   the Antarctic Base pool room), and each one began a new texture epoch, which ends the batch.
+   Skipped, and no new epoch: the batch goes on (with gs_clut_load and flush_for). Decided the
+   same way in the executed frame and its replays (GS state from the frame's start, the same
+   events). *last: the register of the last texture event if it was a TEX0 write, else -1. */
+static int tex0_same(const Ev* e, int* last)
+{
+    int tex0 = e->kind == EV_REG && (e->reg == 0x06 || e->reg == 0x07), same = tex0 && *last == e->reg && e->v == gs.ctx[e->reg - 6].tex0;
+    *last = tex0 ? e->reg : -1;
+    return same;
+}
+
 static void* xrealloc(void* p, size_t n)
 {
     void* q = realloc(p, n);
@@ -403,6 +418,7 @@ void stream_note_upload(const uint64_t* pages)
 void stream_exec(Frame* f)
 {
     long inst = -1;
+    int last_tex = -1;   /* tex0_same */
     uint32_t strip = 0, ord = 0, last_st = NOEV, last_q = NOEV;
     cached_for = f;
     gs_native_cache_begin(f->nev);
@@ -419,7 +435,8 @@ void stream_exec(Frame* f)
     gs_ao_frame(f->cam);
     for (size_t i = 0; i < f->nev; i++) {
         const Ev* e = &f->ev[i];
-        if (tex_event(e)) gs_tex_epoch = (uint32_t)i + 1;
+        int same = 0;
+        if (tex_event(e) && !(same = tex0_same(e, &last_tex))) gs_tex_epoch = (uint32_t)i + 1;
         if (ntex_defining()) {   /* texture definition: recorded, not executed */
             if (e->kind == EV_REG) { ntex_define_reg(e->reg, e->v); continue; }
             if (e->kind == EV_IMAGE) { ntex_define_image(f->pool + e->v, e->len); continue; }
@@ -456,7 +473,7 @@ void stream_exec(Frame* f)
                 f->vx[f->nvx++] = (uint32_t)i;
                 f->g[f->ng - 1].nv++;
             }
-            gs_exec_reg(e->reg, e->v);
+            if (!same) gs_exec_reg(e->reg, e->v);
             break;
         case EV_IMAGE:
             gs_exec_upload(f->pool + e->v, e->len);
@@ -1081,6 +1098,7 @@ void stream_replay(const Frame* r, float t)
     uint8_t ntex_end[NTEX_STATE_SIZE];
     size_t vi = 0, bvi = (size_t)-1;
     Blend bl = { 0 };
+    int last_tex = -1;   /* tex0_same */
     if (r != matched_for) return;
     prof_push(PROF_INTERP);
     gs_clut_state_save(clut_end);
@@ -1095,7 +1113,8 @@ void stream_replay(const Frame* r, float t)
     gs_tex_epoch = 0;
     for (size_t i = 0; i < r->nev; i++) {
         const Ev* e = &r->ev[i];
-        if (tex_event(e)) gs_tex_epoch = (uint32_t)i + 1;
+        int same = 0;
+        if (tex_event(e) && !(same = tex0_same(e, &last_tex))) gs_tex_epoch = (uint32_t)i + 1;
         uint64_t v;
         if (e->kind == EV_TEXDEF) { in_def = 1; continue; }
         if (e->kind == EV_TEXDEF_END) { in_def = 0; continue; }
@@ -1140,7 +1159,7 @@ void stream_replay(const Frame* r, float t)
             else if (bl.has_q) v = bl.rgbaq;
         }
         if (vi < r->nvx && r->vx[vi] == i) vi++;
-        gs_exec_reg(e->reg, v);
+        if (!same) gs_exec_reg(e->reg, v);
     }
     gs_flush();
     gs_replaying = 0;

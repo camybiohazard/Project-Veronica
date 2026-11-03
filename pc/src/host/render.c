@@ -110,19 +110,20 @@ void render_loop(void)
                in-between image of this one would only delay it (a whole replay of the scene) */
             if (t < 1.0f && fixed_t <= 0.0f && stream_queued()) continue;
             /* the GPU is still two frames or images behind most of a refresh later (a heavy
-               scene at a high resolution and rate), or the in-between image would still be drawn
-               when the next game frame is due (a scene whose replay costs as much as the rest of
-               the frame: the Antarctic pool room with its carousel lit, 20 ms a frame and 11 ms an
-               image at 1440p): this refresh gets no in-between image. Replays queued up behind
-               each other, or running into the next frame, would hold up that frame's execution,
-               and with it the game thread (one frame in flight): the game would slow down, on a
-               slower machine to a near halt. The due time is the game's own rate, not the
-               measured period: that lengthens as the game slows, so it would allow more. */
+               scene at a high resolution and rate), or a new in-between image would still be
+               drawn when the next game frame is due (a scene whose replay costs as much as the
+               rest of the frame: the Antarctic pool room facing the pool): this frame gets
+               no more in-between images and is shown itself. Replays queued up behind each other,
+               or running into the next frame, would hold up that frame's execution, and with it
+               the game thread (one frame in flight): the game would slow down, on a slower
+               machine to a near halt. Showing nothing instead left the frame itself unshown when
+               the next one came first (above 60 Hz, none at all in that room). The due time is
+               the game's own rate, not the measured period: that lengthens as the game slows, so
+               it would allow more. */
             if (t < 1.0f && fixed_t <= 0.0f && (!gs_gpu_ready(tick / 8 * 7) || now + (uint64_t)replay_avg > due)) {
-                shown++;
-                pace_until = pace_until && pace_until + tick > now ? pace_until + tick : now + tick;
-                replay_avg *= 0.995;   /* tried again after about a second: the scene may have got lighter, or the cost was one hitch */
-                continue;
+                interp = 0;
+                t = 1.0f;
+                replay_avg *= 0.98;   /* tried again after a few seconds: the scene may have got lighter, or the cost was one hitch */
             }
             swap = gs_present(cur, t);
             if (t < 1.0f) {   /* without the swap's wait, at most a game frame (a hitch counts once) */
