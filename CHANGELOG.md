@@ -8,6 +8,14 @@
 
 ### Changes
 
+- **FSR upscaling** (DISPLAY, off by default): AMD FSR 1 upscales a picture drawn below the
+  window's resolution with sharp edges instead of a plain stretch; Auto Internal resolution then
+  stays at or below the window (4x instead of 5x at 2160p) for a higher frame rate.
+- **Faster rendering at high resolutions**: in-between frames upload about a third of the vertex
+  data (shared strip vertices sent once, a smaller vertex), ambient occlusion works from a
+  half-size depth copy, and keeping text out of bloom copies only what is drawn over after the
+  first text instead of the whole picture. At 4K with every effect on, in-between frames take
+  about 30% less render-thread time and 15-30% less GPU time, with the same picture.
 - **Post-processing** (DISPLAY, off by default): Bloom lets fire, lamps, flashes and other bright
   parts glow onto their surroundings with a slightly warmer picture (on or off; the glow only in
   play, not on the title screen, menus, movies or text), Colour grading (a filmic tone curve

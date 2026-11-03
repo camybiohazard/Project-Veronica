@@ -26,3 +26,9 @@ or CRI Middleware.
 
 The built binaries link these libraries statically; ship their license texts
 with any binary release.
+
+## Adapted code
+
+| Component | Where | Source | License |
+|---|---|---|---|
+| AMD FidelityFX Super Resolution 1.0 (EASU upscaling, RCAS sharpening), ported to GLSL 3.30 | `pc/src/gs/gs_gl.c` (`fsr_easu_fs`, `fsr_rcas_fs`) | https://github.com/GPUOpen-Effects/FidelityFX-FSR | MIT, Copyright (c) 2021 Advanced Micro Devices, Inc. |

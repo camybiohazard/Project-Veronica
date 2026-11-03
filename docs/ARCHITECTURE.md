@@ -288,6 +288,15 @@ shows in-between images at the display rate:
   uploaded again.
 - Replays load no CLUT, skip unchanged batch state, set uniforms only when they change, and
   same-value register writes do not end a batch (except inside a two-pass alpha-test batch).
+- **Indexed strips**: batches are drawn indexed (`gs_gl.c ibuf`, `glDrawElementsBaseVertex`). A
+  replay's blended smooth-shaded strip goes in as its vertices once plus the indices of its
+  triangles (`stream.c native_draw` -> `gs_draw_native_idx`; a clipped triangle's polygon after the
+  strip's vertices), the same triangles in the same order as the triangle list, so the picture is
+  bit-identical; the executed frame keeps triangle lists for its replays' static strips (`ncache`),
+  and flat-shaded strips need their own vertices per triangle. A vertex is 68 bytes (colour, fog
+  and light set as bytes and a short, normalised or converted by the vertex attributes). With the
+  third-person camera nothing is static and every in-between image uploads all its vertices: the
+  driver's copy of them was the render thread's largest single cost at 4K.
 
 ### Presentation and frame rate limit
 
@@ -314,6 +323,16 @@ Picture calibration (`brightness`, `contrast`, `gamma`) is applied in the presen
 and the overlay drawn afterwards does not. At the neutral values the shader skips it and the
 output is bit-identical; `gs_picture` is the same formula on the CPU (F1's test pattern).
 
+FSR upscaling (`fsr`; `gs_gl.c fsr_easu_fs`, `fsr_rcas_fs`, after AMD FidelityFX Super Resolution 1,
+MIT): when the display area at the internal resolution is less tall than its place in the window,
+`draw_display` runs the present shader (bloom, AO and grading sized to the internal resolution)
+into `fsr_src`, EASU brings it to the viewport's size in `fsr_mid` (12 texels, the edge direction
+from their luma, a stretched Lanczos-2 approximation clamped to the 4 nearest), and RCAS sharpens it
+into the window (0.2 stops below the strongest; it dithers instead of the present shader). Both
+intermediates are RGB10_A2: the picture is display-referred by then. With `fsr` on, Auto internal
+resolution rounds down instead of to the nearest (`gs_wanted_scale`), so FSR upscales the rest; with
+it off, or a picture as large as the window, the present path is unchanged and bit-identical.
+
 Post-processing (`bloom`, `color_grading`; each on is a fixed look, `gs_gl.c BLOOM_*`: strength 50%,
 threshold 75% of white, warmth +10, saturation unchanged; `GRADE_*`: highlight rolloff 60%, shadow
 depth 30%, split toning 20%) is applied in the same shader before the calibration, in linear light (the picture
@@ -324,7 +343,8 @@ from teal in the shadows to orange in the highlights by luminance).
 
 Ambient occlusion (`ao`; on is `gs_gl.c AO_*`: 60% strength, radius 2% of the screen's height; `ao_pass`) is computed from the depth native 3D
 wrote into a full-screen target. Full-screen 2D drawn later (the camera filter, fades) overwrites
-that depth with a flat value, so `gs_flush` copies it (`ao_keep`) just before a draw that is not
+that depth with a flat value, so `gs_flush` copies it (`ao_keep`: at half the size, of the 480
+lines shown, as the AO pass reads it at a spacing of two depth samples anyway) just before a draw that is not
 native 3D (its vertices have w = 1) writes the same depth, or at the frame's end; executed frames
 and replays keep separate copies, as the replays draw into the same depth before the executed
 frame's own image is shown. The view distance is w = -b / (Z + a) with the frame's depth a, b
@@ -348,8 +368,13 @@ frames that show a movie (`gs_movie_bind`) get none either. Text drawn in play (
 messages, item names, the ammo counter) does not glow: the first draw of a frame from a font page
 (`textures.c ntex_is_font`, the decodes of `NTEX_FONT` definitions, and by image hash the three
 full-screen text pages of the new game's opening crawl, which runs under task 7 and so counts as
-play) into a full-screen target copies that target first (`gs_gl.c pretext_capture`; one copy for the executed frame, one for
-replays), and bloom is taken from the copy. The game draws into one buffer and copies it to the
+play) into a full-screen target starts a copy of it (`gs_gl.c pretext_capture`; one for the executed frame, one for
+replays): from then on each draw into that target first copies the tiles under it (`pretext_track`:
+its scissor cut to the vertices of a 2D batch, 32 x 16 tiles over the target, with a ring of one
+tile more so a linear filter at a tile's edge stays inside the copy; a reload of the target from GS
+memory copies all the rest, `pretext_whole`), and bloom and the AO test take the copy where its tile
+mask (`pretext_mask_tex`) is set and the picture itself elsewhere, where nothing was drawn since. The
+copy so covers a corner for the ammo counter instead of the whole picture every image. The game draws into one buffer and copies it to the
 displayed one at the swap, so the copy is matched to the displayed image by size. What is drawn
 after the first text in a frame gives no bloom either. The flashlight's battery icon
 (`hud_glue.c`) is drawn from the ordering table ahead of the ammo counter's text, so its first

@@ -60,6 +60,7 @@ PFN_glGetTexParameteriv gl_GetTexParameteriv;
 PFN_glTexParameterf gl_TexParameterf;
 PFN_glGetFloatv gl_GetFloatv;
 PFN_glDrawArrays gl_DrawArrays;
+PFN_glDrawElementsBaseVertex gl_DrawElementsBaseVertex;
 PFN_glReadPixels gl_ReadPixels;
 PFN_glPixelStorei gl_PixelStorei;
 PFN_glGetError gl_GetError;
@@ -132,6 +133,7 @@ int gl_load(void* (*getproc)(const char*))
     if (!(gl_TexParameterf = (PFN_glTexParameterf)getproc("glTexParameterf"))) ok = 0;
     if (!(gl_GetFloatv = (PFN_glGetFloatv)getproc("glGetFloatv"))) ok = 0;
     if (!(gl_DrawArrays = (PFN_glDrawArrays)getproc("glDrawArrays"))) ok = 0;
+    if (!(gl_DrawElementsBaseVertex = (PFN_glDrawElementsBaseVertex)getproc("glDrawElementsBaseVertex"))) ok = 0;
     if (!(gl_ReadPixels = (PFN_glReadPixels)getproc("glReadPixels"))) ok = 0;
     if (!(gl_PixelStorei = (PFN_glPixelStorei)getproc("glPixelStorei"))) ok = 0;
     if (!(gl_GetError = (PFN_glGetError)getproc("glGetError"))) ok = 0;

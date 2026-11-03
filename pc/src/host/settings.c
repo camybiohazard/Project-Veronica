@@ -379,6 +379,8 @@ const Setting g_settings[] = {
     { SP_DISPLAY, "Show frame rate", V(g_config.show_fps), 0, 1, 1 },
     { SP_DISPLAY, "Aspect ratio", V(g_config.aspect), 0, 2, 1, aspects, .help = "Widescreen: 3D fills the window, 2D and menus stay 4:3 in the middle.", .group = "PICTURE" },
     { SP_DISPLAY, "Internal resolution", V(g_config.scale), 0, 8, 1, .name = scale_name, .help = "The resolution the game is drawn at; Auto follows the window." },
+    { SP_DISPLAY, "FSR upscaling", V(g_config.fsr), 0, 1, 1,
+      .help = "AMD FSR 1: a picture drawn below the window's resolution is upscaled with sharp edges instead of a plain stretch. Auto Internal resolution then stays at or below the window (4x instead of 5x at 2160p), for a higher frame rate. Off: the plain stretch." },
     { SP_DISPLAY, "Anisotropic filtering", V(g_config.aniso), 0, 4, 1, .name = aniso_name,
       .help = "Floors, walls and ceilings seen at a shallow angle stay sharp into the distance instead of blurring, without shimmering. Textures with cut-outs (railings, fences, foliage) are left as they are. Needs Native textures or HD textures." },
     { SP_DISPLAY, "Dithering", V(g_config.dither), 0, 1, 1,

@@ -134,6 +134,7 @@ renderer, skipped intro and door animations (Skip door animations: Instant) and 
 | **Picture** | | |
 | Aspect ratio | `aspect` | 4:3 (original), Stretch to window, **Widescreen (hor+)**: 3D fills the window, 2D and menus stay 4:3 in the middle; with the fixed cameras, room parts the original hides for a camera angle are drawn in the side margins (except walls the camera looks through), while the 4:3 middle stays exactly the original (the OPTION screen's picture strips run to the window's edges; what the inventory, item box, files and map keep off-screen stays hidden) |
 | Internal resolution | `scale` | **Auto** (follows the window) or 1x-8x of 640x448 |
+| FSR upscaling | `fsr` | **Off**, On: a picture drawn below the window's resolution is upscaled with AMD FSR 1 (edge-aware upscaling, then sharpening) instead of a plain stretch. Auto Internal resolution then picks the largest scale at or below the window instead of the nearest (4x instead of 5x at 2160p, 3x at 1440p), which raises the frame rate at 4K by about a fifth with in-between frames on. A fixed Internal resolution is upscaled as it is (3x at 2160p for more speed). Off: the plain stretch |
 | Anisotropic filtering | `anisotropic` | Off, 2x, 4x, 8x, **16x**: floors and walls seen at a shallow angle stay sharp into the distance without shimmering. Textures with cut-outs (railings, fences, foliage) are left as they are. Needs Native textures or HD textures |
 | Dithering | `dither` | **on**: a fine fixed noise, too small to see, against colour banding in dark gradients (lamplight falloff, fog, the tone curve) |
 | Display-rate frames | `interpolate` | "Enhanced mode": in-between frames blended from the last two game frames, up to the display's refresh rate. The game logic stays at its original 30 FPS, so gameplay is unchanged. **On**; off is "vanilla" |
@@ -676,6 +677,6 @@ tougher, faster or bigger; for the spawner and the Wild randomizer), see [ENEMIE
 | Linux: no window, no sound, or "cannot open shared object" | the 32-bit OpenGL, X11/Wayland and audio libraries are missing ([BUILDING.md](BUILDING.md#linux)) |
 | No file selector on the first start | Linux needs the desktop portal or `zenity`; otherwise pass the image on the command line or via `RECVX_ISO` |
 | "cannot open game disc image" | check the path; only SLUS-20184 images work |
-| Low frame rate at high resolution | lower Internal resolution, set a Frame rate limit, or turn off Display-rate frames; F1 -> Performance shows where time goes |
+| Low frame rate at high resolution | turn on FSR upscaling, lower Internal resolution, set a Frame rate limit, or turn off Display-rate frames; F1 -> Performance shows where time goes |
 | Gamepad not working in the second window | set Input source to Gamepad only and pick the pad number; check Steam Input |
 | A crash | attach `recvx-crash.log` to an issue: every crash writes it (a few KB: the version, a backtrace and the last messages) next to `recvx.log`, in the game's folder. For more, run with `--log` and attach `recvx.log` too (it has the whole session) |

@@ -248,32 +248,61 @@ void native_strip(unsigned int prim, const NativeVertex* v, int n)
     f->npool += len;
 }
 
+/* a convex polygon of n vertices as triangles: its vertices appended at u[*nu], the indices at idx[m];
+   returns the new index count */
+static int fan_idx(NativeVertex* u, int* nu, uint16_t* idx, int m, const NativeVertex* p, int n)
+{
+    int b = *nu;
+    for (int j = 0; j < n; j++) u[(*nu)++] = p[j];
+    for (int j = 2; j < n; j++) { idx[m++] = (uint16_t)b; idx[m++] = (uint16_t)(b + j - 1); idx[m++] = (uint16_t)(b + j); }
+    return m;
+}
+
 /* render thread: strip -> triangles; triangles whose three normals face away are dropped
    (SingleMain) and the rest clipped against the near and far planes, as the VU1 SCISSOR
    routine does, so the GPU only ever gets vertices in front of the camera (w >= near > 0):
    how drivers clip primitives reaching behind the camera differs. Margin triangles (cull bit 2)
-   are also cut to the parts left and right of the 4:3 screen, so the 4:3 picture stays exact. */
+   are also cut to the parts left and right of the 4:3 screen, so the 4:3 picture stays exact.
+   An in-between image's smooth-shaded strip goes to the GPU indexed (gs_draw_native_idx): the
+   strip's vertices once for the triangles that share them, a clipped triangle's polygon after
+   them; the same triangles in the same order as the list. The executed frame keeps its strips as
+   triangle lists (gs_draw_native, for its replays), and flat-shaded ones need their own vertices. */
 static void native_draw(unsigned int prim, const NativeVertex* v, int n, long ev)
 {
     static NativeVertex tri[64 * 24];   /* render thread only; up to 8 triangles per margin triangle */
-    int m = 0;
+    static NativeVertex u[64 * 13];     /* indexed: the strip's vertices used, then up to 12 per clipped triangle */
+    static uint16_t idx[64 * 24];
+    int16_t map[64];
+    int m = 0, nu = 0;
     int type = (int)(prim & 7);   /* 3 triangle list, 5 fan, otherwise strip */
+    int indexed = ev < 0 && ((prim >> 3) & 1);
     if (n > 64) n = 64;
+    if (indexed) memset(map, 0xFF, sizeof(map));
     for (int i = 2; i < n; i += type == 3 ? 3 : 1) {
-        const NativeVertex* t3[3] = { type == 5 ? &v[0] : &v[i - 2], &v[i - 1], &v[i] };
+        int vi[3] = { type == 5 ? 0 : i - 2, i - 1, i };
+        const NativeVertex* t3[3] = { &v[vi[0]], &v[vi[1]], &v[vi[2]] };
         int margin = t3[2]->cull & 4;
         if ((t3[2]->cull & 2) || (t3[0]->cull & t3[1]->cull & t3[2]->cull & 1)) continue;
         if (!margin && t3[0]->near_d >= 0 && t3[1]->near_d >= 0 && t3[2]->near_d >= 0 && t3[0]->far_d >= 0 && t3[1]->far_d >= 0 && t3[2]->far_d >= 0) {
-            tri[m++] = *t3[0]; tri[m++] = *t3[1]; tri[m++] = *t3[2];
+            if (indexed)
+                for (int j = 0; j < 3; j++) {
+                    if (map[vi[j]] < 0) { map[vi[j]] = (int16_t)nu; u[nu++] = v[vi[j]]; }
+                    idx[m++] = (uint16_t)map[vi[j]];
+                }
+            else { tri[m++] = *t3[0]; tri[m++] = *t3[1]; tri[m++] = *t3[2]; }
         } else {
             NativeVertex p0[3] = { *t3[0], *t3[1], *t3[2] }, p1[4], p2[5], p3[6];
             int k = native_clip_plane(p0, 3, p1, 0);
             k = k ? native_clip_plane(p1, k, p2, 1) : 0;
-            if (!margin) m = fan(tri, m, p2, k);
-            else for (int side = 2; side < 4; side++) m = fan(tri, m, p3, k ? native_clip_plane(p2, k, p3, side) : 0);   /* left, right */
+            if (!margin) m = indexed ? fan_idx(u, &nu, idx, m, p2, k) : fan(tri, m, p2, k);
+            else for (int side = 2; side < 4; side++) {   /* left, right */
+                int ks = k ? native_clip_plane(p2, k, p3, side) : 0;
+                m = indexed ? fan_idx(u, &nu, idx, m, p3, ks) : fan(tri, m, p3, ks);
+            }
         }
     }
-    if (m) gs_draw_native(prim, tri, m, ev);
+    if (m && indexed) gs_draw_native_idx(prim, u, nu, idx, m);
+    else if (m) gs_draw_native(prim, tri, m, ev);
 }
 
 /* deferred native strips (game thread), valid until the frame is submitted */

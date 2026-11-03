@@ -22,6 +22,7 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "vsync", &g_config.vsync, 0, 1 },
     { "fps_limit", &g_config.fps_limit, 0, 5 },
     { "scale", &g_config.scale, 0, 8 },
+    { "fsr", &g_config.fsr, 0, 1 },
     { "aspect", &g_config.aspect, 0, 2 },
     { "show_fps", &g_config.show_fps, 0, 1 },
     { "music_volume", &g_config.music_volume, 0, 100 },

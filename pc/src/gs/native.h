@@ -85,5 +85,8 @@ void     gs_draw_raw(unsigned int prim, const NativeRawVertex* v, int n);
 /* render thread: draw n vertices (triangle list) with the current GS context; ev >= 0: the
    executed frame's strip of that stream event, kept for its replays (gs_draw_native_cached) */
 void gs_draw_native(unsigned int prim, const NativeVertex* v, int n, long ev);
+/* render thread: smooth-shaded triangles idx[0..ni) of the nv vertices v, each vertex sent once
+   (not kept for replays) */
+void gs_draw_native_idx(unsigned int prim, const NativeVertex* v, int nv, const uint16_t* idx, int ni);
 void gs_native_cache_begin(size_t nev);                 /* an executed frame starts */
 int  gs_draw_native_cached(unsigned int prim, size_t ev);   /* replay: 0 if not kept */

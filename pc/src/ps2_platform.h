@@ -25,6 +25,7 @@ typedef struct {
     int  log_level;
     /* user settings (F1 overlay, saved in <save_dir>/recvx.ini) */
     int  scale;              /* internal resolution multiplier, 0 = auto */
+    int  fsr;                /* FSR 1 upscaling of the internal resolution to the window (gs_gl.c fsr_upscale), 0/1; auto scale then stays at or below the window */
     int  aspect;             /* ASPECT_* */
     int  show_fps;
     int  music_volume;       /* 0-100 */

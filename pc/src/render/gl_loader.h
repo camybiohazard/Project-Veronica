@@ -17,6 +17,7 @@ typedef ptrdiff_t GLsizeiptr; typedef ptrdiff_t GLintptr;
 #define GL_UNSIGNED_BYTE 0x1401
 #define GL_FLOAT 0x1406
 #define GL_UNSIGNED_SHORT 0x1403
+#define GL_ELEMENT_ARRAY_BUFFER 0x8893
 #define GL_UNSIGNED_INT 0x1405
 #define GL_TEXTURE_MIN_FILTER 0x2801
 #define GL_TEXTURE_MAG_FILTER 0x2800
@@ -274,6 +275,9 @@ extern PFN_glGetFloatv gl_GetFloatv;
 typedef void (GLAPIENTRY *PFN_glDrawArrays)(GLenum mode, GLint first, GLsizei count);
 extern PFN_glDrawArrays gl_DrawArrays;
 #define glDrawArrays gl_DrawArrays
+typedef void (GLAPIENTRY *PFN_glDrawElementsBaseVertex)(GLenum mode, GLsizei count, GLenum type, const void* indices, GLint basevertex);   /* GL 3.2 */
+extern PFN_glDrawElementsBaseVertex gl_DrawElementsBaseVertex;
+#define glDrawElementsBaseVertex gl_DrawElementsBaseVertex
 typedef void (GLAPIENTRY *PFN_glReadPixels)(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void* pixels);
 extern PFN_glReadPixels gl_ReadPixels;
 #define glReadPixels gl_ReadPixels
