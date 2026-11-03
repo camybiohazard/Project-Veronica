@@ -802,6 +802,95 @@ static int inst_still(const Frame* p, const Frame* c, const Inst* b)
     return n >= 3;
 }
 
+/* The search for the previous frame's instance of a mesh nearest to one of this frame: the lowest
+   inst_pair score, the first in order on a tie. inst_pair never scores below inst_gap, so a
+   candidate whose boxes are further apart than the best score so far is passed over unjudged. */
+typedef struct { const Frame *p, *c; size_t i; const uint32_t* order; const uint8_t* used; long best_d; size_t best; } Search;
+static void consider(Search* s, size_t m)
+{
+    long gap, d;
+    if (s->used[m]) return;
+    gap = inst_gap(s->p, s->order[m], s->c, s->i);
+    if (gap > s->best_d || (gap == s->best_d && m > s->best)) return;
+    d = inst_pair(s->p, &s->p->in[s->order[m]], s->c, &s->c->in[s->i]);
+    if (d >= 0 && (d < s->best_d || (d == s->best_d && m < s->best))) { s->best_d = d; s->best = m; }
+}
+
+/* A mesh drawn many times (the lights of the carousel in the Antarctic pool room: 700 a frame)
+   made judging every instance against every one of the previous frame 490,000 box tests a frame
+   (3.5 ms). Its instances in the previous frame are sorted by the centre of their box in x once
+   per frame (xrun, from the mesh's first index in order); the search goes outwards from the
+   instance's own centre and stops where even the widest box could no longer be near enough.
+   Those without a box, or wider than XRUN_WIDE (reaching off screen: clamped to the edge), are
+   kept last and always judged; one of them sorted in would have stopped nothing. Their boxes and
+   centres are kept in that order (xbox, xcen), so most are passed over without looking them up.
+   The result is the same as judging them all. */
+#define XRUN_MIN 16
+#define XRUN_WIDE (2 * JUMP)
+static uint32_t* xrun; static int32_t* xrun_k; static uint16_t* xrun_w; static size_t cap_xrun;
+static uint16_t (*xbox)[4]; static int32_t* xcen;
+static const uint32_t* xrun_order;
+static long centre(uint32_t m) { const uint16_t* b = sort_frame->box[xrun_order[m]]; return (long)b[0] + b[2]; }   /* doubled */
+static int by_centre(const void* a, const void* b)
+{
+    uint32_t x = *(const uint32_t*)a, y = *(const uint32_t*)b;
+    long cx = centre(x), cy = centre(y);
+    return cx < cy ? -1 : cx > cy ? 1 : x < y ? -1 : x > y;
+}
+static void xrun_search(Search* s, size_t lo, size_t hi)
+{
+    const uint16_t* q = s->c->box[s->i];
+    size_t k, a, z;
+    long cc, wc, l, r;
+    if (xrun_k[lo] < 0) {   /* first instance of this mesh in this frame: sort the previous frame's */
+        size_t e = hi;
+        uint16_t w = 0;
+        k = 0;
+        for (size_t m = lo; m < hi; m++) {
+            const uint16_t* b = s->p->box[s->order[m]];
+            if (b[0] > b[2] || b[2] - b[0] > XRUN_WIDE) { xrun[--e] = (uint32_t)m; continue; }
+            xrun[lo + k++] = (uint32_t)m;
+            if (b[2] - b[0] > w) w = (uint16_t)(b[2] - b[0]);
+        }
+        xrun_order = s->order;
+        qsort(xrun + lo, k, sizeof(*xrun), by_centre);
+        for (size_t j = lo; j < lo + k; j++) { memcpy(xbox[j], s->p->box[s->order[xrun[j]]], sizeof(xbox[j])); xcen[j] = (int32_t)xbox[j][0] + xbox[j][2]; }
+        xrun_k[lo] = (int32_t)k; xrun_w[lo] = w;
+    }
+    k = (size_t)xrun_k[lo];
+    if (q[0] > q[2]) {   /* no box of its own: every candidate is gap 0 */
+        for (size_t m = lo; m < hi; m++) consider(s, m);
+        return;
+    }
+    cc = (long)q[0] + q[2]; wc = (long)q[2] - q[0];
+    for (a = lo, z = lo + k; a < z;) {   /* the first centre at or right of its own */
+        size_t m = (a + z) / 2;
+        if (xcen[m] < cc) a = m + 1; else z = m;
+    }
+    for (l = (long)a - 1, r = (long)a;;) {   /* outwards, the nearer side first */
+        long dl = l >= (long)lo ? cc - xcen[l] : -1, dr = r < (long)(lo + k) ? xcen[r] - cc : -1, d, gap;
+        int left = dl >= 0 && (dr < 0 || dl <= dr);
+        size_t j;
+        const uint16_t* x;
+        if (dl < 0 && dr < 0) break;
+        d = left ? dl : dr;
+        gap = (d - xrun_w[lo] - wc) / 2;   /* the least x distance of the boxes, inst_gap's cap */
+        if (gap > 2 * JUMP) gap = 2 * JUMP;
+        if (gap > s->best_d) break;   /* and further out on both sides */
+        j = (size_t)(left ? l-- : r++);
+        x = xbox[j];
+        gap = 0;   /* inst_gap of these boxes */
+        if ((long)x[0] - q[2] > gap) gap = (long)x[0] - q[2];
+        if ((long)q[0] - x[2] > gap) gap = (long)q[0] - x[2];
+        if ((long)x[1] - q[3] > gap) gap = (long)x[1] - q[3];
+        if ((long)q[1] - x[3] > gap) gap = (long)q[1] - x[3];
+        if (gap > 2 * JUMP) gap = 2 * JUMP;
+        if (gap > s->best_d || (gap == s->best_d && xrun[j] > s->best)) continue;
+        consider(s, xrun[j]);
+    }
+    for (size_t m = lo + k; m < hi; m++) consider(s, xrun[m]);   /* without a box, or wide */
+}
+
 /* match frame c against p; 1 if in-between frames make sense */
 int stream_match(const Frame* p, const Frame* c)
 {
@@ -832,6 +921,15 @@ int stream_match(const Frame* p, const Frame* c)
         order = xrealloc(order, cap_order * sizeof(*order));
         used = xrealloc(used, cap_order);
     }
+    if (p->nin > cap_xrun) {
+        cap_xrun = p->nin * 2;
+        xrun = xrealloc(xrun, cap_xrun * sizeof(*xrun));
+        xrun_k = xrealloc(xrun_k, cap_xrun * sizeof(*xrun_k));
+        xrun_w = xrealloc(xrun_w, cap_xrun * sizeof(*xrun_w));
+        xbox = xrealloc(xbox, cap_xrun * sizeof(*xbox));
+        xcen = xrealloc(xcen, cap_xrun * sizeof(*xcen));
+    }
+    memset(xrun_k, 0xFF, p->nin * sizeof(*xrun_k));
     for (size_t i = 0; i < p->nin; i++) order[i] = (uint32_t)i;
     sort_frame = p;
     qsort(order, p->nin, sizeof(*order), by_mesh);
@@ -849,7 +947,12 @@ int stream_match(const Frame* p, const Frame* c)
             size_t m = (lo + hi) / 2;
             if (p->in[order[m]].mesh < b->mesh) lo = m + 1; else hi = m;
         }
-        {   /* the nearest instance (the first in order of the nearest), with fewer
+        for (hi = lo; hi < p->nin && p->in[order[hi]].mesh == b->mesh; hi++) {}
+        if (hi - lo >= XRUN_MIN) {   /* many instances: sorted by position */
+            Search s = { p, c, i, order, used, best_d, best };
+            xrun_search(&s, lo, hi);
+            best_d = s.best_d; best = s.best;
+        } else {   /* the nearest instance (the first in order of the nearest), with fewer
                candidates judged: the one whose box is nearest first, then only those whose boxes could
                do as well (a crowd of 30 zombies: 3000 judged a frame before, 750 now) */
             size_t first = (size_t)-1;

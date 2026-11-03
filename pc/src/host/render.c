@@ -37,12 +37,16 @@ static double present_hz(void)
     return lim && lim < hz ? lim : hz;
 }
 
+#define GAME_PERIOD (1001.0 / 30000.0 * 1e9)   /* the game's frame rate (ns) */
+
 void render_loop(void)
 {
     Frame *prev = NULL, *cur = NULL;
     uint64_t arrived = 0, pace_until = 0;
     double swap_avg = 0.0;   /* how long the buffer swap blocks, smoothed */
-    double period = 1001.0 / 30000.0 * 1e9;   /* game frame period, measured below */
+    double period = GAME_PERIOD;   /* game frame period, measured below */
+    uint64_t frame_start = 0, due = 0;   /* when the frame being shown began executing; when the next is due */
+    double replay_avg = 0.0;   /* how long an in-between image keeps this thread busy, smoothed */
     int interp = 0, shown = 0;   /* refreshes presented since the frame arrived */
     int check_replay = SDL_getenv("RECVX_REPLAY_CHECK") && SDL_atoi(SDL_getenv("RECVX_REPLAY_CHECK"));
     float fixed_t = SDL_getenv("RECVX_INTERP_T") ? (float)SDL_atof(SDL_getenv("RECVX_INTERP_T")) : 0.0f;   /* test aid: first refresh shows t */
@@ -57,11 +61,14 @@ void render_loop(void)
         now = SDL_GetTicksNS();
         f = stream_pop(!cur ? 20 : pace_until > now ? (int)((pace_until - now) / 1000000) : 0);   /* the rest: SDL_DelayPrecise */
         if (f) {
+            if (!frame_start) frame_start = SDL_GetTicksNS();   /* its first part (a download splits a frame) */
             prof_push(PROF_EXEC);
             gs_frame_begin();
             stream_exec(f);
             prof_pop();
             if (stream_is_partial(f)) { stream_release(f); continue; }   /* download sync point */
+            due = frame_start + (uint64_t)GAME_PERIOD;
+            frame_start = 0;
             now = SDL_GetTicksNS();
             if (arrived) {
                 double d = (double)(now - arrived);
@@ -103,15 +110,25 @@ void render_loop(void)
                in-between image of this one would only delay it (a whole replay of the scene) */
             if (t < 1.0f && fixed_t <= 0.0f && stream_queued()) continue;
             /* the GPU is still two frames or images behind most of a refresh later (a heavy
-               scene at a high resolution and rate): this refresh gets no in-between image.
-               Replays queued up behind each other would hold up the next game frame's execution,
-               and with it the game thread (one frame in flight): the game would slow down. */
-            if (t < 1.0f && fixed_t <= 0.0f && !gs_gpu_ready(tick / 8 * 7)) {
+               scene at a high resolution and rate), or the in-between image would still be drawn
+               when the next game frame is due (a scene whose replay costs as much as the rest of
+               the frame: the Antarctic pool room with its carousel lit, 20 ms a frame and 11 ms an
+               image at 1440p): this refresh gets no in-between image. Replays queued up behind
+               each other, or running into the next frame, would hold up that frame's execution,
+               and with it the game thread (one frame in flight): the game would slow down, on a
+               slower machine to a near halt. The due time is the game's own rate, not the
+               measured period: that lengthens as the game slows, so it would allow more. */
+            if (t < 1.0f && fixed_t <= 0.0f && (!gs_gpu_ready(tick / 8 * 7) || now + (uint64_t)replay_avg > due)) {
                 shown++;
                 pace_until = pace_until && pace_until + tick > now ? pace_until + tick : now + tick;
+                replay_avg *= 0.995;   /* tried again after about a second: the scene may have got lighter, or the cost was one hitch */
                 continue;
             }
             swap = gs_present(cur, t);
+            if (t < 1.0f) {   /* without the swap's wait, at most a game frame (a hitch counts once) */
+                double cost = (double)(SDL_GetTicksNS() - now) - (double)swap;
+                replay_avg += ((cost < GAME_PERIOD ? cost : GAME_PERIOD) - replay_avg) / 8;
+            }
             shown++;
             if (trace) fprintf(trace, "%llu %.3f %llu %llu\n", (unsigned long long)gs_frame_count(), t, (unsigned long long)(now / 1000),
                                (unsigned long long)(swap / 1000));

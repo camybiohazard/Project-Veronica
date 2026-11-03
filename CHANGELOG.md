@@ -56,6 +56,11 @@
   previous / next weapon in the bag, without the inventory. In play the d-pad's left / right no
   longer turn (the left stick does), up / down still walk; menus and aiming keep the whole d-pad.
   L2 / R2 moved from 1 / 2 to 9 / 0.
+- **Display-rate frames** no longer bring the game to a near halt in heavy scenes on slower
+  machines (the Antarctic Base pool room with the power on): an in-between image that would not
+  be finished before the next game frame is due is left out, so the game keeps its speed and its
+  own frames are shown. Matching a frame with the one before is also quicker where one object is
+  drawn hundreds of times (the carousel's lights).
 - **Move while aiming** (THIRD PERSON, Modern gamepad, on by default): the left stick walks slowly
   any way while aiming and firing, the legs walking (or stepping back) under the aim.
 - **Fixed camera controls** start as Classic (tank), as the original; Modern (camera-relative) is
