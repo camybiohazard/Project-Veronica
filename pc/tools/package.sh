@@ -6,7 +6,8 @@
 #     --linux    build/  (cmake/linux-i686.cmake)  -> cvx-port-VER-linux-i686.tar.gz (+ -debug)
 #     --windows  build-win/ (cmake/mingw-i686.cmake) -> cvx-port-VER-windows-x86.zip (+ -debug)
 # Also writes OUT_DIR/RELEASE_NOTES.md and OUT_DIR/SHA256SUMS (over every archive in OUT_DIR).
-# Each archive also gets pc/res/release/ as it is (mods/textures/README.txt, ...).
+# Each archive also gets pc/res/release/ as it is (mods/textures/README.txt, ...) and the top-level
+# materials.ini as mods/materials.ini (the surface materials set up so far; docs/modding/MATERIALS.md).
 # The -debug archives hold the unstripped binaries, for addr2line on crash-log addresses.
 # Tools: strip (STRIP), i686-w64-mingw32-strip (WIN_STRIP; or $MINGW_PREFIX/bin), tar, zip, sha256sum.
 set -eu
@@ -26,7 +27,10 @@ tgz() {   # tgz NAME: stage/NAME -> out/NAME.tar.gz, stable owners and order
     tar -C "$stage" --owner=0 --group=0 --numeric-owner --sort=name -czf "$out/$1.tar.gz" "$1"
 }
 need() { [ -f "$1" ] || { echo "missing $1 (build it first)" >&2; exit 1; }; }
-release_files() { cp -R "$root/pc/res/release/." "$1/"; }   # release_files DIR: the folders players fill (mods/)
+release_files() {   # release_files DIR: the folders players fill (mods/), and the surface materials set up so far
+    cp -R "$root/pc/res/release/." "$1/"
+    if [ -f "$root/materials.ini" ]; then mkdir -p "$1/mods"; cp "$root/materials.ini" "$1/mods/materials.ini"; fi
+}
 
 while [ $# -gt 0 ]; do
     case $1 in

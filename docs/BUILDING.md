@@ -135,13 +135,15 @@ packs finished builds into the release archives, named after the version in the 
 
 | Archive | Contents |
 |---|---|
-| `cvx-port-VER-linux-i686.tar.gz` | `recvx` (stripped), README, LICENSE, THIRD_PARTY_NOTICES, CHANGELOG, `docs/USER_GUIDE.md`, `mods/textures/README.txt` |
+| `cvx-port-VER-linux-i686.tar.gz` | `recvx` (stripped), README, LICENSE, THIRD_PARTY_NOTICES, CHANGELOG, `docs/USER_GUIDE.md`, `mods/textures/README.txt`, `mods/materials.ini` |
 | `cvx-port-VER-windows-x86.zip` | `recvx.exe` (stripped), the same docs and `mods/` |
 | `...-linux-i686-debug.tar.gz`, `...-windows-x86-debug.zip` | the unstripped binaries, for `addr2line` on crash-log addresses |
 
 It also writes `RELEASE_NOTES.md` (this version's CHANGELOG section, requirements and first start,
 the README's AI note) and `SHA256SUMS`. Everything under `pc/res/release/` goes into both archives as
-it is (the `mods/textures/` folder players drop HD texture packs into, with its README). No disc image or game data goes into any archive.
+it is (the `mods/textures/` folder players drop HD texture packs into, with its README), and the
+top-level `materials.ini` goes in as `mods/materials.ini`: the surface materials set up so far
+([modding/MATERIALS.md](modding/MATERIALS.md)), edited at the top level while it is a work in progress. No disc image or game data goes into any archive.
 `recvx --version` prints the version plus `git describe` as of the
 last CMake configure.
 

@@ -5,6 +5,10 @@ highlight from the game's lights, the flashlight and the moon (DISPLAY → LIGHT
 shine**; native 3D renderer). The game itself has no material data: classes are assigned by hand,
 with the picker in the F2 window, and the file can be shared.
 
+The release downloads come with a `mods/materials.ini` that already sets up many of the game's
+textures (still a work in progress). Unpacking a newer release over an older one replaces it, so
+keep a copy of your own changes.
+
 ## The file
 
 One texture per line, `hash = class`; `#` starts a comment:
