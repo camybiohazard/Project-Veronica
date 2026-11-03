@@ -1,7 +1,7 @@
 # Surface materials
 
 `mods/materials.ini` gives textures a **material class**, so lit surfaces of that texture show a
-highlight from the game's lights, the flashlight and the moon (DISPLAY → LIGHTING → **Material
+highlight from the game's lights, the flashlight and the moon (GRAPHICS → LIGHTING → **Material
 shine**; native 3D renderer). The game itself has no material data: classes are assigned by hand,
 with the picker in the F2 window, and the file can be shared.
 
@@ -37,7 +37,7 @@ does not depend on HD texture packs: a replaced texture keeps the original's mat
 | Leather | `leather` | broad and faint |
 
 The parameters (Blinn-Phong exponent, strength, metal tint) are in `pc/src/gs/materials.c`.
-**Material shine** (DISPLAY -> LIGHTING) switches them all on or off.
+**Material shine** (GRAPHICS -> LIGHTING) switches them all on or off.
 
 ## The picker (F2)
 

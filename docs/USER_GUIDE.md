@@ -24,7 +24,7 @@ nothing is extracted or copied.
 | Option | Effect |
 |---|---|
 | `--save-dir DIR` | where saves and `recvx.ini` go (default `./save`) |
-| `--size WxH` | window size (default 1280x960) |
+| `--size WxH` | start windowed at that size (by default the game starts in borderless fullscreen; windowed it is 1280x960) |
 | `--fullscreen` | start in fullscreen, of the kind chosen in Display mode (borderless unless you chose exclusive) |
 | `--borderless`, `--exclusive`, `--windowed` | start in that display mode |
 | `--enhanced` / `--vanilla` | display-rate frames on / off |
@@ -89,6 +89,13 @@ title menu, as after a game over. Anything not saved is lost; changed options ar
 right click answers NO. It works in the Battle Game too. The OPTION screen of the title menu does
 not have it.
 
+### Exiting the game
+
+The title menu has **EXIT GAME** below its last entry (the game modes sit one row higher to make
+room above the copyright lines): press down from the last mode, or point at it. Confirming turns the
+row into **YES / NO** with NO selected; left/right choose, confirm answers, cancel or a right click is
+NO. YES closes the game as closing its window does (settings are saved as always).
+
 ### Skipping the ending
 
 The ending movie and the credits can be skipped, which the PS2 version does not allow: any key,
@@ -104,10 +111,10 @@ All PC settings are available in two places that edit the same values:
 
 - **OPTION -> ENHANCED SETTINGS**: in the game's own OPTION screen (title menu, or Select in
   game) next to EXIT: select EXIT and press right (or click it). Drawn in the game's style, with
-  the pages DISPLAY, GAMEPLAY, CONTROLS, THIRD PERSON, AUDIO, APPEARANCE and EXTRAS. On the
+  the pages DISPLAY, GRAPHICS, GAMEPLAY, CONTROLS, THIRD PERSON, AUDIO, APPEARANCE and EXTRAS. On the
   gamepad, however it is remapped, the shoulder buttons (LB/RB, L1/R1) always switch pages, A
   (Cross) always confirms and B (Circle) always goes back; on the keyboard the keys bound to
-  L1/R1 switch pages (Q/W by default). Pages switch from anywhere, both ways round the seven,
+  L1/R1 switch pages (Q/W by default). Pages switch from anywhere, both ways round the eight,
   as do left/right on the page row; up/down (or the mouse wheel) choose a setting, left/right
   change it, cancel or a right click goes back. Long pages scroll; the bottom lines explain the
   selected setting, or why it cannot change right now. "(next start)" marks a setting that takes
@@ -125,18 +132,16 @@ renderer, skipped intro and door animations (Skip door animations: Instant) and 
 | Setting | ini key | Values (default in bold) |
 |---|---|---|
 | **Window** | | |
-| Display mode | `fullscreen` (0 windowed, 1 fullscreen), `fullscreen_exclusive` (0 borderless, 1 exclusive) | **Windowed**, Borderless fullscreen, Exclusive fullscreen. Borderless: a window covering the whole screen the game window is on, at the desktop's resolution; switching to other programs (Alt+Tab) is instant and the game stays on screen, and other windows and popups (volume, notifications, overlays) show over it. Under Windows it is a borderless window one pixel taller (or wider) than the screen, as an exactly screen-sized one is switched to exclusive mode by the graphics driver (ini-only `borderless_extra`, **1**: the pixels past the screen, 0 for exactly the screen). Exclusive: that screen switches to the Fullscreen resolution; on Alt+Tab the game minimises and the desktop gets its own resolution back (under Wayland the screen keeps its mode and the game is scaled to it, without minimising). F11 switches between windowed and the fullscreen kind chosen last. Leaving fullscreen puts the window back where it was, at its size |
+| Display mode | `fullscreen` (0 windowed, 1 fullscreen), `fullscreen_exclusive` (0 borderless, 1 exclusive) | Windowed, **Borderless fullscreen**, Exclusive fullscreen. Borderless: a window covering the whole screen the game window is on, at the desktop's resolution; switching to other programs (Alt+Tab) is instant and the game stays on screen, and other windows and popups (volume, notifications, overlays) show over it. Under Windows it is a borderless window one pixel taller (or wider) than the screen, as an exactly screen-sized one is switched to exclusive mode by the graphics driver (ini-only `borderless_extra`, **1**: the pixels past the screen, 0 for exactly the screen). Exclusive: that screen switches to the Fullscreen resolution; on Alt+Tab the game minimises and the desktop gets its own resolution back (under Wayland the screen keeps its mode and the game is scaled to it, without minimising). F11 switches between windowed and the fullscreen kind chosen last. Leaving fullscreen puts the window back where it was, at its size |
 | Fullscreen resolution | `fullscreen_w`, `fullscreen_h`, `fullscreen_hz` (all 0: Desktop) | exclusive fullscreen only (the row is hidden otherwise): **Desktop** (the desktop's resolution and refresh rate) or one of the screen's modes, e.g. 1920 x 1080, 144 Hz. A mode the screen lacks (another monitor) becomes the closest one it has |
 | Window size | `window_w`, `window_h` | windowed only: presets 1280x960 to 3840x2160 (incl. 3440x1440), or any size by resizing the window |
 | VSync | `vsync` | **on**, off |
 | Frame rate limit | `fps_limit` | **Off (display rate)**, 30, 60, 90, 120, 144. Caps the images shown per second, in-between frames included; the game itself always runs at 30 |
-| Show frame rate | `show_fps` | **on**: counter at the top right |
+| Show frame rate | `show_fps` | **off**; on: counter at the top right |
 | **Picture** | | |
 | Aspect ratio | `aspect` | 4:3 (original), Stretch to window, **Widescreen (hor+)**: 3D fills the window, 2D and menus stay 4:3 in the middle; with the fixed cameras, room parts the original hides for a camera angle are drawn in the side margins (except walls the camera looks through), while the 4:3 middle stays exactly the original (the OPTION screen's picture strips run to the window's edges; what the inventory, item box, files and map keep off-screen stays hidden) |
 | Internal resolution | `scale` | **Auto** (follows the window) or 1x-8x of 640x448 |
-| FSR upscaling | `fsr` | **Off**, On: a picture drawn below the window's resolution is upscaled with AMD FSR 1 (edge-aware upscaling, then sharpening) instead of a plain stretch. Auto Internal resolution then picks the largest scale at or below the window instead of the nearest (4x instead of 5x at 2160p, 3x at 1440p), which raises the frame rate at 4K by about a fifth with in-between frames on. A fixed Internal resolution is upscaled as it is (3x at 2160p for more speed). Off: the plain stretch |
-| Anisotropic filtering | `anisotropic` | Off, 2x, 4x, 8x, **16x**: floors and walls seen at a shallow angle stay sharp into the distance without shimmering. Textures with cut-outs (railings, fences, foliage) are left as they are. Needs Native textures or HD textures |
-| Dithering | `dither` | **on**: a fine fixed noise, too small to see, against colour banding in dark gradients (lamplight falloff, fog, the tone curve) |
+| FSR upscaling | `fsr` | Off, **On**: a picture drawn below the window's resolution is upscaled with AMD FSR 1 (edge-aware upscaling, then sharpening) instead of a plain stretch. Auto Internal resolution then picks the largest scale at or below the window instead of the nearest, as long as FSR has at most 1.5x to make up (AMD's Quality mode): 4x instead of 5x at 2160p (about a fifth more frame rate with in-between frames on), 2x at 1080p and 1200p, 3x at 1440p; 720p and 800p (Steam Deck) keep 2x, drawn above the window's size. A fixed Internal resolution is upscaled as it is (3x at 2160p for more speed). Off: the plain stretch |
 | Display-rate frames | `interpolate` | "Enhanced mode": in-between frames blended from the last two game frames, up to the display's refresh rate. The game logic stays at its original 30 FPS, so gameplay is unchanged. **On**; off is "vanilla" |
 | Frame blend (trail) | `frame_blend` | the PS2's motion trail (each frame mixed over the previous one). Auto, **Off**, On; Auto is on in vanilla and off with display-rate frames |
 | **Widescreen** | | |
@@ -148,19 +153,6 @@ renderer, skipped intro and door animations (Skip door animations: Instant) and 
 | Contrast | `contrast` | 50% to 150%, **100%**: spreads or narrows the tones around mid-grey |
 | Gamma | `gamma` | 0.5 to 2.0, **1.0** (in the ini in tenths, 5 to 20): higher brightens the mid-tones, black and white stay |
 | Reset picture calibration | | brightness, contrast and gamma back to neutral |
-| **Post-processing** | | |
-| Bloom | `bloom` | **Off**, On: bright parts of the picture (fire, lamps, muzzle flashes, snow) glow onto their surroundings, and the picture turns slightly warmer. Text (subtitles, messages, the ammo counter) does not glow. The glow is only in play and in-engine cutscenes: not on the title screen, the menus (status screen, files, item box, map, typewriter, OPTION), movies, game over and other 2D screens |
-| Colour grading | `color_grading` | **Off**, On: a filmic look: the brightest parts (fire, lamps, bloom) ease towards white instead of clipping, keeping their detail (highlight rolloff 60%, on the brightest colour channel, so a saturated fire keeps its shape); the near-blacks go a little deeper (shadow depth 30%); shadows lean cool teal and highlights warm orange (split toning 20%) |
-| Ambient occlusion | `ao` | **Off**, On: darkens creases, corners and where characters and objects meet the floor and walls (60% strength, reaching 2% of the screen's height from a crease), worked out from the depth of the 3D picture. Flat floors and walls stay as they are; text, menus and movies are left alone |
-| Reset post-processing | | bloom, colour grading and ambient occlusion off |
-| **Lighting** | | |
-| Per-pixel lighting | `light_pixel` | **off**; on: the game's own lights (and the options below) are computed for every pixel instead of at the corners of each polygon, so light pools and the falloff of lamps and fires show inside large floor and wall polygons and shading on characters is smooth. Needs the native 3D renderer. Effects, 2D and a few special models keep their per-vertex colours |
-| Wet surfaces | `wet` | **Off**, On: where it rains (the courtyards, the graveyard, ...), floors and other up-facing surfaces are wet: the lamps, fires, moonlight and the flashlight glint on them, the darker grime of the texture more than the rest, and they darken a little. Lit per pixel on top of the lighting (Per-pixel lighting itself stays as set); needs the native 3D renderer |
-| Material shine | `material_shine` | Off, **On**: the highlights of the surface materials in `mods/materials.ini`, assigned with the F2 picker ([modding/MATERIALS.md](modding/MATERIALS.md)); Off: none. The highlights are lit per pixel on top of the lighting (Per-pixel lighting itself stays as set); needs the native 3D renderer |
-| Flashlight | `flashlight` | Off, **On**: the flashlight ([Flashlight](#flashlight)): 45% brightness, a range of 150 game units (about 15 m), a beam 20 degrees either side, a battery lasting 4 minutes and recharging in 3. Off: the Flashlight on/off button does nothing |
-| Light falloff | `light_falloff` | Original, **Smooth**: how lamps, fires and other point lights end at their range, on characters, objects and the rooms themselves. Original: at a step, so something leaving the range darkens at once; Smooth: they fade out over the outer quarter of their range (closer, the light is the original) |
-| Soft shading | `light_soft` | **Off** (the original), On (20% wrap): light reaches further round the shadow side, so the edge between lit and unlit is softer and low-polygon shapes look less faceted; the lit side stays as bright |
-| Lighting | `lighting` | Original (0), **Balanced** (1), Horror (2), Nightmare (3): how bright the rooms are; lamps, fires and the flashlight keep their strength. Original: the PS2's main and ambient light. Balanced: both 75%. Horror: main light 50%, ambient light 25%. Nightmare: both 5%, so almost only lamps, fires and the flashlight light the way, and the fog thins to 10% (its colour would otherwise light the dark scene; Fog intensity shows 10% and is locked). With Light falloff Original, Lighting Original and Soft shading Off the lighting is the PS2's |
 | **HDR** (Windows, Linux) | | see [HDR](#hdr) |
 | HDR output | `hdr` | **off**; on: HDR output on an HDR display (after a restart) |
 | Paper white | `hdr_paper_white` | **Auto** (Windows' SDR content brightness; Linux: 203 nits), or 80 to 480 nits: how bright the game's whites and the F1 overlay are |
@@ -206,6 +198,27 @@ Set Paper white so the game's white is comfortable (Auto follows Windows' "SDR c
 brightness" slider), Peak brightness to your display's real peak if Auto clips, and Highlights to
 taste. Brightness, contrast and gamma still apply first. Frame dumps (`RECVX_DUMP_FRAMES`) save
 the SDR picture.
+
+### Graphics
+
+| Setting | ini key | Values (default in bold) |
+|---|---|---|
+| **Quality** | | |
+| Anisotropic filtering | `anisotropic` | Off, 2x, 4x, 8x, **16x**: floors and walls seen at a shallow angle stay sharp into the distance without shimmering. Textures with cut-outs (railings, fences, foliage) are left as they are. Needs Native textures or HD textures |
+| Dithering | `dither` | **on**: a fine fixed noise, too small to see, against colour banding in dark gradients (lamplight falloff, fog, the tone curve) |
+| **Post-processing** | | |
+| Bloom | `bloom` | **Off**, On: bright parts of the picture (fire, lamps, muzzle flashes, snow) glow onto their surroundings, and the picture turns slightly warmer. Text (subtitles, messages, the ammo counter) does not glow. The glow is only in play and in-engine cutscenes: not on the title screen, the menus (status screen, files, item box, map, typewriter, OPTION), movies, game over and other 2D screens |
+| Colour grading | `color_grading` | **Off**, On: a filmic look: the brightest parts (fire, lamps, bloom) ease towards white instead of clipping, keeping their detail (highlight rolloff 60%, on the brightest colour channel, so a saturated fire keeps its shape); the near-blacks go a little deeper (shadow depth 30%); shadows lean cool teal and highlights warm orange (split toning 20%) |
+| Ambient occlusion | `ao` | **Off**, On: darkens creases, corners and where characters and objects meet the floor and walls (60% strength, reaching 2% of the screen's height from a crease), worked out from the depth of the 3D picture. Flat floors and walls stay as they are; text, menus and movies are left alone |
+| Reset post-processing | | bloom, colour grading and ambient occlusion off |
+| **Lighting** | | |
+| Per-pixel lighting | `light_pixel` | **off**; on: the game's own lights (and the options below) are computed for every pixel instead of at the corners of each polygon, so light pools and the falloff of lamps and fires show inside large floor and wall polygons and shading on characters is smooth. Needs the native 3D renderer. Effects, 2D and a few special models keep their per-vertex colours |
+| Wet surfaces | `wet` | **Off**, On: where it rains (the courtyards, the graveyard, ...), floors and other up-facing surfaces are wet: the lamps, fires, moonlight and the flashlight glint on them, the darker grime of the texture more than the rest, and they darken a little. Lit per pixel on top of the lighting (Per-pixel lighting itself stays as set); needs the native 3D renderer |
+| Material shine | `material_shine` | Off, **On**: the highlights of the surface materials in `mods/materials.ini`, assigned with the F2 picker ([modding/MATERIALS.md](modding/MATERIALS.md)); Off: none. The highlights are lit per pixel on top of the lighting (Per-pixel lighting itself stays as set); needs the native 3D renderer |
+| Flashlight | `flashlight` | Off, **On**: the flashlight ([Flashlight](#flashlight)): 45% brightness, a range of 150 game units (about 15 m), a beam 20 degrees either side, a battery lasting 4 minutes and recharging in 3. Off: the Flashlight on/off button does nothing |
+| Light falloff | `light_falloff` | Original, **Smooth**: how lamps, fires and other point lights end at their range, on characters, objects and the rooms themselves. Original: at a step, so something leaving the range darkens at once; Smooth: they fade out over the outer quarter of their range (closer, the light is the original) |
+| Soft shading | `light_soft` | **Off** (the original), On (20% wrap): light reaches further round the shadow side, so the edge between lit and unlit is softer and low-polygon shapes look less faceted; the lit side stays as bright |
+| Lighting | `lighting` | Original (0), **Balanced** (1), Horror (2), Nightmare (3): how bright the rooms are; lamps, fires and the flashlight keep their strength. Original: the PS2's main and ambient light. Balanced: both 75%. Horror: main light 50%, ambient light 25%. Nightmare: both 5%, so almost only lamps, fires and the flashlight light the way, and the fog thins to 10% (its colour would otherwise light the dark scene; Fog intensity shows 10% and is locked). With Light falloff Original, Lighting Original and Soft shading Off the lighting is the PS2's |
 
 ### Gameplay
 
@@ -455,7 +468,7 @@ round so it shows even when the camera looks at them from the front. It lights t
 enemies and objects per pixel, on top of the room's lighting (Per-pixel lighting stays as set), and needs the
 native 3D renderer. It shines in play only: not in cutscenes, menus, doors or scripted moments,
 and comes back on after them. With the darker Lighting modes (Horror, Nightmare) dark
-corners are where it pays to have it on. **Flashlight** (DISPLAY -> LIGHTING, on by default)
+corners are where it pays to have it on. **Flashlight** (GRAPHICS -> LIGHTING, on by default)
 makes it available; off, the button does nothing. Its beam reaches about 15 m (150 game units)
 and is 20 degrees either side of its centre.
 

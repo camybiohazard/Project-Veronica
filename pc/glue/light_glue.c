@@ -1,4 +1,4 @@
-/* Vertex lighting options (DISPLAY "Light falloff", "Soft shading", "Main light", "Ambient light";
+/* Vertex lighting options (GRAPHICS "Light falloff", "Soft shading", "Main light", "Ambient light";
    docs/USER_GUIDE.md): the light sum of the chunk models' vertices (ps2_NinjaCnk.c njCnkCvVn, and
    njCnkCvVnPs2 through VU0 CALCPOINT, which sums the same) is computed again after the original
    with pc_rules.h pc_light_vertex. Only fIr/fIg/fIb change; position, fog, normal z and the colour

@@ -230,6 +230,7 @@ static void settings_window(void)
         changed |= settings_imgui(SP_DISPLAY);
         ImGui::TextDisabled("Output %d x %d, %.1f fps presented", ww, wh, ImGui::GetIO().Framerate);
     }
+    if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen)) changed |= settings_imgui(SP_GRAPHICS);
     if (ImGui::CollapsingHeader("Gameplay", ImGuiTreeNodeFlags_DefaultOpen)) changed |= settings_imgui(SP_GAMEPLAY);
     if (ImGui::CollapsingHeader("Controls")) controls_section();
     if (ImGui::CollapsingHeader("Third person", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -348,7 +349,7 @@ static void material_section(void)
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Click a wall, floor or object in the game picture (outside this window) to choose its texture.\n"
                           "Only textured 3D surfaces can be picked. Classes are saved to mods/materials.ini at once\n"
-                          "and shine with Material shine (DISPLAY) and the native 3D renderer.");
+                          "and shine with Material shine (GRAPHICS) and the native 3D renderer.");
     if (mat_sel) {
         int cls = mat_get(mat_sel);
         ImGui::Text("Texture %08X", mat_sel);

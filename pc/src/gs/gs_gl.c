@@ -450,22 +450,29 @@ static const char* ao_fs =
     "  return w > 0.0 ? w : 1e9;\n"
     "}\n"
     "void main(){\n"
-    "  float w0 = dist(v_uv);\n"
+    /* the depth texel this pixel reads, and each sample's, at their centres: measured against the
+       plane where they really are. The AO pass and the depth copy rarely have the same size (5x
+       internal resolution under a 2160-line window: 1200 rows for 1080), and the plane taken at the
+       pixel's own position was off by a share of a row that repeats down the screen: horizontal
+       stripes on distant floors, where the depth changes fast from row to row */
+    "  vec2 sz = vec2(textureSize(u_depth, 0)), px = 1.0 / sz, c = (floor(v_uv * sz) + 0.5) * px;\n"
+    "  float w0 = dist(c);\n"
     "  if (w0 >= 1e8) { o = vec4(1.0); return; }\n"
-    "  vec2 rad = u_aok.xy, px = 1.0 / vec2(textureSize(u_depth, 0));\n"
+    "  vec2 rad = u_aok.xy;\n"
     "  float bias = max(0.01 * w0, 2.0 * w0 * w0 / u_aok.z), range = 0.1 * w0;\n"
     /* the surface's plane: 1 / w is linear across it on screen; its slope from the neighbour on the
        steadier side (at an edge the other side is another surface) */
-    "  float i0 = 1.0 / w0, ir = 1.0 / dist(v_uv + vec2(px.x, 0.0)), il = 1.0 / dist(v_uv - vec2(px.x, 0.0));\n"
-    "  float iu = 1.0 / dist(v_uv + vec2(0.0, px.y)), id = 1.0 / dist(v_uv - vec2(0.0, px.y));\n"
+    "  float i0 = 1.0 / w0, ir = 1.0 / dist(c + vec2(px.x, 0.0)), il = 1.0 / dist(c - vec2(px.x, 0.0));\n"
+    "  float iu = 1.0 / dist(c + vec2(0.0, px.y)), id = 1.0 / dist(c - vec2(0.0, px.y));\n"
     "  vec2 g = vec2(abs(ir - i0) < abs(i0 - il) ? ir - i0 : i0 - il, abs(iu - i0) < abs(i0 - id) ? iu - i0 : i0 - id) / px;\n"
     "  float ang = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) * 6.2832, occ = 0.0;\n"
     "  for (int i = 0; i < 12; i++) {\n"
     "    float t = (float(i) + 0.5) / 12.0, a = ang + float(i) * 2.39996;\n"
     "    vec2 off = vec2(cos(a), sin(a)) * rad * sqrt(t);\n"
-    "    float ip = i0 + dot(g, off);\n"   /* the plane there */
+    "    vec2 s = clamp((floor((c + off) * sz) + 0.5) * px, u_rect.xy, u_rect.zw);\n"   /* the texel it reads */
+    "    float ip = i0 + dot(g, s - c);\n"   /* the plane there */
     "    if (ip <= 0.0) continue;\n"
-    "    float diff = 1.0 / ip - dist(v_uv + off);\n"   /* how far the sample stands in front of it */
+    "    float diff = 1.0 / ip - dist(s);\n"   /* how far the sample stands in front of it */
     "    if (diff > bias) occ += 1.0 - smoothstep(range * 0.5, range, diff);\n"
     "  }\n"
     "  o = vec4(vec3(clamp(1.0 - u_aok.w * occ / 8.0, 0.0, 1.0)), 1.0);\n"
@@ -750,6 +757,7 @@ static GLuint depth_for(uint32_t zbp, int pw, int ph)
 #define GL_RGBA16F 0x881A
 #define GL_HALF_FLOAT 0x140B
 #define GL_RGB10_A2 0x8059
+#define FSR_MAX_UPSCALE 1.5f   /* Auto internal resolution with FSR (gs_wanted_scale) */
 
 static RenderTarget* rt_find(uint32_t fbp, uint32_t fbw)
 {
@@ -841,7 +849,12 @@ float gs_wanted_scale(void)
     float s;
     if (g_config.scale > 0) return (float)g_config.scale;
     SDL_GetWindowSizeInPixels(g_window, &ww, &wh);
-    s = g_config.fsr ? floorf((float)wh / 448.0f) : floorf((float)wh / 448.0f + 0.5f);   /* FSR upscales the rest */
+    s = floorf((float)wh / 448.0f + 0.5f);
+    /* FSR: the scale at or below the window when FSR has at most 1.5x left to upscale (AMD's
+       Quality mode: 2160 lines 4x, 1080 2x, 1200 2x); beyond that the nearest, as without it
+       (800 lines stay 2x rather than 1x upscaled 1.8x) */
+    if (g_config.fsr && floorf((float)wh / 448.0f) >= 1.0f && (float)wh / (448.0f * floorf((float)wh / 448.0f)) <= FSR_MAX_UPSCALE)
+        s = floorf((float)wh / 448.0f);
     return s < 1.0f ? 1.0f : s > 8.0f ? 8.0f : s;
 }
 

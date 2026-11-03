@@ -135,7 +135,7 @@ float pc_overlay_x(float x)
     return overlay_stretch ? 320.0f + (x - 320.0f) * pc_hor_scale() : x;
 }
 
-HostConfig g_config = { .window_w = 1280, .window_h = 960, .borderless_extra = 1,.vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .frame_blend = 0, .aspect = 2, .show_fps = 1,
+HostConfig g_config = { .window_w = 1280, .window_h = 960, .fullscreen = 1, .borderless_extra = 1, .vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .frame_blend = 0, .aspect = 2, .fsr = 1,
                        .screen_filter = 1, .cinema_bars = 1, .screen_effects = 1, .native_3d = 1, .model_cull = 1, .native_tex = 1, .hd_textures = 1, .hd_textures_ui = 1, .quick_knife = 1, .head_blowoff = 1, .ammo_hud = 1,
                        .skip_doors = 1, .fast_loading = 1, .auto_stairs = 1, .skip_intro = 1, .battle_unlocked = 1, .difficulty_select = 1, .contrast = 100, .gamma = 10, .fog_intensity = 100,
                        .light_falloff = 1, .lighting = 1,
@@ -204,6 +204,15 @@ void host_pump_events(void)
     settings_poll();
 }
 
+/* the title menu's EXIT GAME (game thread): the main thread ends the program as when the window is closed */
+void host_request_quit(void)
+{
+    SDL_Event e;
+    SDL_zero(e);
+    e.type = SDL_EVENT_QUIT;
+    SDL_PushEvent(&e);
+}
+
 #ifndef _WIN32
 /* debugging aid: RECVX_WATCHDOG=<seconds> prints a backtrace and exits (headless runs) */
 static void watchdog(int sig)
@@ -225,7 +234,7 @@ static void usage(void)
         "usage: recvx [options] <game disc image (.iso)>\n"
         "  --save-dir <dir>   settings and memory card directory (default: ./save if it exists,\n"
         "                     else save/ next to the program, which also holds mods/ and logs)\n"
-        "  --size WxH         window size (default 1280x960)\n"
+        "  --size WxH         start windowed at that size (default: borderless fullscreen; windowed 1280x960)\n"
         "  --fullscreen       start in fullscreen (borderless, or exclusive if chosen in the settings)\n"
         "  --borderless / --exclusive / --windowed   start in that display mode\n"
         "  --enhanced         display-rate frames (60+ FPS) blended from the 30 FPS game (default)\n"
@@ -279,7 +288,10 @@ static void parse_args(int argc, char** argv)
     SDL_strlcpy(g_config.save_dir, "save", sizeof(g_config.save_dir));
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--save-dir") && i + 1 < argc) { SDL_strlcpy(g_config.save_dir, argv[++i], sizeof(g_config.save_dir)); save_given = 1; }
-        else if (!strcmp(argv[i], "--size") && i + 1 < argc) sscanf(argv[++i], "%dx%d", &g_config.window_w, &g_config.window_h);
+        else if (!strcmp(argv[i], "--size") && i + 1 < argc) {   /* a window of that size (the default display mode is borderless fullscreen) */
+            sscanf(argv[++i], "%dx%d", &g_config.window_w, &g_config.window_h);
+            g_config.fullscreen = 0;
+        }
         else if (!strcmp(argv[i], "--fullscreen")) g_config.fullscreen = 1;   /* the kind of recvx.ini (borderless by default) */
         else if (!strcmp(argv[i], "--borderless")) { g_config.fullscreen = 1; g_config.fullscreen_exclusive = 0; }
         else if (!strcmp(argv[i], "--exclusive")) { g_config.fullscreen = 1; g_config.fullscreen_exclusive = 1; }

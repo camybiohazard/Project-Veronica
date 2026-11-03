@@ -8,43 +8,51 @@
 
 ### Changes
 
-- **FSR upscaling** (DISPLAY, off by default): AMD FSR 1 upscales a picture drawn below the
+- **New defaults**: Display mode Borderless fullscreen (was Windowed), Show frame rate off and FSR on;
+  `--size` now starts windowed at that size. Saved settings are kept.
+- **EXIT GAME** in the title menu, below the game modes, in the menu's own lettering: it asks
+  YES / NO (NO selected) and then closes the game as closing the window does.
+- **GRAPHICS settings page** (F1 and ENHANCED SETTINGS), next to DISPLAY: anisotropic filtering,
+  dithering, post-processing and lighting moved there from DISPLAY, which keeps the window,
+  resolution, widescreen, picture calibration, HDR and renderer settings.
+- **FSR upscaling** (DISPLAY, on by default): AMD FSR 1 upscales a picture drawn below the
   window's resolution with sharp edges instead of a plain stretch; Auto Internal resolution then
-  stays at or below the window (4x instead of 5x at 2160p) for a higher frame rate.
+  stays at or below the window where FSR has at most 1.5x to make up (4x instead of 5x at 2160p)
+  for a higher frame rate, and keeps the nearest scale otherwise (2x at 720p and 800p).
 - **Faster rendering at high resolutions**: in-between frames upload about a third of the vertex
   data (shared strip vertices sent once, a smaller vertex), ambient occlusion works from a
   half-size depth copy, and keeping text out of bloom copies only what is drawn over after the
   first text instead of the whole picture. At 4K with every effect on, in-between frames take
   about 30% less render-thread time and 15-30% less GPU time, with the same picture.
-- **Post-processing** (DISPLAY, off by default): Bloom lets fire, lamps, flashes and other bright
+- **Post-processing** (GRAPHICS, off by default): Bloom lets fire, lamps, flashes and other bright
   parts glow onto their surroundings with a slightly warmer picture (on or off; the glow only in
   play, not on the title screen, menus, movies or text), Colour grading (a filmic tone curve
   easing highlights and deepening the near-blacks, teal shadows and warm highlights) and Ambient
   occlusion (contact shadows in creases and under characters and objects). Works with SDR
   and HDR output and with in-between frames; at the neutral values the picture is unchanged.
-- **Lighting** (DISPLAY): a moodier default look. Light falloff Smooth (default) lets lamps, fires
+- **Lighting** (GRAPHICS): a moodier default look. Light falloff Smooth (default) lets lamps, fires
   and other point lights fade out over the outer quarter of their range instead of cutting off, so
   characters and objects no longer darken at once when leaving a light. Lighting picks how bright
   the rooms are while lamps, fires and the flashlight keep their strength: Original (the PS2's),
   Balanced (default; main and ambient light 75%), Horror (50% and 25%) and Nightmare (5%, the fog
   thinned to 10%). Soft shading lets light reach further round the shadow side for softer shading
   of low-polygon shapes. Light falloff Original with Lighting Original gives the PS2's lighting.
-- **Anisotropic filtering** (DISPLAY, 16x by default): floors and walls seen at a shallow angle
+- **Anisotropic filtering** (GRAPHICS, 16x by default): floors and walls seen at a shallow angle
   stay sharp into the distance without shimmering; textures with cut-outs are left as they are.
-- **Dithering** (DISPLAY, on by default): smooths colour banding in dark gradients.
-- **Per-pixel lighting** (DISPLAY -> LIGHTING, off by default, native 3D renderer): the game's own
+- **Dithering** (GRAPHICS, on by default): smooths colour banding in dark gradients.
+- **Per-pixel lighting** (GRAPHICS -> LIGHTING, off by default, native 3D renderer): the game's own
   lights computed for every pixel instead of at the corners of each polygon, so light pools and the
   falloff of lamps and fires show across large floors and walls, and shading on characters is
   smooth.
 - **Surface materials**: a picker in the F2 window gives a texture a material (metal, tile, glass,
   wood, ...) by clicking a surface in the game picture; its surfaces then catch highlights from the
-  lights and the flashlight (Material shine, DISPLAY -> LIGHTING). Saved to `mods/materials.ini`,
+  lights and the flashlight (Material shine, GRAPHICS -> LIGHTING). Saved to `mods/materials.ini`,
   which can be shared (docs/modding/MATERIALS.md).
-- **Wet surfaces** (DISPLAY -> LIGHTING, off by default): where it rains, floors are wet: lamps,
+- **Wet surfaces** (GRAPHICS -> LIGHTING, off by default): where it rains, floors are wet: lamps,
   fires, moonlight and the flashlight glint on them, breaking up across the grime.
 - **Flashlight** (L, the gamepad's left stick click; rebindable): a flashlight Claire and Chris
   switch on and off in play. It lights the floor ahead where they face, along the aim while
-  aiming, and glows faintly round them; Flashlight in DISPLAY -> LIGHTING (on by default) makes it available.
+  aiming, and glows faintly round them; Flashlight in GRAPHICS -> LIGHTING (on by default) makes it available.
   It runs on a battery (4 minutes, recharging in 3 while off): low,
   the beam dims and flickers, empty it goes out; a battery icon above the ammo counter shows the
   charge while it is in use.

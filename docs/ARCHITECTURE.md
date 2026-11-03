@@ -330,7 +330,8 @@ into `fsr_src`, EASU brings it to the viewport's size in `fsr_mid` (12 texels, t
 from their luma, a stretched Lanczos-2 approximation clamped to the 4 nearest), and RCAS sharpens it
 into the window (0.2 stops below the strongest; it dithers instead of the present shader). Both
 intermediates are RGB10_A2: the picture is display-referred by then. With `fsr` on, Auto internal
-resolution rounds down instead of to the nearest (`gs_wanted_scale`), so FSR upscales the rest; with
+resolution rounds down instead of to the nearest (`gs_wanted_scale`) where that leaves FSR at most 1.5x
+(`FSR_MAX_UPSCALE`, AMD's Quality mode), so FSR upscales the rest; with
 it off, or a picture as large as the window, the present path is unchanged and bit-identical.
 
 Post-processing (`bloom`, `color_grading`; each on is a fixed look, `gs_gl.c BLOOM_*`: strength 50%,
@@ -351,7 +352,7 @@ frame's own image is shown. The view distance is w = -b / (Z + a) with the frame
 (`STREAM_CAM`, `gs_ao_frame`). At half the display area's size, 12 samples on a rotated spiral
 within a radius set as a share of the screen's height (the fixed cameras stand 100 to 500 units
 off) are measured against the pixel's surface plane (1 / w is linear across it on screen; its
-slope from the steadier neighbour), so flat floors seen at a slant do not shade themselves; a
+slope from the steadier neighbour), so flat floors seen at a slant do not shade themselves (the pixel and each sample are taken at the centre of the depth texel they read, as the AO pass and the depth copy differ in size: measured at the pixel's own position, distant floors showed horizontal stripes); a
 sample in front of the plane by more than two steps of the 16-bit depth buffer occludes, less so
 up to a tenth of the distance in front. The result is blurred (3 x 3) and multiplies the picture
 in `present_fs` before bloom, except where the frame differs from its copy before the first text
@@ -758,7 +759,7 @@ in-game ENHANCED SETTINGS pages. Each entry has a page, label, variable (or get/
 step, value names or a printf format, flags, help text, an applier, a `locked()` reason, an
 optional `shown()` (the row is left out of both menus while it returns 0, e.g. Fullscreen
 resolution outside exclusive fullscreen) and an optional `.group` heading. Rows are in menu order; the pages (`SP_*`, `settings_pages[]`) are
-DISPLAY, GAMEPLAY, CONTROLS, THIRD PERSON, AUDIO, APPEARANCE, EXTRAS. `recvx.ini` keys live in `keys[]`
+DISPLAY, GRAPHICS, GAMEPLAY, CONTROLS, THIRD PERSON, AUDIO, APPEARANCE, EXTRAS. `recvx.ini` keys live in `keys[]`
 in `pc/src/host/config.c`.
 
 ENHANCED SETTINGS is option level 4 of the game's OPTION screen (`pc/glue/options_glue.c`; hooks in
