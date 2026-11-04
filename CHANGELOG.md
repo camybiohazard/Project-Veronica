@@ -8,6 +8,8 @@
 
 ### Changes
 
+- **Fixed: flickering elevator door in third person** (Antarctic Base pipe corridor): an unused dark
+  copy of the door, which no camera of the room shows, is no longer drawn.
 - **Always have the knife** (GAMEPLAY, experimental, off by default; shown while Quick knife is on):
   the quick knife works without the combat knife in the bag, so the knife can go into the item box
   and its space is free. The bag's knife stays a normal item to equip from the inventory.

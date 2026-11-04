@@ -140,7 +140,9 @@ of the view in every aspect; the margin also covers models whose sphere does not
 them (effects near the camera) and parts turning into view. A part only this test draws with a
 fixed camera is cut to the margins as below, so the 4:3 picture stays the original (without
 the native 3D renderer it stays culled); 4:3 with a fixed camera keeps the original test. Room cameras hide room parts they cannot see (`hidobj`
-lists, authored for 4:3). In widescreen such a part is drawn anyway, but only in the margins
+lists, authored for 4:3); third person draws them all, except a few unused copies listed one by one
+in `view_glue.c unused_parts` (the pipe corridor's elevator door, 9/10, has a dark copy just behind
+it that fought with it; leaving out every part no camera shows also took ceilings third person needs). In widescreen such a part is drawn anyway, but only in the margins
 (`ps2_NinjaCnk.c pc_show_hidden` -> `view_glue.c pc_margin_part` -> `pc_margin_next`): its
 triangles carry `NativeVertex.cull` bit 2 and `stream.c native_draw` cuts them to the parts
 left and right of the 4:3 screen (GS x 1728..2368), so the 4:3 picture stays exactly the

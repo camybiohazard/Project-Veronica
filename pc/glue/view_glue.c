@@ -232,3 +232,19 @@ uint64_t pc_frame_view(float view[6], float camera[STREAM_CAM])
     memcpy(camera, cam_now, sizeof(cam_now));
     return scene_now;
 }
+
+/* room parts every camera hides that third person and the hor+ margins must not draw either (ps2_NinjaCnk.c
+   pc_show_hidden): unused copies that fight with the real part. Listed one by one: hiding every part no
+   camera shows also took ceilings and walls that third person needs. Matched by room, its part count and
+   the part. */
+static const struct { signed char stg, rom; short parts, part; } unused_parts[] = {
+    { 9, 10, 110, 66 },   /* Antarctic Base, pipe corridor: a dark copy just behind the elevator door */
+};
+int pc_part_unused(const void* obj)
+{
+    int i = (int)((const NJS_CNK_OBJECT*)obj - rom->mdl.objP);
+    for (unsigned k = 0; k < sizeof(unused_parts) / sizeof(unused_parts[0]); k++)
+        if (sys->stg_no == unused_parts[k].stg && sys->rom_no == unused_parts[k].rom &&
+            (int)rom->mdl.obj_num == unused_parts[k].parts && i == unused_parts[k].part) return 1;
+    return 0;
+}
