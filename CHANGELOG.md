@@ -8,6 +8,12 @@
 
 ### Changes
 
+- **Faster drawing with the graphics options on**: the game's main shader is compiled in variants
+  holding only what a draw uses (alpha test, texture, texture clamp, fog, per-pixel lighting), so
+  most draws skip the lighting work and opaque ones let the GPU skip hidden pixels; the picture is
+  the same. About 5% less GPU time per image at 4K in rain-lit rooms. After the renderer pass of
+  aikatore's recvx-enhanced-port. The first start after installing (or a driver update) compiles them
+  once (about 1.5 s); later starts take them from the driver's cache.
 - **New defaults**: Display mode Borderless fullscreen (was Windowed), Show frame rate off and FSR on;
   `--size` now starts windowed at that size. Saved settings are kept.
 - **EXIT GAME** in the title menu, below the game modes, in the menu's own lettering: it asks
@@ -102,6 +108,12 @@
 
 ### Fixes
 
+- **Windows: much smoother in busy rooms** (also with every graphics option off): the renderer
+  asked the graphics driver for each texture's mip levels on every textured draw (for anisotropic
+  filtering, even when it was off). NVIDIA's driver on Windows runs threaded and answers such a
+  question only after everything queued before it, which held up the renderer hundreds of times
+  per image: the Guillotine room ran at about 80 images a second on an RTX 5060 instead of 130.
+  The levels are now kept with the textures; the picture is the same.
 - Linux: under Wayland with NVIDIA's 32-bit driver the game failed to start ("unable to create an
   EGL window surface"); it now falls back to X11 (XWayland) by itself.
 

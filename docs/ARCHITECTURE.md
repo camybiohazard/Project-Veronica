@@ -286,6 +286,13 @@ shows in-between images at the display rate:
 - **Static strips**: a matched native strip whose blended fields are bitwise identical in both
   frames is drawn unblended from a per-frame vertex buffer instead of being clipped, converted and
   uploaded again.
+- **Shader variants** (`gs_gl.c` `V_ATEST`, `V_TEX`, `V_REGION`, `V_FOG`, `V_LIGHT`; after aikatore's
+  recvx-enhanced-port): `fs_src` is compiled at start in 24 variants (the region only with a texture),
+  `#if`s around its branches, and `gs_flush` takes per batch the one with only the branches it runs.
+  The alpha test is compiled in only where it can discard (on and not ALWAYS), so other draws let
+  the GPU test depth before shading; the light sets only for batches with native 3D triangles in a
+  frame that has light sets (no other vertex refers to one). A taken branch is the same code in
+  every variant, so the picture is bit-identical; each variant keeps its own uniform cache.
 - Replays load no CLUT, skip unchanged batch state, set uniforms only when they change, and
   same-value register writes do not end a batch (except inside a two-pass alpha-test batch).
 - **Indexed strips**: batches are drawn indexed (`gs_gl.c ibuf`, `glDrawElementsBaseVertex`). A

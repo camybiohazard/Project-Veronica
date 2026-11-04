@@ -135,9 +135,22 @@ typedef struct {
 static DrawState batch_state;
 static int batch_valid;
 
-static GLuint prog, vao, vbo, ibo, present_prog, present_vao, svao, svbo;
-static GLint u_rt_size, u_rt_margin, u_tme, u_tfx, u_tcc, u_fst, u_texsize, u_fge, u_fogcol, u_ate, u_atst, u_aref,
-             u_tex, u_tex_alpha_scale, u_texofs, u_premul, u_zscale, u_clamp_mode, u_clamp_vals, u_afail_pass, u_rt16, u_lights, u_lopt, u_mat, u_dith;
+static GLuint vao, vbo, ibo, present_prog, present_vao, svao, svbo;
+/* the GS program in variants, all compiled at start, each with only the branches its draws take
+   (V_ATEST alpha test, V_TEX texture, V_REGION region clamp/repeat, V_FOG fog, V_LIGHT per-pixel
+   light sets); a taken branch is the same arithmetic in every variant, so the picture is too.
+   Without the alpha test the shader has no discard and the GPU tests depth before shading: hidden
+   pixels cost nothing (per-pixel lighting above all). The others spare the work and registers of
+   branches not taken (the light sets' above all, which 2D, effects and the GS path never use). */
+enum { V_ATEST = 1, V_TEX = 2, V_REGION = 4, V_FOG = 8, V_LIGHT = 16, NPROG = 32 };
+typedef struct { GLint rt_size, rt_margin, tme, tfx, tcc, fst, texsize, fge, fogcol, ate, atst, aref,
+                 tex, tex_alpha_scale, texofs, premul, zscale, clamp_mode, clamp_vals, afail_pass, rt16, lights, lopt, mat, dith; } ProgUni;
+static GLuint progs[NPROG];
+static ProgUni pu[NPROG], *pcur = &pu[0];
+static int lsets_n;            /* the executed frame's light sets (gs_light_sets): none, no vertex refers to one */
+static float lopt[4];          /* u_lopt (gs_light_sets) */
+#define LIGHT_UNIT 4           /* u_lights: the light sets' texture unit */
+static int batch_native3d;     /* the batch holds native 3D triangles (only they refer to light sets) */
 static GLint up_tex, up_rect, up_pic, up_bloom, up_post, up_tone, up_ao, up_pre, up_aoon, up_pmask;
 
 static const char* vs_src =
@@ -166,8 +179,7 @@ static const char* vs_src =
     "  v_stq = a_stq; v_col = a_col; v_fog = a_fog;\n"
     "}\n";
 
-static const char* fs_src =
-    "#version 330 core\n"
+static const char* fs_src =   /* (after "#version" and the variant's #defines, gs_renderer_init) */
     "in vec3 v_stq; in vec4 v_col; in float v_fog;\n"
     "in vec3 v_vpos; in vec3 v_nrm; in float v_nlen; flat in int v_light;\n"
     "uniform sampler2D u_tex;\n"
@@ -181,10 +193,12 @@ static const char* fs_src =
     "layout(location=0) out vec4 o_col;\n"
     "vec2 wrap(vec2 tc){\n"
     "  vec2 t = tc;\n"
+    "#if REGION\n"
     "  if (u_clamp_mode.x == 2) t.x = clamp(t.x, u_clamp_vals.x, u_clamp_vals.y + 0.999);\n"
     "  if (u_clamp_mode.y == 2) t.y = clamp(t.y, u_clamp_vals.z, u_clamp_vals.w + 0.999);\n"
     "  if (u_clamp_mode.x == 3) t.x = float((int(floor(t.x)) & int(u_clamp_vals.x)) | int(u_clamp_vals.y)) + fract(t.x);\n"
     "  if (u_clamp_mode.y == 3) t.y = float((int(floor(t.y)) & int(u_clamp_vals.z)) | int(u_clamp_vals.w)) + fract(t.y);\n"
+    "#endif\n"
     "  return t;\n"
     "}\n"
     /* per-pixel lighting (gs_light_sets; light_glue.c pc_light_set): a light set is a row of
@@ -269,6 +283,7 @@ static const char* fs_src =
     "  float wet = 0.0, tl = 0.5;\n"
     "  vec3 tcol = vec3(1.0);\n"
     "  vec3 spec = vec3(0.0);\n"
+    "#if LIGHT\n"
     "  if (v_light > 0) {\n"
     "    wet = texelFetch(u_lights, ivec2(0, v_light), 0).z;\n"
     "    if (wet > 0.0) {\n"
@@ -279,7 +294,9 @@ static const char* fs_src =
     "    if (u_lopt.w > 0.0) c.rgb = clamp(lit(v_light, i + fl), 0.0, 255.0);\n"
     "    else if (any(greaterThan(fl, vec3(0.0)))) c.rgb = clamp(c.rgb + lit(v_light, i + fl) - lit(v_light, i), 0.0, 255.0);\n"
     "  }\n"
-    "  if (u_tme != 0) {\n"
+    "#endif\n"
+    "#if TEX\n"
+    "  {\n"
     "    vec2 tc = (u_fst != 0) ? v_stq.xy : (v_stq.xy / v_stq.z) * u_texsize, tg = tc * u_texofs.xy;\n"   /* tg: the mip level's coordinates, before the regions (aniso_filter) */
     "    tc = wrap(tc);\n"
     "    vec4 t = textureGrad(u_tex, tc * u_texofs.xy + u_texofs.zw, dFdx(tg), dFdy(tg));\n"
@@ -296,17 +313,23 @@ static const char* fs_src =
     "    else { r.rgb = t.rgb * c.rgb / 128.0 + c.a; r.a = (u_tcc != 0) ? t.a : c.a; }\n"
     "    c = min(r, vec4(255.0));\n"
     "  }\n"
+    "#endif\n"
+    "#if LIGHT\n"
     "  if (wet > 0.0) { float m = wet * mix(0.2, 1.0, smoothstep(0.45, 0.12, tl)); c.rgb = min(c.rgb * (1.0 - 0.2 * m) + spec * 255.0 * m * 0.8, vec3(255.0)); }\n"
     "  else if (v_light > 0 && u_mat.y > 0.0) {\n"
     "    vec3 tint = u_mat.z > 0.0 ? clamp(tcol / max(max(tcol.r, tcol.g), max(tcol.b, 0.05)), 0.0, 1.0) : vec3(1.0);\n"
     "    c.rgb = min(c.rgb + spec * 255.0 * u_mat.y * tint, vec3(255.0));\n"
     "  }\n"
+    "#endif\n"
     "  if (u_mat.w > 0.0) c.rgb = mix(c.rgb, vec3(255.0, 40.0, 255.0), u_mat.w);\n"
-    "  if (u_fge != 0) { float f = clamp(v_fog, 0.0, 255.0); c.rgb = (f * c.rgb + (255.0 - f) * u_fogcol.rgb) / 256.0; }\n"
+    "#if FOG\n"
+    "  { float f = clamp(v_fog, 0.0, 255.0); c.rgb = (f * c.rgb + (255.0 - f) * u_fogcol.rgb) / 256.0; }\n"
+    "#endif\n"
     /* the GS's 8 bits: rounded down as the GS does, or with Dithering (u_dith) by a fixed per-pixel
        threshold (interleaved gradient noise), so smooth light and fog gradients keep their slope
        instead of steps; a colour already whole is unchanged */
     "  c = floor(c + vec4(u_dith > 0.0 ? vec3(fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))))) : vec3(0.0001), 0.0001));\n"
+    "#if ATEST\n"
     "  if (u_ate != 0) {\n"
     "    bool pass = true;\n"
     "    if (u_atst == 0) pass = false;\n"
@@ -319,6 +342,7 @@ static const char* fs_src =
     "    if (u_afail_pass == 0 && !pass) discard;\n"
     "    if (u_afail_pass == 1 && pass) discard;\n"
     "  }\n"
+    "#endif\n"
     "  float as = c.a / 128.0;\n"
     "  vec3 rgb = c.rgb / 255.0;\n"
     "  if (u_premul == 1) rgb *= (1.0 + as);\n"
@@ -660,12 +684,25 @@ void gs_renderer_init(void)
     if (!gs_mem_selftest()) host_fatal("GS swizzle tables failed self test");
     gs_reset();
 
-    prog = compile(vs_src, fs_src);
-#define U(n) u_##n = glGetUniformLocation(prog, "u_" #n)
-    U(rt_size); U(rt_margin); U(tme); U(tfx); U(tcc); U(fst); U(texsize); U(fge); U(fogcol); U(ate); U(atst); U(aref);
-    U(tex); U(tex_alpha_scale); U(texofs); U(premul); U(zscale); U(clamp_mode); U(clamp_vals); U(afail_pass); U(rt16);
-    U(lights); U(lopt); U(mat); U(dith);
+    {
+        uint64_t t0 = SDL_GetTicksNS();
+        int n = 0;
+        for (int v = 0; v < NPROG; v++) {
+            static char fs[24576];
+            if ((v & V_REGION) && !(v & V_TEX)) continue;   /* (the region is the texture's) */
+            if (SDL_snprintf(fs, sizeof(fs), "#version 330 core\n#define ATEST %d\n#define TEX %d\n#define REGION %d\n#define FOG %d\n#define LIGHT %d\n%s",
+                             !!(v & V_ATEST), !!(v & V_TEX), !!(v & V_REGION), !!(v & V_FOG), !!(v & V_LIGHT), fs_src) >= (int)sizeof(fs))
+                host_fatal("gs: fragment shader source too long");
+            progs[v] = compile(vs_src, fs);
+            n++;
+#define U(x) pu[v].x = glGetUniformLocation(progs[v], "u_" #x)
+            U(rt_size); U(rt_margin); U(tme); U(tfx); U(tcc); U(fst); U(texsize); U(fge); U(fogcol); U(ate); U(atst); U(aref);
+            U(tex); U(tex_alpha_scale); U(texofs); U(premul); U(zscale); U(clamp_mode); U(clamp_vals); U(afail_pass); U(rt16);
+            U(lights); U(lopt); U(mat); U(dith);
 #undef U
+        }
+        host_log("gs: %d shader variants compiled in %.0f ms\n", n, (SDL_GetTicksNS() - t0) / 1e6);
+    }
     present_prog = compile(present_vs, present_fs);
     up_tex = glGetUniformLocation(present_prog, "u_tex");
     up_rect = glGetUniformLocation(present_prog, "u_rect");
@@ -1175,17 +1212,18 @@ static void apply_blend(const DrawState* st, int* premul)
     glBlendFuncSeparate(sf, df, GL_ONE, GL_ZERO);
 }
 
-/* prog's uniforms are set only when their value changes (program object state: kept across
-   program switches, and only gs_flush sets prog's) */
-static uint32_t ucache[64][4];
-static uint8_t uknown[64];
+/* the GS programs' uniforms are set only when their value changes (program object state: kept
+   across program switches, and only gs_flush sets theirs), per variant */
+static uint32_t ucache[NPROG][64][4];
+static uint8_t uknown[NPROG][64];
 static int uni_changed(GLint loc, const void* v, int n)
 {
     if (loc < 0) return 0;
     if (loc >= 64) return 1;
-    if (uknown[loc] && !memcmp(ucache[loc], v, (size_t)n * 4)) return 0;
-    memcpy(ucache[loc], v, (size_t)n * 4);
-    uknown[loc] = 1;
+    int p = (int)(pcur - pu);
+    if (uknown[p][loc] && !memcmp(ucache[p][loc], v, (size_t)n * 4)) return 0;
+    memcpy(ucache[p][loc], v, (size_t)n * 4);
+    uknown[p][loc] = 1;
     return 1;
 }
 static void uni1i(GLint l, int a) { if (uni_changed(l, &a, 1)) glUniform1i(l, a); }
@@ -1200,18 +1238,35 @@ static void uni4i(GLint l, int a, int b, int c, int d) { int v[4] = { a, b, c, d
    is sampled through them when the game filters it bilinearly, else as the game asks. fs_src
    takes the mip level from the texture coordinates before the GS's clamp and repeat regions
    (textureGrad), so their seams do not pick the smallest level. */
-static GLint aniso_filter(GLint filt)
+/* Each texture's mip levels and the anisotropy last set on it, by GL name (gs_tex_levels; forgotten when
+   the doomed textures are deleted): never asked of the driver, which, threaded as NVIDIA's is on
+   Windows, answers a query only after everything queued before it, once per textured batch (the
+   game frame took twice as long there, an in-between image ten times). Unlisted textures have none. */
+typedef struct { uint16_t levels; uint8_t aniso; } TexLevels;   /* aniso: the value set + 1, 0 none yet */
+static TexLevels* tlev; static size_t ctlev;
+void gs_tex_levels(unsigned int tex, int levels)
+{
+    if (tex >= ctlev) {
+        size_t c = ctlev;
+        GROW_TO(tlev, (size_t)tex + 1, ctlev);
+        memset(tlev + c, 0, (ctlev - c) * sizeof(*tlev));
+    }
+    tlev[tex].levels = (uint16_t)levels;
+    tlev[tex].aniso = 0;
+}
+static GLint aniso_filter(GLuint tex, GLint filt)
 {
     static float max_aniso = -1.0f;
-    GLint levels = 0;
-    if (max_aniso < 0.0f) {   /* EXT/ARB_texture_filter_anisotropic: without it 0 (an error, cleared) */
+    TexLevels* e = tex < ctlev ? &tlev[tex] : NULL;
+    int a;
+    if (!e || !e->levels) return filt;
+    if (max_aniso < 0.0f) {   /* EXT/ARB_texture_filter_anisotropic: without it 0 (an error, cleared); asked once */
         max_aniso = 0.0f;
         glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max_aniso);
         while (glGetError()) {}
     }
-    glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, &levels);
-    if (levels <= 0 || levels >= 1000) return filt;
-    if (max_aniso >= 1.0f) glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, g_config.aniso > 0 && filt == GL_LINEAR ? SDL_min((float)(1 << g_config.aniso), max_aniso) : 1.0f);
+    a = g_config.aniso > 0 && filt == GL_LINEAR ? (int)SDL_min((float)(1 << g_config.aniso), max_aniso) : 1;
+    if (max_aniso >= 1.0f && e->aniso != a + 1) { glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, (float)a); e->aniso = (uint8_t)(a + 1); }
     return g_config.aniso > 0 && filt == GL_LINEAR ? GL_LINEAR_MIPMAP_LINEAR : filt;
 }
 
@@ -1225,7 +1280,7 @@ static uint32_t gt_cnt[4];   /* RECVX_GPU_TIME: GL draws (at most), GS-path spri
 static void draw_batch(int afail_pass)
 {
     int at = 0;
-    uni1i(u_afail_pass, afail_pass);
+    uni1i(pcur->afail_pass, afail_pass);
     gt_cnt[0] += 1 + 2 * (uint32_t)nsruns;
     if (!nsruns) { glDrawElementsBaseVertex(batch_mode, icount, GL_UNSIGNED_SHORT, (void*)((size_t)ibo_first * sizeof(uint16_t)), vbo_first); return; }
     for (int r = 0; r <= nsruns; r++) {
@@ -1705,7 +1760,7 @@ void gs_flush(void)
     int premul = 0, tme, afail;
     if (gs_flush_blocked) return;
     uint64_t test;
-    if (!batch_valid || icount == 0) { vcount = icount = 0; nsruns = 0; return; }
+    if (!batch_valid || icount == 0) { vcount = icount = 0; nsruns = 0; batch_native3d = 0; return; }
     stat_flushes++;
 
     fbp = st->ctx.frame & 0x1FF; fbw = (st->ctx.frame >> 16) & 0x3F; fpsm = (st->ctx.frame >> 24) & 0x3F;
@@ -1764,14 +1819,25 @@ void gs_flush(void)
         glScissor((GLint)((x0 + g_margin_x) * g_scale), (GLint)(y0 * g_scale),
                   (GLsizei)((x1 - x0 + 1) * g_scale), (GLsizei)((y1 - y0 + 1) * g_scale));
     }
-    glUseProgram(prog);
+    {   /* the variant: the branches this batch takes (the alpha test where it can discard: on, not ALWAYS) */
+        static int notex = -1;   /* RECVX_DBG_NOTEX (below) */
+        int t, cl = (int)(st->ctx.clamp & 15), v;
+        if (notex < 0) notex = SDL_getenv("RECVX_DBG_NOTEX") != NULL;
+        t = ((st->prim >> 4) & 1) && !notex;
+        v = ((st->ctx.test & 1) && ((st->ctx.test >> 1) & 7) != 1 ? V_ATEST : 0) | (t ? V_TEX : 0) |
+            (t && ((cl & 3) >= 2 || (cl >> 2) >= 2) ? V_REGION : 0) | ((st->prim >> 5) & 1 ? V_FOG : 0) |
+            (batch_native3d && lsets_n ? V_LIGHT : 0);
+        pcur = &pu[v];
+        glUseProgram(progs[v]);
+        if (v & V_LIGHT) { uni1i(pcur->lights, LIGHT_UNIT); uni4f(pcur->lopt, lopt[0], lopt[1], lopt[2], lopt[3]); }
+    }
     clip_distances(1);
-    uni2f(u_rt_size, (float)cur_rt->vw, (float)cur_rt->vh);
-    uni1f(u_rt_margin, (float)g_margin_x);
+    uni2f(pcur->rt_size, (float)cur_rt->vw, (float)cur_rt->vh);
+    uni1f(pcur->rt_margin, (float)g_margin_x);
     {
         uint32_t zpsm = (st->ctx.zbuf >> 24) & 0xF;
         float zmax = zpsm == 0 ? 4294967296.0f : zpsm == 1 ? 16777216.0f : 65536.0f;
-        uni1f(u_zscale, 1.0f / zmax);
+        uni1f(pcur->zscale, 1.0f / zmax);
     }
 
     /* depth */
@@ -1801,7 +1867,7 @@ void gs_flush(void)
                 ((fbmsk >> 24) != 0xFF) && fpsm != PSMCT24);
 
     apply_blend(st, &premul);
-    uni1i(u_premul, premul);
+    uni1i(pcur->premul, premul);
 
     /* texture */
     tme = (st->prim >> 4) & 1;
@@ -1810,14 +1876,14 @@ void gs_flush(void)
         if (notex < 0) notex = SDL_getenv("RECVX_DBG_NOTEX") != NULL;
         if (notex) { tme = 0; glDisable(GL_BLEND); }
     }
-    uni1i(u_tme, tme);
+    uni1i(pcur->tme, tme);
     {   /* the texture's material (materials.c) and the picker's highlight */
         uint32_t h = tme && (mat_hl || (g_config.mat_shine > 0 && mat_active())) ? ntex_hash_of(st->ctx.tex0) : 0;
         float shine = 0, strength = 0, hl = 0;
         int metal = 0, cls = h && g_config.mat_shine > 0 ? mat_get(h) : 0;
         if (cls) mat_class_params(cls, &shine, &strength, &metal);
         if (h && h == mat_hl) hl = 0.3f + 0.2f * SDL_sinf((float)SDL_GetTicks() * 0.008f);
-        uni4f(u_mat, shine, strength, (float)metal, hl);
+        uni4f(pcur->mat, shine, strength, (float)metal, hl);
     }
     if (tme) {
         uint64_t tex0 = st->ctx.tex0;
@@ -1825,11 +1891,12 @@ void gs_flush(void)
         uint32_t tw = 1u << ((tex0 >> 26) & 0xF), th = 1u << ((tex0 >> 30) & 0xF);
         float ox = 0, oy = 0;
         RenderTarget* srt;
+        GLuint bound = 0;   /* the texture bound (a replacement in place of t) */
         int is16 = 0;
         dbg_tex0 = tex0;
         {   /* replay resources: the executed frame resolves, its replays reuse */
             TexMemo* m = memo_slot(tex0, st->texa, st->epoch, !gs_replaying);
-            if (gs_replaying && (!m || (m->rt >= 0 ? !memo_rt_ok(m) : !m->tex))) { vcount = icount = 0; nsruns = 0; return; }
+            if (gs_replaying && (!m || (m->rt >= 0 ? !memo_rt_ok(m) : !m->tex))) { vcount = icount = 0; nsruns = 0; batch_native3d = 0; return; }
                 /* the executed frame did not draw this (or what it sampled is gone): neither does its
                    replay (it would resolve against the state the frame left; replays load no CLUT) */
             if (gs_replaying && m) {
@@ -1848,9 +1915,9 @@ void gs_flush(void)
         if (srt && srt != cur_rt) {
             glBindTexture(GL_TEXTURE_2D, srt->tex);
             /* texel (GS units) -> RT normalized */
-            uni4f(u_texofs, 1.0f / srt->vw, 1.0f / srt->vh, (ox + g_margin_x) / srt->vw, oy / srt->vh);
-            uni1f(u_tex_alpha_scale, 128.0f);
-            uni4f(u_rt16, (float)is16, (float)(st->texa & 0xFF), (float)((st->texa >> 32) & 0xFF), (float)((st->texa >> 15) & 1));
+            uni4f(pcur->texofs, 1.0f / srt->vw, 1.0f / srt->vh, (ox + g_margin_x) / srt->vw, oy / srt->vh);
+            uni1f(pcur->tex_alpha_scale, 128.0f);
+            uni4f(pcur->rt16, (float)is16, (float)(st->texa & 0xFF), (float)((st->texa >> 32) & 0xFF), (float)((st->texa >> 15) & 1));
         } else {
             int w, h;
             float ascale;
@@ -1862,33 +1929,34 @@ void gs_flush(void)
                 if (record_memo && record_memo->rt < 0) { record_memo->tex = t; record_memo->w = w; record_memo->h = h; record_memo->ascale = ascale; }
             }
             pretext_capture(t);
-            glBindTexture(GL_TEXTURE_2D, hdpack_bind(t, &ascale));   /* a replacement keeps the texture's UV space */
-            uni4f(u_texofs, 1.0f / (float)w, 1.0f / (float)h, 0.0f, 0.0f);
-            uni1f(u_tex_alpha_scale, ascale);
-            uni4f(u_rt16, 0, 0, 0, 0);
+            bound = hdpack_bind(t, &ascale);   /* a replacement keeps the texture's UV space */
+            glBindTexture(GL_TEXTURE_2D, bound);
+            uni4f(pcur->texofs, 1.0f / (float)w, 1.0f / (float)h, 0.0f, 0.0f);
+            uni1f(pcur->tex_alpha_scale, ascale);
+            uni4f(pcur->rt16, 0, 0, 0, 0);
         }
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, srt ? filt : aniso_filter(filt));
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, srt ? filt : aniso_filter(bound, filt));
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (wms == 0 && !srt) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (wmt == 0 && !srt) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
-        uni1i(u_tex, 0);
-        uni2f(u_texsize, (float)tw, (float)th);
-        uni1i(u_tfx, (int)((tex0 >> 35) & 3));
-        uni1i(u_tcc, (int)((tex0 >> 34) & 1));
-        uni1i(u_fst, (int)((st->prim >> 8) & 1));
-        uni4i(u_clamp_mode, wms, wmt, 0, 0);
-        uni4f(u_clamp_vals, (float)((st->ctx.clamp >> 4) & 0x3FF), (float)((st->ctx.clamp >> 14) & 0x3FF),
+        uni1i(pcur->tex, 0);
+        uni2f(pcur->texsize, (float)tw, (float)th);
+        uni1i(pcur->tfx, (int)((tex0 >> 35) & 3));
+        uni1i(pcur->tcc, (int)((tex0 >> 34) & 1));
+        uni1i(pcur->fst, (int)((st->prim >> 8) & 1));
+        uni4i(pcur->clamp_mode, wms, wmt, 0, 0);
+        uni4f(pcur->clamp_vals, (float)((st->ctx.clamp >> 4) & 0x3FF), (float)((st->ctx.clamp >> 14) & 0x3FF),
                     (float)((st->ctx.clamp >> 24) & 0x3FF), (float)((st->ctx.clamp >> 34) & 0x3FF));
     }
-    uni1f(u_dith, g_config.dither ? 1.0f : 0.0f);
-    uni1i(u_fge, (int)((st->prim >> 5) & 1));
+    uni1f(pcur->dith, g_config.dither ? 1.0f : 0.0f);
+    uni1i(pcur->fge, (int)((st->prim >> 5) & 1));
     {
         float fr = (float)(st->fogcol & 0xFF), fg = (float)((st->fogcol >> 8) & 0xFF), fb = (float)((st->fogcol >> 16) & 0xFF);
-        uni4f(u_fogcol, fr, fg, fb, 0.0f);
+        uni4f(pcur->fogcol, fr, fg, fb, 0.0f);
     }
-    uni1i(u_ate, (int)(test & 1));
-    uni1i(u_atst, (int)((test >> 1) & 7));
-    uni1f(u_aref, (float)((test >> 4) & 0xFF));
+    uni1i(pcur->ate, (int)(test & 1));
+    uni1i(pcur->atst, (int)((test >> 1) & 7));
+    uni1f(pcur->aref, (float)((test >> 4) & 0xFF));
     pretext_track(st, fbw);
 
     glBindVertexArray(vao);
@@ -1930,6 +1998,7 @@ void gs_flush(void)
     }
     vcount = icount = 0;
     nsruns = 0;
+    batch_native3d = 0;
 }
 
 /* ---------------- primitive intake ---------------- */
@@ -2088,6 +2157,7 @@ static void gl_triangles(unsigned int prim, const GlVertex* g, int n, int sfirst
         i += k;
     }
     gt_cnt[3] += (uint32_t)n / 3;
+    batch_native3d = 1;
 }
 
 /* The GL vertices of each native strip as the executed frame drew them, by event: a replay
@@ -2174,6 +2244,7 @@ void gs_draw_native_idx(unsigned int prim, const NativeVertex* v, int nv, const 
     vcount += nv;
     icount += ni;
     gt_cnt[3] += (uint32_t)ni / 3;
+    batch_native3d = 1;
 }
 
 /* replay: draw the executed frame's strip of event ev again; 0 if it was not kept */
@@ -2256,7 +2327,6 @@ void gs_post_frame(int menu) { post_menu = menu; }
 /* per-pixel lighting: the executed frame's light sets (stream.h STREAM_LSET floats each) as rows
    of an RGBA32F texture on unit LIGHT_UNIT, which fs_src reads by NativeVertex.light (row 0
    unused); replays draw with the same. u_lopt: the lighting options as light_glue.c uses them. */
-#define LIGHT_UNIT 4
 int pc_light_main(void);   /* host.c: the Lighting mode's main light, % */
 int pc_light_soft(void);   /* host.c: Soft shading, % */
 #define GL_RGBA32F 0x8814
@@ -2264,6 +2334,8 @@ void gs_light_sets(const float* sets, size_t n)
 {
     static GLuint tex;
     static int rows;
+    lsets_n = (int)n;
+    lopt[0] = pc_light_soft() / 100.0f; lopt[1] = g_config.light_falloff ? 1.0f : 0.0f; lopt[2] = pc_light_main() / 100.0f; lopt[3] = g_config.light_pixel ? 1.0f : 0.0f;
     if (!n) return;
     if (!tex) {
         glGenTextures(1, &tex);
@@ -2280,10 +2352,7 @@ void gs_light_sets(const float* sets, size_t n)
     }
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 1, STREAM_LSET / 4, (GLsizei)n, GL_RGBA, GL_FLOAT, sets);
-    glActiveTexture(GL_TEXTURE0);
-    glUseProgram(prog);
-    glUniform1i(u_lights, LIGHT_UNIT);
-    glUniform4f(u_lopt, pc_light_soft() / 100.0f, g_config.light_falloff ? 1.0f : 0.0f, pc_light_main() / 100.0f, g_config.light_pixel ? 1.0f : 0.0f);
+    glActiveTexture(GL_TEXTURE0);   /* (u_lights and u_lopt: gs_flush, with the variant) */
 }
 
 /* the display area rect (u_rect) of tex, vw x vh window pixels, into the bloom levels; returns
@@ -2900,7 +2969,11 @@ void gs_frame_begin(void)
 {
     gt_exec_begin();
     if (++memo_gen == 0) memo_gen = 1;   /* resources of the frame about to execute */
-    if (ndoomed) { for (size_t i = 0; i < ndoomed; i++) hdpack_forget(doomed[i]); glDeleteTextures((GLsizei)ndoomed, doomed); ndoomed = 0; }
+    if (ndoomed) {
+        for (size_t i = 0; i < ndoomed; i++) { hdpack_forget(doomed[i]); if (doomed[i] < ctlev) tlev[doomed[i]] = (TexLevels){ 0, 0 }; }
+        glDeleteTextures((GLsizei)ndoomed, doomed);
+        ndoomed = 0;
+    }
     nreloads = 0;
     mv_tbp = UINT32_MAX;   /* a movie frame binds it again (EV_MOVIE) */
     pretext[0].valid = 0;

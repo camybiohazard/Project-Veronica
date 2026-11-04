@@ -1,0 +1,5447 @@
+TICK = 786
+IOP memory 0x00020000(size:12288) is allocated
+IOP memory 0x00023000(size:2048) is allocated
+IOP memory 0x00023800(size:327696) is allocated
+sdGddaSetPan NOT USED!
+Setup host file system.
+malloc area = 34eedfa0
+TICK = 524
+malloc area = 34ffa9dc
+TICK = 524
+TICK = 524
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+RGB565
+ARGB4444
+ARGB4444
+ARGB1555
+ARGB1555
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+malloc area = 34fb0680
+TICK = 524
+TICK = 524
+ARGB8888
+ARGB8888
+TICK = 524
+TICK = 1572
+TICK = 524
+sdGddaSetPan NOT USED!
+TICK = 524
+TICK = 524
+TICK = 524
+malloc area = 3500f460
+TICK = 524
+TICK = 524
+ARGB8888
+ARGB8888
+malloc area = 34eee000
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 786
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+malloc area = 34ffa9dc
+TICK = 524
+TICK = 524
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+RGB565
+ARGB4444
+ARGB4444
+ARGB1555
+ARGB1555
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+TICK = 524
+malloc area = 34fb0fc0
+TICK = 524
+TICK = 524
+ARGB8888
+ARGB8888
+ARGB8888
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+log: writing graphicson-FSR-off.txt
+cvx-port 1.0.7 (1.0.2-22-gafb7c9e-dirty)
+display: exclusive fullscreen 3840 x 2160 @ 143.99 Hz, window 1280,600 1280 x 960
+gl: NVIDIA GeForce RTX 5060/PCIe/SSE2 / 3.3.0 NVIDIA 621.01
+sif: load module cdrom0:\PS2_DATA\MODULES\SIO2MAN.IRX;1
+sif: load module cdrom0:\PS2_DATA\MODULES\PADMAN.IRX;1
+sif: load module cdrom0:\PS2_DATA\MODULES\MCMAN.IRX;1
+sif: load module cdrom0:\PS2_DATA\MODULES\MCSERV.IRX;1
+sif: load module cdrom0:\PS2_DATA\MODULES\LIBSD.IRX;1
+sif: load module cdrom0:\PS2_DATA\MODULES\MODHSYN.IRX;1
+sif: load module cdrom0:\PS2_DATA\MODULES\MODMIDI.IRX;1
+sif: load module cdrom0:\PS2_DATA\MODULES\MODMSIN.IRX;1
+sif: load module cdrom0:\PS2_DATA\MODULES\TSNDDRV.IRX;1
+gs: new render target FBP=150 FBW=10 PSM=0 (3416x2048)
+gs: new render target FBP=0 FBW=10 PSM=0 (3416x2048)
+gputime: exec 22.4/s cpu 4.62 gpu 2.41 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 84.8/s cpu 1.83 gpu 0.26 ms
+gputime: per frame draws 6, GS-path sprites 5, other GS-path primitives 0, native triangles 3
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 30.0/s cpu 6.54 gpu 3.71 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 127.9/s cpu 2.73 gpu 0.38 ms
+gputime: per frame draws 9, GS-path sprites 22, other GS-path primitives 0, native triangles 2
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.5/s cpu 5.53 gpu 1.61 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 137.4/s cpu 3.08 gpu 0.36 ms
+gputime: per frame draws 8, GS-path sprites 15, other GS-path primitives 0, native triangles 3
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 30.4/s cpu 5.06 gpu 1.60 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 140.4/s cpu 2.48 gpu 0.30 ms
+gputime: per frame draws 9, GS-path sprites 63, other GS-path primitives 0, native triangles 2
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 30.0/s cpu 7.31 gpu 4.28 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 139.3/s cpu 1.40 gpu 0.40 ms
+gputime: per frame draws 640, GS-path sprites 40, other GS-path primitives 0, native triangles 647
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 8.26 gpu 6.52 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 138.2/s cpu 0.41 gpu 0.41 ms
+gputime: per frame draws 1101, GS-path sprites 29, other GS-path primitives 0, native triangles 1116
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 30.0/s cpu 8.89 gpu 7.79 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 134.0/s cpu 0.23 gpu 0.43 ms
+gputime: per frame draws 1350, GS-path sprites 29, other GS-path primitives 0, native triangles 1364
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 8.43 gpu 7.44 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 136.2/s cpu 0.32 gpu 0.43 ms
+gputime: per frame draws 1255, GS-path sprites 30, other GS-path primitives 0, native triangles 1269
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 30.0/s cpu 8.30 gpu 7.21 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 135.0/s cpu 0.38 gpu 0.46 ms
+gputime: per frame draws 1180, GS-path sprites 41, other GS-path primitives 0, native triangles 1196
+gputime: per in-between draws 0,TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+materials: 553 textures from mods/materials.ini
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+malloc area = 3500f460
+TICK = 524
+TICK = 524
+ARGB8888
+ARGB8888
+malloc area = 34eee000
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+malloc area = 34ffa9dc
+TICK = 524
+TICK = 524
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+RGB565
+ARGB4444
+ARGB4444
+ARGB1555
+ARGB1555
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+TICK = 524
+malloc area = 34fb0fc0
+TICK = 524
+TICK = 524
+ARGB8888
+ARGB8888
+ARGB8888
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+ GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 8.57 gpu 7.08 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 138.0/s cpu 0.35 gpu 0.46 ms
+gputime: per frame draws 1211, GS-path sprites 34, other GS-path primitives 0, native triangles 1228
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 8.41 gpu 7.59 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 134.1/s cpu 0.29 gpu 0.46 ms
+gputime: per frame draws 1277, GS-path sprites 29, other GS-path primitives 0, native triangles 1296
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 30.0/s cpu 7.08 gpu 4.74 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 140.9/s cpu 1.00 gpu 0.46 ms
+gputime: per frame draws 641, GS-path sprites 34, other GS-path primitives 0, native triangles 655
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 3.77 gpu 1.61 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 141.0/s cpu 3.46 gpu 0.44 ms
+gputime: per frame draws 7, GS-path sprites 20, other GS-path primitives 0, native triangles 3
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 5.84 gpu 1.68 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 141.0/s cpu 2.53 gpu 0.46 ms
+gputime: per frame draws 9, GS-path sprites 24, other GS-path primitives 0, native triangles 2
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 6.08 gpu 1.68 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 141.0/s cpu 2.88 gpu 0.46 ms
+gputime: per frame draws 9, GS-path sprites 23, other GS-path primitives 0, native triangles 2
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 5.05 gpu 1.60 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 141.0/s cpu 2.69 gpu 0.45 ms
+gputime: per frame draws 8, GS-path sprites 39, other GS-path primitives 0, native triangles 3
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 30.4/s cpu 6.44 gpu 2.51 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 140.4/s cpu 2.10 gpu 0.46 ms
+gputime: per frame draws 220, GS-path sprites 52, other GS-path primitives 0, native triangles 221
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 8.03 gpu 5.42 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 140.1/s cpu 0.63 gpu 0.46 ms
+gputime: per frame draws 842, GS-path sprites 29, other GS-path primitives 0, native triangles 860
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 8.42 gpu 6.71 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 139.2/s cpu 0.44 gpu 0.46 ms
+gputime: per frame draws 1107, GS-path sprites 29, other GS-path primitives 0, native triangles 1125
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 30.0/s cpu 8.48 gpu 7.28 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 138.5/s cpu 0.31 gpu 0.46 ms
+gputime: per frame draws 1223, GS-path sprites 29, other GS-path primitives 0, native triangles 1241
+gputime: per in-between draws 0, GS-path sprTICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+malloc area = 3500f460
+TICK = 524
+TICK = 524
+ARGB8888
+ARGB8888
+malloc area = 34eee000
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+malloc area = 34ef7bc0
+malloc area = 34f017c0
+TICK = 524
+malloc area = 34f413c0
+TICK = 524
+TICK = 524
+TICK = 524
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+RGB565
+ARGB4444
+ARGB4444
+ARGB1555
+ARGB1555
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+malloc area = 34f637c0
+malloc area = 34f6b7c0
+malloc area = 34f737c0
+malloc area = 34f7b7c0
+malloc area = 34f7e7c0
+malloc area = 34fde7c0
+malloc area = 34fee7c0
+malloc area = 34ff07c0
+malloc area = 34ff083c
+malloc area = 34ff08bc
+malloc area = 34ff88c0
+TICK = 524
+TICK = 524
+TICK = 524
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+malloc area = 34f511e0
+malloc area = 34f51200
+malloc area = 34f51200
+malloc area = 34f518e0
+malloc area = 34f51a40
+malloc area = 34f51a90
+malloc area = 34f51b60
+malloc area = 34f51d10
+TICK = 524
+TICK = 524
+RGB565
+RGB565
+TICK = 524
+TICK = 524
+read file = RM_0000.RDX
+TICK = 524
+TICK = 524
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+TICK = 524
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+RGB565
+TICK = 524
+malloc area = 35190e44
+malloc area = 351915c0
+malloc area = 351915d0
+malloc area = 35191618
+malloc area = 3519dca0
+malloc area = 3519dcd8
+malloc area = 3519e1e0
+malloc area = 3519e84c
+malloc area = 3519f230
+malloc area = 3519ff04
+malloc area = 351a0680
+malloc area = 351a0690
+malloc area = 351a06d8
+malloc area = 351ac2c0
+malloc area = 351ac2d8
+malloc area = 351ac7e0
+malloc area = 351ace4c
+malloc area = 351ad830
+TICK = 524
+malloc area = 35269500
+malloc area = 351bbd00
+TICK = 524
+TICK = 524
+TICK = 524
+malloc area = 351aebb0
+TICK = 524
+TICK = 524
+TICK = 786
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+ites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 30.0/s cpu 5.64 gpu 3.44 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 140.5/s cpu 2.65 gpu 0.45 ms
+gputime: per frame draws 358, GS-path sprites 44, other GS-path primitives 0, native triangles 361
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 4.87 gpu 1.71 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 141.0/s cpu 2.84 gpu 0.45 ms
+gputime: per frame draws 7, GS-path sprites 13, other GS-path primitives 0, native triangles 3
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 6.25 gpu 1.66 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 141.0/s cpu 2.90 gpu 0.46 ms
+gputime: per frame draws 9, GS-path sprites 25, other GS-path primitives 0, native triangles 2
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+adxt: start 3/3 (48000 Hz, 2 ch, 204272 samples, loop 0) voice 0
+gputime: exec 30.0/s cpu 5.88 gpu 1.84 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 141.0/s cpu 2.65 gpu 0.46 ms
+gputime: per frame draws 8, GS-path sprites 10, other GS-path primitives 0, native triangles 4
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gputime: exec 29.9/s cpu 5.82 gpu 1.89 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 141.0/s cpu 2.69 gpu 0.46 ms
+gputime: per frame draws 7, GS-path sprites 7, other GS-path primitives 0, native triangles 5
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+room: RM_0000 5265 KB expanded, 71169 KB of the room arena left
+room: RM_0000 ready 18 frames after the game start
+adxt: start 0/114 (48000 Hz, 2 ch, 2435916 samples, loop 1) voice 0
+gputime: exec 29.9/s cpu 4.12 gpu 1.47 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 141.0/s cpu 3.57 gpu 0.45 ms
+gputime: per frame draws 5, GS-path sprites 5, other GS-path primitives 0, native triangles 3
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+gs: new render target FBP=380 FBW=10 PSM=10 (3416x2048)
+gputime: exec 29.9/s cpu 7.54 gpu 3.31 ms | in-between 122.1/s cpu 2.38 gpu 2.54 ms (start 0.10 draw 1.30 display 1.14 restore 0.00) | frame image 13.0/s cpu 3.07 gpu 0.96 ms
+gputime: per frame draws 30, GS-path sprites 3, other GS-path primitives 1, native triangles 3127
+gputime: per in-between draws 82, GS-path sprites 3, other GS-path primitives 0, native triangles 3007
+adxt: start 1/0 (48000 Hz, 1 ch, 504141 samples, loop 0) voice 1
+gputime: exec 30.0/s cpu 6.04 gpu 1.50 ms | in-between 132.5/s cpu 2.03 gpu 2.19 ms (start 0.09 draw 1.02 display 1.08 restore 0.00) | frame image 8.5/s cpu 2.78 gpu 1.03 ms
+gputime: per frame draws 30, GS-path sprites 3, other GS-path primitives 0, native triangles 3006
+gputime: per in-between draws 84, GS-path sprites 3, other GS-path primitives 0, native triangles 3006
+gputime: exec 30.0/s cpu 6.16 gpu 1.71 ms | in-between 131.0/s cpu 2.12 gpu 2.39 ms (start 0.10 draw 1.12 display 1.16 restore 0.00) | frame image 10.0/s cpu 2.92 gpu 1.08 ms
+gputime: per frame draws 30, GS-path sprites 3, other GS-path primitives 0, native triangles 3006
+gputime: per in-between draws 84, GS-path sprites 3, other GS-path primitives 0, native triangles 3006
+gputime: exec 29.9/s cpu 8.36 gpu 4.33 ms | in-between 74.3/s cpu 1.87 gpu 3.53 ms (start 0.09 draw 2.17 display 1.27 restore 0.00) | frame image 51.9/s cpu 2.19 gpu 1.32 ms
+gputime: per frame draws 72, GS-path sprites 3, other GS-path primitives 18, native triangles 4830
+gputime: per in-between draws 121, GS-path sprites 3, other GSTICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+ARGB8888
+ARGB8888
+ARGB8888
+ARGB8888
+ARGB8888
+TICK = 524
+TICK = 524
+malloc area = 35350fc0
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+RGB565
+RGB565
+RGB565
+TICK = 524
+malloc area = 353567c0
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+-path primitives 7, native triangles 3677
+gputime: exec 29.9/s cpu 10.01 gpu 6.52 ms | in-between 39.4/s cpu 1.51 gpu 6.59 ms (start 0.09 draw 5.12 display 1.38 restore 0.00) | frame image 79.8/s cpu 2.18 gpu 1.35 ms
+gputime: per frame draws 160, GS-path sprites 3, other GS-path primitives 32, native triangles 6279
+gputime: per in-between draws 471, GS-path sprites 3, other GS-path primitives 32, native triangles 6279
+gputime: exec 30.0/s cpu 9.85 gpu 6.55 ms | in-between 39.5/s cpu 1.54 gpu 6.59 ms (start 0.09 draw 5.12 display 1.38 restore 0.00) | frame image 79.5/s cpu 2.14 gpu 1.35 ms
+gputime: per frame draws 163, GS-path sprites 3, other GS-path primitives 32, native triangles 6282
+gputime: per in-between draws 479, GS-path sprites 3, other GS-path primitives 32, native triangles 6282
+gputime: exec 30.0/s cpu 9.88 gpu 6.54 ms | in-between 38.4/s cpu 1.52 gpu 6.59 ms (start 0.09 draw 5.12 display 1.38 restore 0.00) | frame image 79.9/s cpu 2.09 gpu 1.35 ms
+gputime: per frame draws 163, GS-path sprites 3, other GS-path primitives 32, native triangles 6282
+gputime: per in-between draws 479, GS-path sprites 3, other GS-path primitives 32, native triangles 6282
+gputime: exec 30.0/s cpu 9.82 gpu 6.53 ms | in-between 41.5/s cpu 1.54 gpu 6.57 ms (start 0.09 draw 5.11 display 1.38 restore 0.00) | frame image 77.4/s cpu 2.19 gpu 1.34 ms
+gputime: per frame draws 163, GS-path sprites 3, other GS-path primitives 32, native triangles 6282
+gputime: per in-between draws 479, GS-path sprites 3, other GS-path primitives 32, native triangles 6282
+gputime: exec 30.0/s cpu 10.42 gpu 6.50 ms | in-between 33.0/s cpu 1.58 gpu 6.54 ms (start 0.09 draw 5.08 display 1.37 restore 0.00) | frame image 86.5/s cpu 2.12 gpu 1.34 ms
+gputime: per frame draws 163, GS-path sprites 3, other GS-path primitives 32, native triangles 6282
+gputime: per in-between draws 479, GS-path sprites 3, other GS-path primitives 32, native triangles 6282
+gputime: exec 29.9/s cpu 9.57 gpu 4.66 ms | in-between 14.5/s cpu 1.50 gpu 6.52 ms (start 0.09 draw 5.07 display 1.37 restore 0.00) | frame image 110.2/s cpu 1.18 gpu 0.73 ms
+gputime: per frame draws 306, GS-path sprites 2, other GS-path primitives 13, native triangles 2854
+gputime: per in-between draws 419, GS-path sprites 3, other GS-path primitives 32, native triangles 6254
+gputime: exec 29.9/s cpu 8.67 gpu 3.69 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 132.6/s cpu 0.39 gpu 0.42 ms
+gputime: per frame draws 433, GS-path sprites 2, other GS-path primitives 0, native triangles 431
+gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+adxt: start 0/45 (48000 Hz, 2 ch, 2277448 samples, loop 1) voice 0
+gputime: exec 30.0/s cpu 9.28 gpu 4.84 ms | in-between 8.0/s cpu 1.72 gpu 6.64 ms (start 0.10 draw 5.09 display 1.45 restore 0.00) | frame image 115.9/s cpu 0.74 gpu 0.68 ms
+gputime: per frame draws 241, GS-path sprites 2, other GS-path primitives 12, native triangles 2474
+gputime: per in-between draws 157, GS-path sprites 3, other GS-path primitives 33, native triangles 6257
+adxt: start 1/16 (48000 Hz, 1 ch, 90561 samples, loop 0) voice 1
+gputime: exec 30.0/s cpu 7.72 gpu 4.75 ms | in-between 61.9/s cpu 1.99 gpu 5.11 ms (start 0.09 draw 3.69 display 1.33 restore 0.00) | frame image 67.4/s cpu 1.53 gpu 1.34 ms
+gputime: per frame draws 75, GS-path sprites 3, other GS-path primitives 32, native triangles 5588
+gputime: per in-between draws 116, GS-path sprites 3, other GS-path primitives 30, native triangles 4958
+gputime: exec 30.0/s cpu 7.97 gpu 4.47 ms | in-between 119.3/s cpu 1.95 gpu 4.43 ms (start 0.09 draw 3.05 display 1.29 restore 0.00) | frame image 15.0/s cpu 1.00 gpu 1.30 ms
+gputime: per frame draws 79, GS-path sprites 4, other GS-path primitives 50, native triangles 6628
+gputime: per in-between draws 178, GS-path sprites 4, other GS-path primitives 48, native triangles 6329
+door: to 0/1 entry 0, animation 0 skipped (load screen)
+gputime: exec 30.0/s cpu 10.47 gpu 6.15 ms | in-between 96.5/s cpu 3.09 gpu 5.54 mTICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+read file = RM_0010.RDX
+TICK = 524
+TICK = 524
+ARGB4444
+TICK = 524
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+RGB565
+RGB565
+TICK = 524
+malloc area = 3503e4f0
+TICK = 524
+malloc area = 350c5500
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+read file = RM_0020.RDX
+TICK = 524
+TICK = 524
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+TICK = 524
+RGB565
+RGB565
+ARGB1555
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+RGB565
+ARGB4444
+RGB565
+ARGB4444
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+TICK = 524
+malloc area = 351f5204
+malloc area = 351f5980
+malloc area = 351f5990
+malloc area = 351f59d8
+malloc area = 35202060
+malloc area = 35202098
+malloc area = 352025a0
+malloc area = 35202c0c
+malloc area = 352035f0
+malloc area = 35204ab0
+TICK = 524
+malloc area = 35374d80
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 786
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+s (start 0.08 draw 4.25 display 1.21 restore 0.00) | frame image 23.0/s cpu 1.11 gpu 1.25 ms
+gputime: per frame draws 108, GS-path sprites 6, other GS-path primitives 64, native triangles 8835
+gputime: per in-between draws 183, GS-path sprites 6, other GS-path primitives 65, native triangles 9130
+room: RM_0010 1786 KB expanded, 74648 KB of the room arena left
+room: RM_0010 ready 20 frames after the door
+gputime: exec 29.9/s cpu 7.90 gpu 4.72 ms | in-between 88.8/s cpu 3.09 gpu 4.94 ms (start 0.09 draw 3.54 display 1.31 restore 0.00) | frame image 41.4/s cpu 0.84 gpu 0.72 ms
+gputime: per frame draws 59, GS-path sprites 4, other GS-path primitives 28, native triangles 4680
+gputime: per in-between draws 76, GS-path sprites 5, other GS-path primitives 35, native triangles 5670
+gputime: exec 30.0/s cpu 7.05 gpu 4.02 ms | in-between 123.3/s cpu 2.67 gpu 4.67 ms (start 0.09 draw 3.27 display 1.31 restore 0.00) | frame image 13.5/s cpu 1.72 gpu 1.31 ms
+gputime: per frame draws 60, GS-path sprites 5, other GS-path primitives 34, native triangles 4299
+gputime: per in-between draws 60, GS-path sprites 5, other GS-path primitives 34, native triangles 4293
+door: to 0/2 entry 0, animation 1 skipped (load screen)
+room: RM_0020 7915 KB expanded, 68519 KB of the room arena left
+room: RM_0020 ready 20 frames after the door
+gputime: exec 30.0/s cpu 7.56 gpu 4.61 ms | in-between 82.9/s cpu 2.99 gpu 4.31 ms (start 0.09 draw 2.91 display 1.32 restore 0.00) | frame image 46.4/s cpu 3.55 gpu 0.76 ms
+gputime: per frame draws 67, GS-path sprites 5, other GS-path primitives 49, native triangles 3393
+gputime: per in-between draws 72, GS-path sprites 5, other GS-path primitives 38, native triangles 3527
+gputime: exec 30.0/s cpu 12.40 gpu 6.95 ms | in-between 74.5/s cpu 4.27 gpu 5.81 ms (start 0.07 draw 4.72 display 1.02 restore 0.00) | frame image 27.0/s cpu 0.98 gpu 1.07 ms
+gputime: per frame draws 232, GS-path sprites 6, other GS-path primitives 152, native triangles 6205
+gputime: per in-between draws 222, GS-path sprites 6, other GS-path primitives 141, native triangles 5579
+adxt: start 0/46 (48000 Hz, 2 ch, 1206435 samples, loop 0) voice 0
+gputime: exec 29.9/s cpu 10.07 gpu 6.05 ms | in-between 65.2/s cpu 2.83 gpu 6.13 ms (start 0.09 draw 4.79 display 1.26 restore 0.00) | frame image 51.3/s cpu 1.19 gpu 1.23 ms
+gputime: per frame draws 222, GS-path sprites 6, other GS-path primitives 129, native triangles 3765
+gputime: per in-between draws 221, GS-path sprites 6, other GS-path primitives 114, native triangles 3246
+gputime: exec 29.9/s cpu 15.78 gpu 8.99 ms | in-between 25.4/s cpu 5.31 gpu 9.59 ms (start 0.08 draw 8.26 display 1.25 restore 0.00) | frame image 54.7/s cpu 0.58 gpu 1.22 ms
+gputime: per frame draws 390, GS-path sprites 5, other GS-path primitives 217, native triangles 7544
+gputime: per in-between draws 497, GS-path sprites 5, other GS-path primitives 215, native triangles 7558
+gputime: exec 29.9/s cpu 14.51 gpu 8.80 ms | in-between 27.9/s cpu 4.97 gpu 8.27 ms (start 0.08 draw 7.04 display 1.15 restore 0.00) | frame image 58.3/s cpu 1.39 gpu 1.26 ms
+gputime: per frame draws 312, GS-path sprites 5, other GS-path primitives 178, native triangles 7141
+gputime: per in-between draws 455, GS-path sprites 6, other GS-path primitives 188, native triangles 7807
+adxt: start 0/47 (48000 Hz, 2 ch, 766810 samples, loop 1) voice 0
+gputime: exec 30.0/s cpu 14.82 gpu 8.19 ms | in-between 68.0/s cpu 5.68 gpu 5.80 ms (start 0.06 draw 4.89 display 0.86 restore 0.00) | frame image 23.5/s cpu 0.46 gpu 0.84 ms
+gputime: per frame draws 360, GS-path sprites 8, other GS-path primitives 276, native triangles 10292
+gputime: per in-between draws 413, GS-path sprites 8, other GS-path primitives 273, native triangles 10196
+gputime: exec 30.0/s cpu 11.78 gpu 6.57 ms | in-between 86.5/s cpu 4.96 gpu 5.46 ms (start 0.07 draw 4.40 display 0.99 restore 0.00) | frame image 21.0/s cpu 0.91 gpu 0.93 ms
+gputime: per frame draws 276, GS-path sprites 11, other GS-path primitives 145, native triangles 6146
+gputime: per in-between draws 269, GS-path sprites 11, other GS-path pTICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+read file = RM_0030.RDX
+TICK = 524
+TICK = 524
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+TICK = 524
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+TICK = 524
+malloc area = 35285c04
+malloc area = 35286380
+malloc area = 35286390
+malloc area = 352863d8
+malloc area = 35292a60
+malloc area = 35292a98
+malloc area = 35292fa0
+malloc area = 3529360c
+malloc area = 35293ff0
+malloc area = 35294cc4
+malloc area = 35295440
+malloc area = 35295450
+malloc area = 35295498
+malloc area = 352a0e80
+malloc area = 352a0e98
+malloc area = 352a13a0
+malloc area = 352a1a0c
+malloc area = 352a23f0
+malloc area = 352a3f70
+TICK = 524
+malloc area = 35412340
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 1048
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+ARGB8888
+ARGB8888
+ARGB8888
+ARGB8888
+ARGB8888
+TICK = 524
+TICK = 524
+malloc area = 35703b40
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+RGB565
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+RGB565
+RGB565
+RGB565
+TICK = 524
+malloc area = 35712b40
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+read file = RM_0050.RDX
+TICK = 524
+TICK = 524
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+ARGB4444
+TICK = 524
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+RGB565
+RGB565
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+RGB565
+ARGB1555
+RGB565
+ARGB1555
+RGB565
+ARGB1555
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+TICK = 524
+malloc area = 351e3670
+TICK = 524
+malloc area = 35311b40
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 1048
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+rimitives 140, native triangles 5822
+gputime: exec 30.0/s cpu 13.76 gpu 7.12 ms | in-between 75.5/s cpu 4.29 gpu 5.95 ms (start 0.08 draw 4.68 display 1.19 restore 0.00) | frame image 21.0/s cpu 0.60 gpu 1.08 ms
+gputime: per frame draws 296, GS-path sprites 9, other GS-path primitives 222, native triangles 7565
+gputime: per in-between draws 285, GS-path sprites 8, other GS-path primitives 183, native triangles 5950
+door: to 0/3 entry 0, animation 2 skipped (load screen)
+room: RM_0030 8722 KB expanded, 67712 KB of the room arena left
+room: RM_0030 ready 20 frames after the door
+gputime: exec 28.9/s cpu 10.82 gpu 5.72 ms | in-between 61.2/s cpu 4.70 gpu 5.61 ms (start 0.07 draw 4.49 display 1.05 restore 0.00) | frame image 46.5/s cpu 4.11 gpu 0.71 ms
+gputime: per frame draws 236, GS-path sprites 7, other GS-path primitives 158, native triangles 5526
+gputime: per in-between draws 324, GS-path sprites 9, other GS-path primitives 173, native triangles 5915
+adxt: start 0/48 (48000 Hz, 2 ch, 1074124 samples, loop 0) voice 0
+gputime: exec 30.5/s cpu 9.57 gpu 6.97 ms | in-between 56.5/s cpu 2.49 gpu 5.75 ms (start 0.08 draw 4.51 display 1.16 restore 0.00) | frame image 63.5/s cpu 2.04 gpu 1.21 ms
+gputime: per frame draws 110, GS-path sprites 6, other GS-path primitives 55, native triangles 3087
+gputime: per in-between draws 128, GS-path sprites 6, other GS-path primitives 47, native triangles 2763
+gputime: exec 29.9/s cpu 6.28 gpu 4.34 ms | in-between 50.4/s cpu 2.46 gpu 2.27 ms (start 0.06 draw 1.81 display 0.40 restore 0.00) | frame image 86.3/s cpu 1.22 gpu 0.41 ms
+gputime: per frame draws 347, GS-path sprites 2, other GS-path primitives 0, native triangles 643
+gputime: per in-between draws 1308, GS-path sprites 2, other GS-path primitives 0, native triangles 1087
+gputime: exec 30.3/s cpu 14.34 gpu 8.95 ms | in-between 69.0/s cpu 4.13 gpu 5.93 ms (start 0.08 draw 4.63 display 1.22 restore 0.00) | frame image 26.8/s cpu 1.86 gpu 1.11 ms
+gputime: per frame draws 256, GS-path sprites 6, other GS-path primitives 152, native triangles 6169
+gputime: per in-between draws 343, GS-path sprites 6, other GS-path primitives 161, native triangles 6367
+door: to 0/5 entry 0, animation 2 skipped (load screen)
+gputime: exec 30.0/s cpu 9.99 gpu 6.30 ms | in-between 67.4/s cpu 3.96 gpu 6.60 ms (start 0.09 draw 5.17 display 1.34 restore 0.00) | frame image 45.0/s cpu 1.76 gpu 1.28 ms
+gputime: per frame draws 232, GS-path sprites 6, other GS-path primitives 142, native triangles 5759
+gputime: per in-between draws 290, GS-path sprites 6, other GS-path primitives 151, native triangles 6074
+room: RM_0050 8152 KB expanded, 68282 KB of the room arena left
+room: RM_0050 ready 20 frames after the door
+gputime: exec 29.4/s cpu 14.72 gpu 8.12 ms | in-between 50.9/s cpu 6.00 gpu 6.53 ms (start 0.06 draw 5.58 display 0.90 restore 0.00) | frame image 36.9/s cpu 3.70 gpu 0.57 ms
+gputime: per frame draws 424, GS-path sprites 6, other GS-path primitives 286, native triangles 7002
+gputime: per in-between draws 520, GS-path sprites 7, other GS-path primitives 339, native triangles 8080
+gputime: exec 29.9/s cpu 14.84 gpu 7.48 ms | in-between 28.9/s cpu 5.03 gpu 8.57 ms (start 0.09 draw 7.18 display 1.31 restore 0.00) | frame image 56.8/s cpu 0.69 gpu 1.27 ms
+gputime: per frame draws 426, GS-path sprites 7, other GS-path primitives 299, native triangles 6581
+gputime: per in-between draws 437, GS-path sprites 7, other GS-path primitives 291, native triangles 6546
+watchdog: enemy 2 (id 1) still for 150 steps: modes 5 0 0 1, motion 0 frame 1 add 65536, hp 60, flg 841 flg2 0, hold 0
+gputime: exec 29.9/s cpu 9.94 gpu 5.92 ms | in-between 93.3/s cpu 4.40 gpu 6.42 ms (start 0.08 draw 5.10 display 1.24 restore 0.00) | frame image 22.4/s cpu 0.83 gpu 1.24 ms
+gputime: per frame draws 244, GS-path sprites 6, other GS-path primitives 149, native triangles 4865
+gputime: per in-between draws 265, GS-path sprites 6, other GS-path primitives 149, native triangles 4815
+adxt: start 0/76 (48000 Hz, 2 ch, 310806 samples, loop 0) voice 0
+gputime: exec 30.0/s cpu 9.42 gpu 5.71 ms | in-beTICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+read file = RM_0080.RDX
+TICK = 524
+TICK = 524
+ARGB4444
+ARGB4444
+ARGB4444
+TICK = 524
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+RGB565
+ARGB4444
+RGB565
+RGB565
+ARGB1555
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB4444
+ARGB4444
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+RGB565
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+ARGB1555
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+ARGB4444
+RGB565
+RGB565
+RGB565
+ARGB1555
+RGB565
+RGB565
+TICK = 524
+malloc area = 351ba030
+TICK = 524
+malloc area = 35312300
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 786
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+tween 100.5/s cpu 3.88 gpu 6.37 ms (start 0.09 draw 4.94 display 1.34 restore 0.00) | frame image 21.0/s cpu 1.72 gpu 1.30 ms
+gputime: per frame draws 222, GS-path sprites 7, other GS-path primitives 149, native triangles 4027
+gputime: per in-between draws 244, GS-path sprites 7, other GS-path primitives 149, native triangles 4028
+gputime: exec 29.9/s cpu 8.17 gpu 4.87 ms | in-between 104.8/s cpu 2.51 gpu 5.57 ms (start 0.09 draw 4.14 display 1.34 restore 0.00) | frame image 26.5/s cpu 0.79 gpu 1.34 ms
+gputime: per frame draws 198, GS-path sprites 5, other GS-path primitives 104, native triangles 2330
+gputime: per in-between draws 318, GS-path sprites 5, other GS-path primitives 104, native triangles 2338
+gputime: exec 29.9/s cpu 8.36 gpu 4.71 ms | in-between 102.1/s cpu 2.82 gpu 5.79 ms (start 0.09 draw 4.36 display 1.34 restore 0.00) | frame image 28.4/s cpu 0.98 gpu 1.34 ms
+gputime: per frame draws 186, GS-path sprites 5, other GS-path primitives 102, native triangles 2487
+gputime: per in-between draws 191, GS-path sprites 5, other GS-path primitives 100, native triangles 2442
+adxt: start 0/1 (48000 Hz, 2 ch, 2991763 samples, loop 1) voice 0
+gputime: exec 30.1/s cpu 14.51 gpu 7.27 ms | in-between 66.2/s cpu 4.93 gpu 6.51 ms (start 0.07 draw 5.28 display 1.15 restore 0.00) | frame image 25.7/s cpu 0.65 gpu 1.10 ms
+gputime: per frame draws 420, GS-path sprites 6, other GS-path primitives 251, native triangles 6447
+gputime: per in-between draws 392, GS-path sprites 6, other GS-path primitives 219, native triangles 5823
+gputime: exec 29.9/s cpu 13.14 gpu 7.30 ms | in-between 76.3/s cpu 5.32 gpu 5.64 ms (start 0.07 draw 4.57 display 1.00 restore 0.00) | frame image 23.4/s cpu 0.70 gpu 0.95 ms
+gputime: per frame draws 367, GS-path sprites 5, other GS-path primitives 171, native triangles 7607
+gputime: per in-between draws 380, GS-path sprites 5, other GS-path primitives 164, native triangles 7580
+gputime: exec 29.9/s cpu 11.69 gpu 6.47 ms | in-between 84.8/s cpu 4.68 gpu 6.34 ms (start 0.08 draw 5.11 display 1.16 restore 0.00) | frame image 22.4/s cpu 0.65 gpu 1.13 ms
+gputime: per frame draws 281, GS-path sprites 5, other GS-path primitives 119, native triangles 5606
+gputime: per in-between draws 302, GS-path sprites 5, other GS-path primitives 119, native triangles 5599
+gputime: exec 29.9/s cpu 11.18 gpu 6.31 ms | in-between 89.3/s cpu 4.65 gpu 6.28 ms (start 0.08 draw 5.03 display 1.18 restore 0.00) | frame image 21.4/s cpu 1.06 gpu 1.17 ms
+gputime: per frame draws 252, GS-path sprites 5, other GS-path primitives 113, native triangles 5223
+gputime: per in-between draws 274, GS-path sprites 5, other GS-path primitives 114, native triangles 5129
+door: to 0/8 entry 0, animation 2 skipped (load screen)
+room: RM_0080 7356 KB expanded, 69078 KB of the room arena left
+room: RM_0080 ready 20 frames after the door
+gputime: exec 29.9/s cpu 16.05 gpu 8.64 ms | in-between 36.3/s cpu 5.96 gpu 6.66 ms (start 0.07 draw 5.57 display 1.02 restore 0.00) | frame image 42.3/s cpu 0.74 gpu 0.57 ms
+gputime: per frame draws 310, GS-path sprites 9, other GS-path primitives 200, native triangles 9068
+gputime: per in-between draws 522, GS-path sprites 9, other GS-path primitives 218, native triangles 10067
+gputime: exec 29.8/s cpu 19.39 gpu 9.62 ms | in-between 31.3/s cpu 7.68 gpu 9.23 ms (start 0.07 draw 8.06 display 1.09 restore 0.00) | frame image 33.3/s cpu 0.87 gpu 1.05 ms
+gputime: per frame draws 421, GS-path sprites 17, other GS-path primitives 290, native triangles 13038
+gputime: per in-between draws 453, GS-path sprites 16, other GS-path primitives 290, native triangles 13036
+gputime: exec 30.0/s cpu 19.92 gpu 9.41 ms | in-between 32.5/s cpu 7.65 gpu 8.82 ms (start 0.07 draw 7.65 display 1.10 restore 0.00) | frame image 29.0/s cpu 0.73 gpu 1.13 ms
+gputime: per frame draws 422, GS-path sprites 12, other GS-path primitives 325, native triangles 13049
+gputime: per in-between draws 452, GS-path sprites 12, other GS-path primitives 323, native triangles 13047
+gputime: exec 30.1/s cpu 19.03 gpu 9.46 ms | in-between 34.1/s cpu 7.34 gpu 8.06 ms (TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+TICK = 524
+start 0.07 draw 6.91 display 1.09 restore 0.00) | frame image 28.7/s cpu 0.54 gpu 1.09 ms
+gputime: per frame draws 417, GS-path sprites 20, other GS-path primitives 308, native triangles 13042
+gputime: per in-between draws 553, GS-path sprites 21, other GS-path primitives 310, native triangles 13040
+gputime: exec 11.5/s cpu 25.89 gpu 7.64 ms | in-between 14.4/s cpu 7.76 gpu 7.44 ms (start 0.06 draw 6.46 display 0.92 restore 0.00) | frame image 11.5/s cpu 0.79 gpu 0.93 ms
+gputime: per frame draws 414, GS-path sprites 11, other GS-path primitives 304, native triangles 13116
+gputime: per in-between draws 432, GS-path sprites 12, other GS-path primitives 303, native triangles 13092
+gputime: exec 25.5/s cpu 20.27 gpu 20.37 ms | in-between 34.0/s cpu 6.79 gpu 9.12 ms (start 0.08 draw 8.27 display 0.77 restore 0.00) | frame image 20.5/s cpu 0.03 gpu 0.71 ms
+gputime: per frame draws 416, GS-path sprites 13, other GS-path primitives 301, native triangles 13179
+gputime: per in-between draws 800, GS-path sprites 13, other GS-path primitives 300, native triangles 13177

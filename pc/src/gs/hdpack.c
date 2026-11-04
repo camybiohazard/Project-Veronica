@@ -377,6 +377,7 @@ static GLuint upload_dds(const uint8_t* d, size_t n, uint32_t* out_bytes)
         off += sz; total += sz;
     }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (GLint)mips - 1);
+    gs_tex_levels(t, (int)mips - 1);   /* gs_gl.c: anisotropic filtering */
     *out_bytes = total;
     return t;
 }
@@ -390,7 +391,7 @@ static GLuint upload_rgba(SDL_Surface* c, uint32_t* out_bytes)
     glPixelStorei(GL_UNPACK_ROW_LENGTH, c->pitch / 4);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, c->w, c->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, c->pixels);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    ntex_mips((const uint32_t*)c->pixels, c->w, c->h, c->pitch / 4);   /* textures.c: for anisotropic filtering */
+    ntex_mips(t, (const uint32_t*)c->pixels, c->w, c->h, c->pitch / 4);   /* textures.c: for anisotropic filtering */
     *out_bytes = (uint32_t)(c->w * c->h * 4);
     return t;
 }

@@ -53,6 +53,7 @@ extern int gs_replaying;
 extern uint32_t gs_tex_epoch;
 extern uint32_t gs_reg_serial;   /* changes with every register write and state reload (gs_gl.c batching) */
 void gs_tex_delete(unsigned int gl_tex);   /* deferred until the next frame (its replays may bind it) */
+void gs_tex_levels(unsigned int gl_tex, int levels);   /* its mip levels (0 none), for anisotropic filtering without asking the driver */
 void gs_replay_begin(void);
 extern uint8_t gs_mem[GS_MEM_SIZE];
 /* native textures: decode in a private copy of GS memory, leaving gs_mem and the CLUT

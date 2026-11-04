@@ -438,14 +438,15 @@ static uint32_t palette_hash(uint64_t tex0, uint64_t texa)
 /* mip levels of the bound texture (w x h RGBA8, rows stride texels apart) for anisotropic
    filtering (gs_gl.c gs_flush): only without cut-outs, one alpha throughout (averaged alpha would
    thin railings and fences out with distance). GL_TEXTURE_MAX_LEVEL says which (0: none). */
-void ntex_mips(const uint32_t* px, int w, int h, int stride)
+void ntex_mips(unsigned int tex, const uint32_t* px, int w, int h, int stride)
 {
     int levels = 0;
     for (int y = 0; y < h; y++)
         for (int x = 0; x < w; x++)
-            if ((px[y * stride + x] ^ px[0]) >> 24) { glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0); return; }
+            if ((px[y * stride + x] ^ px[0]) >> 24) { glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0); gs_tex_levels(tex, 0); return; }
     while ((w | h) >> (levels + 1)) levels++;
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, levels);
+    gs_tex_levels(tex, levels);   /* gs_gl.c reads it from there, not from the driver */
     if (levels) glGenerateMipmap(GL_TEXTURE_2D);
 }
 
@@ -464,7 +465,7 @@ static GLuint decode(const Def* d, uint64_t tex0, uint64_t texa, int* w, int* h)
     glBindTexture(GL_TEXTURE_2D, t);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)W, (GLsizei)H, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
-    ntex_mips(px, (int)W, (int)H, (int)W);
+    ntex_mips(t, px, (int)W, (int)H, (int)W);
     {   /* RECVX_DUMP_TEX=dir: also the native decodes */
         static const char* dd; static int chk, ndump;
         if (!chk++) dd = getenv("RECVX_DUMP_TEX");
