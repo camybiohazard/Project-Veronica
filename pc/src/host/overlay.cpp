@@ -17,6 +17,7 @@ extern "C" void gs_window_to_screen(float px, float py, float* x, float* y);
 #include "menu_mouse.h"
 #include "bindings.h"
 #include "settings.h"
+#include "update.h"
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
@@ -223,17 +224,26 @@ static void settings_window(void)
     SDL_GetWindowSizeInPixels(win, &ww, &wh);
 
     ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(460, 0), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(600 * ImGui::GetStyle().FontScaleDpi, 0), ImGuiCond_FirstUseEver);   /* wide enough for the update line and its button; text scales with the window (overlay_render) */
     if (!ImGui::Begin("Resident Evil Code: Veronica X  -  settings (F1)  -  " RECVX_VERSION, &visible)) { ImGui::End(); return; }
+    {   /* Check for updates (update.c) */
+        char v[32];
+        if (update_newer(v, sizeof v)) {
+            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Update available: %s (you have %s)", v, update_current());
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Open download page")) SDL_OpenURL(UPDATE_RELEASES_URL);
+            ImGui::Separator();
+        }
+    }
 
-    if (ImGui::CollapsingHeader("Display", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Display")) {
         changed |= settings_imgui(SP_DISPLAY);
         ImGui::TextDisabled("Output %d x %d, %.1f fps presented", ww, wh, ImGui::GetIO().Framerate);
     }
-    if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen)) changed |= settings_imgui(SP_GRAPHICS);
-    if (ImGui::CollapsingHeader("Gameplay", ImGuiTreeNodeFlags_DefaultOpen)) changed |= settings_imgui(SP_GAMEPLAY);
+    if (ImGui::CollapsingHeader("Graphics")) changed |= settings_imgui(SP_GRAPHICS);
+    if (ImGui::CollapsingHeader("Gameplay")) changed |= settings_imgui(SP_GAMEPLAY);
     if (ImGui::CollapsingHeader("Controls")) controls_section();
-    if (ImGui::CollapsingHeader("Third person", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Third person")) {
         changed |= settings_imgui(SP_TPS);
         char key[96];
         SDL_snprintf(key, sizeof key, tps_key_wait ? "Press a key (Esc cancels)" : "Toggle key: %s (change)", SDL_GetScancodeName((SDL_Scancode)g_tps.key));
@@ -247,9 +257,9 @@ static void settings_window(void)
             ImGui::TextDisabled("Gamepad: left stick walks (pushed far runs), right stick camera / aim; LT aim, RT fire, A action,\n"
                                 "X run, B cancel, Y inventory, Back map, LB knife, RB reload, d-pad down quick turn, RS camera behind.");
     }
-    if (ImGui::CollapsingHeader("Audio", ImGuiTreeNodeFlags_DefaultOpen)) changed |= settings_imgui(SP_AUDIO);
-    if (ImGui::CollapsingHeader("Appearance", ImGuiTreeNodeFlags_DefaultOpen)) changed |= settings_imgui(SP_APPEAR);
-    if (settings_imgui_any(SP_EXTRAS) && ImGui::CollapsingHeader("Extras", ImGuiTreeNodeFlags_DefaultOpen))   /* a page with its own window (F2): the SET_F1 rows */
+    if (ImGui::CollapsingHeader("Audio")) changed |= settings_imgui(SP_AUDIO);
+    if (ImGui::CollapsingHeader("Appearance")) changed |= settings_imgui(SP_APPEAR);
+    if (settings_imgui_any(SP_EXTRAS) && ImGui::CollapsingHeader("Extras"))   /* a page with its own window (F2): the SET_F1 rows */
         changed |= settings_imgui(SP_EXTRAS, false);
 
     if (ImGui::CollapsingHeader("Performance")) {
@@ -371,7 +381,7 @@ static void cheat_window(void)
 {
     CheatState* c = &g_cheat;
     ImGui::SetNextWindowPos(ImVec2(500, 20), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(420, 0), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(420 * ImGui::GetStyle().FontScaleDpi, 0), ImGuiCond_FirstUseEver);   /* text scales with the window */
     if (!ImGui::Begin("Cheats (F2)", &cheats_visible)) { ImGui::End(); return; }
     ImGui::Text("%s  HP %d   stage %d  room %d  pos %d", c->player ? "Chris" : "Claire", c->hp, c->stg, c->rom, c->pos);
     bool b = c->inf_health;
@@ -455,7 +465,9 @@ void overlay_render(void)
     if (windows) ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
     else ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     bool crosshair = g_tps.on && g_tps.crosshair && g_tps.cam_active && g_tps.aiming;
-    if (!visible && !cheats_visible && !g_config.show_fps && !crosshair) return;
+    char upd[32];
+    bool notice = !visible && update_title_up() && update_newer(upd, sizeof upd);   /* the title screen: an update */
+    if (!visible && !cheats_visible && !g_config.show_fps && !crosshair && !notice) return;
     {   /* readable on large displays: scale text with the window height (1080p = 1x) */
         int ww, wh;
         SDL_GetWindowSizeInPixels(win, &ww, &wh);
@@ -488,6 +500,15 @@ void overlay_render(void)
             dl->AddLine(ImVec2(c.x + o, c.y + g + o), ImVec2(c.x + o, c.y + g + s + o), k, t);
             dl->AddCircleFilled(ImVec2(c.x + o, c.y + o), t, k);
         }
+    }
+    if (notice) {   /* top left, out of the way of the title's menu and copyright lines */
+        ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.55f);
+        ImGui::Begin("##update", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs |
+                                          ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing);
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Update available: %s (you have %s)", upd, update_current());
+        ImGui::TextDisabled("F1 opens the download page");
+        ImGui::End();
     }
     if (g_config.show_fps) {
         ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 10, 10), ImGuiCond_Always, ImVec2(1, 0));

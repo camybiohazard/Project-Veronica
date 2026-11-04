@@ -38,7 +38,7 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "gamma", &g_config.gamma, 5, 20 },
     { "bloom", &g_config.bloom, 0, 1 },
     { "color_grading", &g_config.grading, 0, 1 },
-    { "ao", &g_config.ao, 0, 1 },
+    { "ao", &g_config.ao, 0, 2 },   /* 0 off, 1 High, 2 Low (settings.c ao_get) */
     { "light_falloff", &g_config.light_falloff, 0, 1 },
     { "light_soft", &g_config.light_soft, 0, 1 },
     { "lighting", &g_config.lighting, 0, 3 },
@@ -54,6 +54,9 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "hdr_highlights", &g_config.hdr_highlights, 0, 100 },
     { "skip_doors", &g_config.skip_doors, 0, 2 },     /* 0 off, 1 instant, 2 skippable */
     { "fast_loading", &g_config.fast_loading, 0, 1 },
+    { "update_check", &g_config.update_check, 0, 1 },
+    { "update_last", &g_config.update_last, 0, 2147483647 },     /* update.c: when it last asked GitHub */
+    { "update_latest", &g_config.update_latest, 0, 999999999 },  /* update.c: the latest release's version then */
     { "quick_knife", &g_config.quick_knife, 0, 1 },
     { "weapon_shortcuts", &g_config.weapon_shortcuts, 0, 1 },
     { "auto_stairs", &g_config.auto_stairs, 0, 1 },

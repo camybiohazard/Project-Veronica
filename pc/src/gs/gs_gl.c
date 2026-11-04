@@ -144,12 +144,13 @@ static GLuint vao, vbo, ibo, present_prog, present_vao, svao, svbo;
    branches not taken (the light sets' above all, which 2D, effects and the GS path never use). */
 enum { V_ATEST = 1, V_TEX = 2, V_REGION = 4, V_FOG = 8, V_LIGHT = 16, NPROG = 32 };
 typedef struct { GLint rt_size, rt_margin, tme, tfx, tcc, fst, texsize, fge, fogcol, ate, atst, aref,
-                 tex, tex_alpha_scale, texofs, premul, zscale, clamp_mode, clamp_vals, afail_pass, rt16, lights, lopt, mat, dith; } ProgUni;
+                 tex, tex_alpha_scale, texofs, premul, zscale, clamp_mode, clamp_vals, afail_pass, rt16, lopt, mat, dith; } ProgUni;
 static GLuint progs[NPROG];
 static ProgUni pu[NPROG], *pcur = &pu[0];
 static int lsets_n;            /* the executed frame's light sets (gs_light_sets): none, no vertex refers to one */
 static float lopt[4];          /* u_lopt (gs_light_sets) */
-#define LIGHT_UNIT 4           /* u_lights: the light sets' texture unit */
+#define LS_SET 26              /* vec4 per light set (STREAM_LSET / 4) */
+static int ls_vec4;            /* the LightSets block's vec4 (LS_VEC4): what the driver allows, at most 4096 */
 static int batch_native3d;     /* the batch holds native 3D triangles (only they refer to light sets) */
 static GLint up_tex, up_rect, up_pic, up_bloom, up_post, up_tone, up_ao, up_pre, up_aoon, up_pmask;
 
@@ -183,7 +184,11 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "in vec3 v_stq; in vec4 v_col; in float v_fog;\n"
     "in vec3 v_vpos; in vec3 v_nrm; in float v_nlen; flat in int v_light;\n"
     "uniform sampler2D u_tex;\n"
-    "uniform sampler2D u_lights; uniform vec4 u_lopt;\n"
+    "uniform vec4 u_lopt;\n"
+    "#if LIGHT\n"   /* the light sets (gs_light_sets): 26 vec4 each, set id at id * 26 (set 0 unused) */
+    "layout(std140) uniform LightSets { vec4 u_ls[LS_VEC4]; };\n"
+    "#define LS(t, id) u_ls[(id) * 26 + (t)]\n"
+    "#endif\n"
     "uniform vec4 u_mat;\n"
     "uniform float u_dith;\n"
     "uniform int u_tme, u_tfx, u_tcc, u_fst, u_fge, u_ate, u_atst, u_premul, u_afail_pass;\n"
@@ -202,7 +207,7 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "  return t;\n"
     "}\n"
     /* per-pixel lighting (gs_light_sets; light_glue.c pc_light_set): a light set is a row of
-       u_lights: texel 0 (colour mode, light count), 1 ambient, 2 diffuse, 3 specular; per light k
+       LightSets (LS(t, id)): t 0 (colour mode, light count), 1 ambient, 2 diffuse, 3 specular; per light k
        4 + 3k (C, type: 0 parallel, 1 point, -1 off), 5 + 3k (near^2, far^2, I), 6 + 3k (colour);
        the flashlight 22 (position, on), 23 (direction, range), 24 (colour, near^2), 25 (cos of the
        inner and outer beam, spill share and range); wet surfaces: 0.z the amount (0 none), 1.w 2.w
@@ -217,6 +222,7 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     /* wet (the set's wet amount for this pixel, 0: none): each light's highlight as well, into spec
        (Blinn-Phong lobe, exponent WET_SHINE, a Schlick-like rise at grazing angles), from its
        strength at the pixel without N.L or the wrap: water reflects what the surface would not */
+    "#if LIGHT\n"
     "const float WET_SHINE = 140.0;\n"
     "vec3 shine(vec3 nn, vec3 l, vec3 v){\n"
     "  vec3 h = normalize(l + v);\n"
@@ -224,11 +230,11 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "  return vec3(pow(max(dot(nn, h), 0.0), u_mat.y > 0.0 ? u_mat.x : WET_SHINE) * (0.3 + 0.7 * pow(1.0 - max(dot(v, h), 0.0), 5.0)));\n"
     "}\n"
     "vec3 light_sum(int id, vec3 p, vec3 n, float wet, inout vec3 spec, inout vec3 fl){\n"
-    "  int nl = int(texelFetch(u_lights, ivec2(0, id), 0).y);\n"
+    "  int nl = int(LS(0, id).y);\n"
     "  vec3 s = vec3(0.0), nn = normalize(n), v = normalize(-p);\n"
     "  for (int k = 0; k < nl; k++) {\n"
-    "    vec4 a = texelFetch(u_lights, ivec2(4 + 3 * k, id), 0), b = texelFetch(u_lights, ivec2(5 + 3 * k, id), 0);\n"
-    "    vec3 col = texelFetch(u_lights, ivec2(6 + 3 * k, id), 0).rgb;\n"
+    "    vec4 a = LS(4 + 3 * k, id), b = LS(5 + 3 * k, id);\n"
+    "    vec3 col = LS(6 + 3 * k, id).rgb;\n"
     "    float f, att;\n"
     "    vec3 l;\n"
     "    if (a.w < 0.0) continue;\n"
@@ -246,9 +252,9 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "    if (wet > 0.0) spec += att * col * shine(nn, l, v);\n"
     "    if (f > 0.0) s += f * att * col;\n"
     "  }\n"
-    "  vec4 fa = texelFetch(u_lights, ivec2(22, id), 0);\n"   /* the flashlight: position, on */
+    "  vec4 fa = LS(22, id);\n"   /* the flashlight: position, on */
     "  if (fa.w > 0.0) {\n"
-    "    vec4 fb = texelFetch(u_lights, ivec2(23, id), 0), fc = texelFetch(u_lights, ivec2(24, id), 0), fd = texelFetch(u_lights, ivec2(25, id), 0);\n"
+    "    vec4 fb = LS(23, id), fc = LS(24, id), fd = LS(25, id);\n"
     "    vec3 d = fa.xyz - p; float d2 = dot(d, d);\n"
     "    if (fb.w * fb.w > d2 && d2 > 0.0) {\n"
     "      float il = inversesqrt(d2), r = sqrt(d2);\n"
@@ -263,8 +269,8 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "  return s;\n"
     "}\n"
     "vec3 lit(int id, vec3 i){\n"
-    "  int mode = int(texelFetch(u_lights, ivec2(0, id), 0).x);\n"
-    "  vec3 amb = texelFetch(u_lights, ivec2(1, id), 0).rgb, dif = texelFetch(u_lights, ivec2(2, id), 0).rgb, spe = texelFetch(u_lights, ivec2(3, id), 0).rgb;\n"
+    "  int mode = int(LS(0, id).x);\n"
+    "  vec3 amb = LS(1, id).rgb, dif = LS(2, id).rgb, spe = LS(3, id).rgb;\n"
     "  vec3 ia = i + amb, ci = clamp(i, 0.0, 1.0), cia = clamp(ia, 0.0, 1.0);\n"
     "  if (mode == 0) return i * 128.0;\n"
     "  if (mode == 3) return ci * dif;\n"
@@ -276,6 +282,7 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "  if (mode == 9) return cia * dif + clamp(ia - 1.0, 0.0, 1.0) * spe;\n"
     "  return cia * dif + clamp((ia + 1.0) * pow(max(ia, 0.0), vec3(17.0)), 0.0, 1.0) * spe;\n"
     "}\n"
+    "#endif\n"
     "void main(){\n"
     "  vec4 c = v_col * 255.0;\n"     /* GS 0..255 integer domain */
     /* wet surfaces (the set's texel 0.z: the amount; 1..3.w: the view's up): up-facing, the darker
@@ -285,9 +292,9 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "  vec3 spec = vec3(0.0);\n"
     "#if LIGHT\n"
     "  if (v_light > 0) {\n"
-    "    wet = texelFetch(u_lights, ivec2(0, v_light), 0).z;\n"
+    "    wet = LS(0, v_light).z;\n"
     "    if (wet > 0.0) {\n"
-    "      vec3 up = vec3(texelFetch(u_lights, ivec2(1, v_light), 0).w, texelFetch(u_lights, ivec2(2, v_light), 0).w, texelFetch(u_lights, ivec2(3, v_light), 0).w);\n"
+    "      vec3 up = vec3(LS(1, v_light).w, LS(2, v_light).w, LS(3, v_light).w);\n"
     "      wet *= smoothstep(0.55, 0.85, dot(normalize(v_nrm), up));\n"
     "    }\n"
     "    vec3 fl = vec3(0.0), i = light_sum(v_light, v_vpos, normalize(v_nrm) * v_nlen, max(wet, u_mat.y), spec, fl);\n"
@@ -687,18 +694,25 @@ void gs_renderer_init(void)
     {
         uint64_t t0 = SDL_GetTicksNS();
         int n = 0;
+        GLint ubsize = 16384;
+        glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &ubsize);   /* (once, at start) */
+        ls_vec4 = SDL_min(ubsize / 16, 4096);
         for (int v = 0; v < NPROG; v++) {
             static char fs[24576];
             if ((v & V_REGION) && !(v & V_TEX)) continue;   /* (the region is the texture's) */
-            if (SDL_snprintf(fs, sizeof(fs), "#version 330 core\n#define ATEST %d\n#define TEX %d\n#define REGION %d\n#define FOG %d\n#define LIGHT %d\n%s",
-                             !!(v & V_ATEST), !!(v & V_TEX), !!(v & V_REGION), !!(v & V_FOG), !!(v & V_LIGHT), fs_src) >= (int)sizeof(fs))
+            if (SDL_snprintf(fs, sizeof(fs), "#version 330 core\n#define ATEST %d\n#define TEX %d\n#define REGION %d\n#define FOG %d\n#define LIGHT %d\n#define LS_VEC4 %d\n%s",
+                             !!(v & V_ATEST), !!(v & V_TEX), !!(v & V_REGION), !!(v & V_FOG), !!(v & V_LIGHT), ls_vec4, fs_src) >= (int)sizeof(fs))
                 host_fatal("gs: fragment shader source too long");
             progs[v] = compile(vs_src, fs);
             n++;
 #define U(x) pu[v].x = glGetUniformLocation(progs[v], "u_" #x)
             U(rt_size); U(rt_margin); U(tme); U(tfx); U(tcc); U(fst); U(texsize); U(fge); U(fogcol); U(ate); U(atst); U(aref);
             U(tex); U(tex_alpha_scale); U(texofs); U(premul); U(zscale); U(clamp_mode); U(clamp_vals); U(afail_pass); U(rt16);
-            U(lights); U(lopt); U(mat); U(dith);
+            U(lopt); U(mat); U(dith);
+            if (v & V_LIGHT) {   /* the light sets on binding point 0 (gs_light_sets) */
+                GLuint b = glGetUniformBlockIndex(progs[v], "LightSets");
+                if (b != GL_INVALID_INDEX) glUniformBlockBinding(progs[v], b, 0);
+            }
 #undef U
         }
         host_log("gs: %d shader variants compiled in %.0f ms\n", n, (SDL_GetTicksNS() - t0) / 1e6);
@@ -794,6 +808,8 @@ static GLuint depth_for(uint32_t zbp, int pw, int ph)
 #define GL_RGBA16F 0x881A
 #define GL_HALF_FLOAT 0x140B
 #define GL_RGB10_A2 0x8059
+#define AO_HIGH 1   /* g_config.ao: every image its own ambient occlusion (1: what "on" was) */
+#define AO_LOW 2    /* ... once per executed frame, its in-between images showing it as it is */
 #define FSR_MAX_UPSCALE 1.5f   /* Auto internal resolution with FSR (gs_wanted_scale) */
 
 static RenderTarget* rt_find(uint32_t fbp, uint32_t fbw)
@@ -1829,7 +1845,7 @@ void gs_flush(void)
             (batch_native3d && lsets_n ? V_LIGHT : 0);
         pcur = &pu[v];
         glUseProgram(progs[v]);
-        if (v & V_LIGHT) { uni1i(pcur->lights, LIGHT_UNIT); uni4f(pcur->lopt, lopt[0], lopt[1], lopt[2], lopt[3]); }
+        if (v & V_LIGHT) uni4f(pcur->lopt, lopt[0], lopt[1], lopt[2], lopt[3]);
     }
     clip_distances(1);
     uni2f(pcur->rt_size, (float)cur_rt->vw, (float)cur_rt->vh);
@@ -1848,7 +1864,7 @@ void gs_flush(void)
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(zte ? zf[ztst] : GL_ALWAYS);
         glDepthMask(zmsk ? GL_FALSE : GL_TRUE);
-        if (g_config.ao > 0 && zte && !zmsk && cur_rt->vw >= 640 && cur_rt->vh >= 448) {   /* ambient occlusion: the 3D depth */
+        if (g_config.ao > 0 && !(g_config.ao == AO_LOW && gs_replaying) && zte && !zmsk && cur_rt->vw >= 640 && cur_rt->vh >= 448) {   /* ambient occlusion: the 3D depth (Low: the executed frame's only) */
             int k = gs_replaying ? 1 : 0;
             if (nsruns || (vcount && vbuf[0].w != 1.0f)) {   /* native 3D (homogeneous positions) */
                 uint32_t zpsm = (st->ctx.zbuf >> 24) & 0xF;
@@ -2316,7 +2332,10 @@ static void ensure_target(GLuint* tex, GLuint* fbo, int* cw, int* ch, int w, int
 #define GRADE_ROLLOFF 60
 #define GRADE_SHADOWS 30
 #define GRADE_SPLIT 20
-/* Ambient occlusion on (g_config.ao): strength %, radius % of the screen's height (ao_pass) */
+/* Ambient occlusion (g_config.ao: 0 off, AO_HIGH every image its own, AO_LOW once per executed frame
+   from its depth, which its in-between images show as it is: a moving edge's shading trails by up
+   to a game frame, for about a quarter of the cost at 144 Hz): strength %, radius % of the screen's height (ao_pass) */
+
 #define AO_STRENGTH 60
 #define AO_RADIUS 2
 static GLuint bloom_tex[BLOOM_LEVELS], bloom_fbo[BLOOM_LEVELS], bloom_pre, bloom_down, bloom_up;
@@ -2325,34 +2344,28 @@ static GLint ub_pre_pre, ub_pre_pmask, ub_pre_haspre, ub_pre_tex, ub_pre_rect, u
 void gs_post_frame(int menu) { post_menu = menu; }
 
 /* per-pixel lighting: the executed frame's light sets (stream.h STREAM_LSET floats each) as rows
-   of an RGBA32F texture on unit LIGHT_UNIT, which fs_src reads by NativeVertex.light (row 0
+   of 26 vec4 in a uniform buffer (binding point 0, the LightSets block), which fs_src reads by NativeVertex.light (set 0
    unused); replays draw with the same. u_lopt: the lighting options as light_glue.c uses them. */
 int pc_light_main(void);   /* host.c: the Lighting mode's main light, % */
 int pc_light_soft(void);   /* host.c: Soft shading, % */
-#define GL_RGBA32F 0x8814
 void gs_light_sets(const float* sets, size_t n)
 {
-    static GLuint tex;
-    static int rows;
+    static GLuint ubo;
+    static int warned;
     lsets_n = (int)n;
     lopt[0] = pc_light_soft() / 100.0f; lopt[1] = g_config.light_falloff ? 1.0f : 0.0f; lopt[2] = pc_light_main() / 100.0f; lopt[3] = g_config.light_pixel ? 1.0f : 0.0f;
     if (!n) return;
-    if (!tex) {
-        glGenTextures(1, &tex);
-        glActiveTexture(GL_TEXTURE0 + LIGHT_UNIT);
-        glBindTexture(GL_TEXTURE_2D, tex);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    if (((int)n + 1) * LS_SET > ls_vec4) {   /* more than the block holds: this frame lit per vertex */
+        if (!warned++) host_log("gs: %d light sets in a frame, more than the %d the driver's uniform blocks hold; that frame is lit per vertex\n", (int)n, ls_vec4 / LS_SET - 1);
+        lsets_n = 0;
+        return;
     }
-    glActiveTexture(GL_TEXTURE0 + LIGHT_UNIT);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    if ((int)n + 1 > rows) {
-        rows = (int)n + 1 < 64 ? 64 : (int)n + 1;
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, STREAM_LSET / 4, rows, 0, GL_RGBA, GL_FLOAT, NULL);
-    }
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 1, STREAM_LSET / 4, (GLsizei)n, GL_RGBA, GL_FLOAT, sets);
-    glActiveTexture(GL_TEXTURE0);   /* (u_lights and u_lopt: gs_flush, with the variant) */
+    if (!ubo) glGenBuffers(1, &ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+    glBufferData(GL_UNIFORM_BUFFER, (GLsizeiptr)ls_vec4 * 16, NULL, GL_STREAM_DRAW);   /* orphaned: the last frame's replays may still read it */
+    glBufferSubData(GL_UNIFORM_BUFFER, LS_SET * 16, (GLsizeiptr)(n * STREAM_LSET * sizeof(float)), sets);   /* set 0 unused */
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 /* the display area rect (u_rect) of tex, vw x vh window pixels, into the bloom levels; returns
@@ -2516,7 +2529,16 @@ static void draw_display(GLuint tex, int rt_vw, int rt_vh, GLuint pre, int repla
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, PT_X, PT_Y, GL_RED, GL_UNSIGNED_BYTE, m);   /* rows of 32 bytes: any alignment */
         }
         if (g_config.bloom > 0 && !post_movie && !post_menu) levels = bloom_chain(tex, pre, rect, pw, ph);
-        if (g_config.ao > 0 && !post_movie && !post_menu) {
+        if (g_config.ao == AO_LOW && !post_movie && !post_menu) {   /* Low: the executed frame's AO, once, for all its images */
+            static uint64_t done = UINT64_MAX;
+            static int done_w, done_h;
+            if (ao_src[0].dirty) ao_keep(0);
+            if (ao_copy[0].ok) {
+                if (done == frame_no && done_w == pw && done_h == ph) ao_on = 1;   /* ao_tex[1] holds it */
+                else if ((ao_on = ao_pass(ao_copy[0].tex, ao_copy[0].zmax, rect, rt_vw, rt_vh, pw, ph))) { done = frame_no; done_w = pw; done_h = ph; }
+            }
+            if (!ao_on) done = UINT64_MAX;
+        } else if (g_config.ao > 0 && !post_movie && !post_menu) {   /* High: every image its own */
             int k = replay ? 1 : 0;
             if (ao_src[k].dirty) ao_keep(k);   /* nothing overwrote it: as the frame ended */
             if (ao_copy[k].ok) ao_on = ao_pass(ao_copy[k].tex, ao_copy[k].zmax, rect, rt_vw, rt_vh, pw, ph);

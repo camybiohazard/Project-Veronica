@@ -5,6 +5,8 @@
 set(NOT_IN_TABLE
     tps_key      # CONTROLS bindings, "Third person on/off" (bindings.c, its first keyboard slot)
     borderless_extra   # ini only: the Windows borderless window's overhang past the monitor (settings.c), a driver workaround
+    update_last        # ini only: when the update check last asked GitHub (update.c)
+    update_latest      # ini only: the latest release's version it saw (update.c)
 )
 file(READ "${SRC}/src/host/config.c" config)
 file(READ "${SRC}/src/host/settings.c" table)   # rows, and the get/set helpers of rows such as Window size

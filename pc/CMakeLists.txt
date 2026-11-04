@@ -131,6 +131,8 @@ FetchContent_Declare(bcdec GIT_REPOSITORY https://github.com/iOrange/bcdec.git G
 FetchContent_MakeAvailable(xxhash bcdec)
 target_include_directories(recvx_platform PRIVATE ${xxhash_SOURCE_DIR} ${bcdec_SOURCE_DIR})
 set_property(SOURCE src/host/host.c src/host/overlay.cpp APPEND PROPERTY COMPILE_DEFINITIONS "RECVX_VERSION=\"${RECVX_VERSION}\"")
+set_property(SOURCE src/host/update.c APPEND PROPERTY COMPILE_DEFINITIONS   # the release this is (update check)
+    RECVX_VERSION_MAJOR=${PROJECT_VERSION_MAJOR} RECVX_VERSION_MINOR=${PROJECT_VERSION_MINOR} RECVX_VERSION_PATCH=${PROJECT_VERSION_PATCH})
 target_include_directories(recvx_platform PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/sdk
@@ -169,7 +171,7 @@ add_executable(recvx ${LAYOUT_PAD_SRC} ${RECVX_RES} $<TARGET_OBJECTS:recvx_game>
                $<$<TARGET_EXISTS:glibc_compat>:$<TARGET_OBJECTS:glibc_compat>>)
 target_link_libraries(recvx PRIVATE imgui SDL3::SDL3 m)
 if(WIN32)
-    target_link_libraries(recvx PRIVATE pthread shell32 dwmapi)   # clock_gettime (winpthreads); borderless corners (settings.c)
+    target_link_libraries(recvx PRIVATE pthread shell32 dwmapi winhttp)   # clock_gettime (winpthreads); borderless corners (settings.c); update check (update.c)
     # Same address window as Linux: fixed image base, no ASLR relocation; large-address-aware
     # gives the 32-bit exe 4 GB on 64-bit Windows (Linux already uses addresses above 2 GB). -static: libstdc++,
     # libgcc and winpthread go into the exe, only system DLLs (UCRT, opengl32, ...) remain.

@@ -18,6 +18,9 @@ typedef ptrdiff_t GLsizeiptr; typedef ptrdiff_t GLintptr;
 #define GL_FLOAT 0x1406
 #define GL_UNSIGNED_SHORT 0x1403
 #define GL_ELEMENT_ARRAY_BUFFER 0x8893
+#define GL_UNIFORM_BUFFER 0x8A11
+#define GL_MAX_UNIFORM_BLOCK_SIZE 0x8A30
+#define GL_INVALID_INDEX 0xFFFFFFFFu
 #define GL_UNSIGNED_INT 0x1405
 #define GL_TEXTURE_MIN_FILTER 0x2801
 #define GL_TEXTURE_MAG_FILTER 0x2800
@@ -239,6 +242,18 @@ extern PFN_glGenBuffers gl_GenBuffers;
 typedef void (GLAPIENTRY *PFN_glBindBuffer)(GLenum target, GLuint buffer);
 extern PFN_glBindBuffer gl_BindBuffer;
 #define glBindBuffer gl_BindBuffer
+typedef void (GLAPIENTRY *PFN_glBindBufferBase)(GLenum target, GLuint index, GLuint buffer);   /* GL 3.1 */
+extern PFN_glBindBufferBase gl_BindBufferBase;
+#define glBindBufferBase gl_BindBufferBase
+typedef GLuint (GLAPIENTRY *PFN_glGetUniformBlockIndex)(GLuint program, const char* name);
+extern PFN_glGetUniformBlockIndex gl_GetUniformBlockIndex;
+#define glGetUniformBlockIndex gl_GetUniformBlockIndex
+typedef void (GLAPIENTRY *PFN_glUniformBlockBinding)(GLuint program, GLuint block, GLuint binding);
+extern PFN_glUniformBlockBinding gl_UniformBlockBinding;
+#define glUniformBlockBinding gl_UniformBlockBinding
+typedef void (GLAPIENTRY *PFN_glGetIntegerv)(GLenum pname, GLint* data);
+extern PFN_glGetIntegerv gl_GetIntegerv;
+#define glGetIntegerv gl_GetIntegerv
 typedef void (GLAPIENTRY *PFN_glBufferData)(GLenum target, GLsizeiptr size, const void* data, GLenum usage);
 extern PFN_glBufferData gl_BufferData;
 #define glBufferData gl_BufferData

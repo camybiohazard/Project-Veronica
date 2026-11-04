@@ -8,6 +8,13 @@
 
 ### Changes
 
+- **Ambient occlusion Low / High** (GRAPHICS): Low works it out once per game frame and keeps it for
+  the in-between frames, about a quarter of the cost with Display-rate frames (the shading at fast-
+  moving edges trails slightly); High works it out for every frame shown, as before. A saved "on"
+  stays High.
+- **Update notice**: once a day at start the game checks GitHub for a newer release and, when
+  there is one, says so on the title screen and in F1, with a button to open the download page
+  (Check for updates, GAMEPLAY, on by default; one anonymous request, nothing downloaded by itself).
 - **Faster drawing with the graphics options on**: the game's main shader is compiled in variants
   holding only what a draw uses (alpha test, texture, texture clamp, fog, per-pixel lighting), so
   most draws skip the lighting work and opaque ones let the GPU skip hidden pixels; the picture is

@@ -349,7 +349,7 @@ a cubic shoulder on the brightest channel above 0.5 reaching white at a point th
 hue kept), saturation around the luminance, warmth (red up, blue down) and split toning (a tint
 from teal in the shadows to orange in the highlights by luminance).
 
-Ambient occlusion (`ao`; on is `gs_gl.c AO_*`: 60% strength, radius 2% of the screen's height; `ao_pass`) is computed from the depth native 3D
+Ambient occlusion (`ao`: 0 off, 1 High, 2 Low; `gs_gl.c AO_*`: 60% strength, radius 2% of the screen's height; `ao_pass`) is computed from the depth native 3D
 wrote into a full-screen target. Full-screen 2D drawn later (the camera filter, fades) overwrites
 that depth with a flat value, so `gs_flush` copies it (`ao_keep`: at half the size, of the 480
 lines shown, as the AO pass reads it at a spacing of two depth samples anyway) just before a draw that is not
@@ -363,7 +363,9 @@ slope from the steadier neighbour), so flat floors seen at a slant do not shade 
 sample in front of the plane by more than two steps of the 16-bit depth buffer occludes, less so
 up to a tenth of the distance in front. The result is blurred (3 x 3) and multiplies the picture
 in `present_fs` before bloom, except where the frame differs from its copy before the first text
-(`pretext_capture`, taken when bloom or AO is on). Not on movies and menu screens. Bloom (`gs_gl.c bloom_chain`,
+(`pretext_capture`, taken when bloom or AO is on). Not on movies and menu screens. Low (`AO_LOW`) computes it once per executed frame, from that frame's copy, and its in-between
+images show that result as it is (`draw_display`: `ao_pass` only when `frame_no` or the size changed;
+replays keep no depth copy of their own), about a quarter of High's cost at 144 Hz. Bloom (`gs_gl.c bloom_chain`,
 run per presented image, in-between images included) takes from the display area what is
 brighter than the threshold (soft knee; four taps per texel, each weighted by 1 / (1 + luminance)
 so single bright texels of a high internal resolution do not flicker) into a target half the
@@ -419,8 +421,10 @@ that normal and a light set number (`pc_light_set`: colour mode, light count, am
 specular and per light C, type, near^2, far^2, I and colour, `stream.h STREAM_LSET` floats; the
 modes that take no light, flat strips and strips with a vertex without a normal get 0 and keep
 their colours). The light sets are recorded with the frame (`stream_light_set`, consecutive equal
-ones shared) and uploaded per executed frame as rows of an RGBA32F texture (`gs_gl.c
-gs_light_sets`, unit 4); `fs_src` evaluates `light_sum` (`pc_light_vertex` with the lighting
+ones shared) and uploaded per executed frame into a uniform buffer, 26 vec4 per set (`gs_gl.c
+gs_light_sets`, the `LightSets` block on binding point 0, sized by the driver's
+`GL_MAX_UNIFORM_BLOCK_SIZE`, about 150 sets on NVIDIA; a frame with more is lit per vertex, which
+has not happened: rooms use up to 12); `fs_src` evaluates `light_sum` (`pc_light_vertex` with the lighting
 options) and `lit` (`vertex_color`'s colour modes) per pixel from the interpolated view position
 and normal, the normal at the length the model matrix gives it. Fog stays per vertex. In-between
 frames blend view position and normal with the position (`stream.c nv_blend_pos`) and light with
@@ -954,6 +958,21 @@ the channel an enemy sound gets and in how many volume/pan updates are sent; the
 
 Not covered: other stale or out-of-range reads that the scenarios do not reach. `rand()` is only
 called by the game thread.
+
+### Update check
+
+`pc/src/host/update.c` (setting `update_check`): at start, at most once a day (`update_last`, Unix
+time), a detached thread asks GitHub for the project's latest release (`update_net.c`:
+`/repos/camybiohazard/Project-Veronica/releases/latest`, which leaves out drafts and pre-releases,
+so test builds published as pre-releases are not announced; WinHTTP on Windows, the system's
+`curl` on Linux, as a 32-bit libcurl is rarely installed). Its tag is taken as up to three numbers
+(`v` and anything after them ignored) and kept in `update_latest` (1.2.3 as 1002003), so the notice
+also shows on the days it does not ask. It is compared with the CMake project version
+(`RECVX_VERSION_MAJOR/MINOR/PATCH`), which release tags follow. A newer release shows at the top left
+of the title screen (while `title_glue.c pc_title_mouse_active` runs, `update_title_up`) and at the top
+of F1 with a button opening the release page. Failures are logged and ignored; headless runs (the
+offscreen or dummy video driver: the tests) and `RECVX_NO_UPDATE_CHECK` skip it. Nothing is
+downloaded.
 
 ## Profiling and logging
 

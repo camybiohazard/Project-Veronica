@@ -226,6 +226,9 @@ const unsigned char settings_calib[2][CALIB_STEPS] = { { 5, 10, 16, 24, 32 }, { 
 static void picture_reset(void) { g_config.brightness = 0; g_config.contrast = 100; g_config.gamma = 10; settings_save_later(); }
 /* post-processing (gs_gl.c draw_display, bloom_chain) */
 static void post_reset(void) { g_config.bloom = 0; g_config.grading = 0; g_config.ao = 0; settings_save_later(); }
+/* Ambient occlusion: shown Off, Low, High; kept as 0, 2, 1 (1 is what "on" was: High) */
+static int ao_get(void) { return g_config.ao == 2 ? 1 : g_config.ao == 1 ? 2 : 0; }
+static void ao_set(int v) { g_config.ao = v == 1 ? 2 : v == 2 ? 1 : 0; }
 /* flashlight (pc/glue/light_glue.c) */
 /* Lighting Nightmare sets the fog (host.c pc_fog_scale): the row stays, locked, showing it */
 static const char* fog_locked(void) { return g_config.lighting == 3 ? "Lighting Nightmare sets the fog to 10%." : NULL; }
@@ -405,8 +408,8 @@ const Setting g_settings[] = {
       .help = "Bright parts of the picture (fire, lamps, flashes, snow) glow onto their surroundings, with a slightly warmer tint. Text does not glow. Only in play: not on the title screen, menus, movies and other 2D screens. Off: the original picture." },
     { SP_GRAPHICS, "Colour grading", V(g_config.grading), 0, 1, 1,
       .help = "A filmic look: bright parts (fire, lamps, bloom) ease towards white instead of clipping, the darkest tones go a little deeper, and shadows lean cool teal while highlights lean warm. Off: the original picture." },
-    { SP_GRAPHICS, "Ambient occlusion", V(g_config.ao), 0, 1, 1,
-      .help = "Darkens creases, corners and where objects meet the floor, from the depth of the 3D picture. Only in play; text is left alone." },
+    { SP_GRAPHICS, "Ambient occlusion", NULL, 0, 2, 1, (const char* const[]){ "Off", "Low", "High" }, .get = ao_get, .set = ao_set,
+      .help = "Darkens creases, corners and where objects meet the floor, from the depth of the 3D picture. Only in play; text is left alone. Low: worked out once per game frame and kept for the frames shown in between, much cheaper with Display-rate frames; the shading of fast-moving edges trails a little. High: worked out for every frame shown." },
     { SP_GRAPHICS, "Reset post-processing", NULL, .flags = SET_ACTION | SET_NOW, .apply = post_reset,
       .help = "Bloom, colour grading and ambient occlusion off: the original picture." },
     { SP_GRAPHICS, "Lighting", V(g_config.lighting), 0, 3, 1, (const char* const[]){ "Original", "Balanced", "Horror", "Nightmare" }, .group = "LIGHTING",
@@ -446,6 +449,8 @@ const Setting g_settings[] = {
       .help = "Door, stairs and ladder animations. Off: always played. Instant: the game's load screen instead. Skippable: played, any key or button ends it." },
     { SP_GAMEPLAY, "Fast loading", V(g_config.fast_loading), 0, 1, 1,
       .help = "Room changes, new game and loading a save without the waits the PS2 needed for its disc and sound chip. Off: as the original." },
+    { SP_GAMEPLAY, "Check for updates", V(g_config.update_check), 0, 1, 1,
+      .help = "Once a day at start, asks GitHub for the latest release of this port; when there is a newer one, the title screen and F1 say so. Nothing about you or your game is sent. Off: no network access." },
     { SP_GAMEPLAY, "Battle Game unlocked", V(g_config.battle_unlocked), 0, 1, 1,
       .help = "The title menu offers BATTLE GAME without a finished playthrough, with all five characters. Saves and records stay as they are; off: as the original." },
     { SP_GAMEPLAY, "Difficulty select", V(g_config.difficulty_select), 0, 1, 1,

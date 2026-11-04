@@ -196,9 +196,11 @@ void pc_title_menu_init(void)
 /* ---------------------------------------------------------------- mouse */
 static MouseTake mt;                    /* the pointer (game 2D px) and what it did */
 
+void update_title_seen(void);           /* host/update.c: the title menu is up (the update notice) */
 void pc_title_mouse_active(int on)
 {
     g_menu_mouse.active = on;
+    if (on) update_title_seen();
 }
 
 void menu_mouse_take(MouseTake* t)

@@ -43,7 +43,7 @@ typedef struct {
     int  gamma;              /* tenths, 5..20, 10 neutral */
     int  bloom;              /* post-processing in the present pass (gs_gl.c draw_display): bloom and its warmth (BLOOM_*), 0/1 */
     int  grading;            /* colour grading (gs_gl.c present_fs): the tone curve and split toning (GRADE_*), 0/1 */
-    int  ao;                 /* ambient occlusion (gs_gl.c ao_pass, AO_*), 0/1 */
+    int  ao;                 /* ambient occlusion (gs_gl.c ao_pass, AO_*): 0 off, 1 High (every image), 2 Low (once per game frame) */
     int  light_falloff;      /* vertex lighting (pc/glue/light_glue.c): point lights 0 end at their range at a step, 1 fade out over its outer quarter */
     int  lighting;           /* lighting mode (host.c pc_light_main, pc_light_ambient, pc_fog_scale): 0 original, 1 balanced, 2 horror, 3 nightmare */
     int  light_pixel;        /* per-pixel lighting of the chunk models (light_glue.c, gs_gl.c fs_src), with the native 3D renderer */
@@ -58,6 +58,9 @@ typedef struct {
     int  hdr_peak;           /* nits of the brightest highlight, 0 = the display's peak */
     int  hdr_highlights;     /* % of the room between paper white and peak the expanded highlights use */
     int  skip_doors;         /* door/stairs/ladder animations: 0 played, 1 instant (load screen), 2 played, a press skips */
+    int  update_check;       /* Check for updates (host/update.c): the latest GitHub release, once a day at start */
+    int  update_last;        /* ini-only: when it last asked (Unix time) */
+    int  update_latest;      /* ini-only: the latest release's version then, 1.2.3 as 1002003 */
     int  fast_loading;       /* room loads: sound packs and texture lists at once instead of spread over frames (pc_fast_loading) */
     int  quick_knife;        /* holding the quick-knife key draws the knife (pc/glue/knife_glue.c) */
     int  weapon_shortcuts;   /* 1 / 2 and the d-pad's left / right cycle the bag's weapons in play (pc/glue/weapon_glue.c) */
