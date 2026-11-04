@@ -8,6 +8,9 @@
 
 ### Changes
 
+- **Always have the knife** (GAMEPLAY, experimental, off by default; shown while Quick knife is on):
+  the quick knife works without the combat knife in the bag, so the knife can go into the item box
+  and its space is free. The bag's knife stays a normal item to equip from the inventory.
 - **Ambient occlusion Low / High** (GRAPHICS): Low works it out once per game frame and keeps it for
   the in-between frames, about a quarter of the cost with Display-rate frames (the shading at fast-
   moving edges trails slightly); High works it out for every frame shown, as before. A saved "on"

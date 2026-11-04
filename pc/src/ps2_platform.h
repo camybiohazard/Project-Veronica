@@ -63,6 +63,7 @@ typedef struct {
     int  update_latest;      /* ini-only: the latest release's version then, 1.2.3 as 1002003 */
     int  fast_loading;       /* room loads: sound packs and texture lists at once instead of spread over frames (pc_fast_loading) */
     int  quick_knife;        /* holding the quick-knife key draws the knife (pc/glue/knife_glue.c) */
+    int  knife_always;       /* the quick knife without the bag's knife: always at hand (knife_glue.c HIDDEN) */
     int  weapon_shortcuts;   /* 1 / 2 and the d-pad's left / right cycle the bag's weapons in play (pc/glue/weapon_glue.c) */
     int  auto_stairs;        /* walking into stairs climbs them without the action button (pc/glue/stairs_glue.c) */
     int  ammo_hud;           /* the equipped weapon's magazine in the bottom right corner (pc/glue/hud_glue.c) */

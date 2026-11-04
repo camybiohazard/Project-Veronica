@@ -48,6 +48,7 @@ int pc_intro_pressed(int start)
     return n != at;
 }
 int pc_quick_knife_on(void) { return g_config.quick_knife; }
+int pc_knife_always_on(void) { return g_config.knife_always; }
 int pc_weapon_shortcuts_on(void) { return g_config.weapon_shortcuts; }
 int pc_head_blowoff_on(void) { return g_config.head_blowoff; }
 int pc_ammo_hud_on(void) { return g_config.ammo_hud; }

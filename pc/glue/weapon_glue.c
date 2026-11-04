@@ -25,6 +25,7 @@ int pc_weapon_at_rest(void);                    /* knife_glue.c */
 int knife_busy(void);
 int pc_quick_knife_on(void);                    /* host.c: the settings */
 int pc_weapon_shortcuts_on(void);
+void pc_weapon_load_started(void);              /* knife_glue.c: the inventory and map wait for the weapon load */
 extern PARTS parts_06b[24];
 
 #define KNIFE 8                                 /* item 8 "Combat Knife" (knife_glue.c) */
@@ -70,6 +71,7 @@ static void equip(int dir)
     if (id == 10) parts_06b[17].anim = bhCkFlg(sys->ev_flg, 74) ? 12 : 11;
     swork.pip = iv;
     WeaponSet(at, at);   /* as the inventory: weapon number, equipped slot, weapon file load, motion reset */
+    pc_weapon_load_started();
 }
 
 static void request(int dir)

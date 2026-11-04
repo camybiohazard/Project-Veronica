@@ -708,6 +708,18 @@ village, collision. The render thread (GS emulation, replays: `r_exec`, `r_inter
   aim breaks it), and on release restores the previous weapon (or the same item in another slot)
   once the knife is lowered. Nothing is restored if the weapon was changed meanwhile, or if the
   game ended (`bhExitGame` -> `knife_game_exit`).
+  With **Always have the knife** (`knife_always`) the drawn knife is not the bag's: it is put
+  into inventory entry 15 for the draw (each character's 16 entries: 0 the equipped entry, 1 the
+  lighter's slot, 2..11 the grid; pickups, the item box, events and the inventory screen only use
+  2..11) and equipped from there, and removed again when it is put away (`hidden_tidy`, also
+  for one left in the hand by an event, game over or a save). The bag's knife stays an ordinary
+  item; it is used instead only when it is the one already in the hand. While the hidden knife
+  is drawn the inventory, map and options buttons (virtual bits 0x4000, 0x2000, 0x8000; `bhCheckSubTask`) are held back: the inventory screen
+  shifts the equipped entry when items move, which would lose one outside the grid.
+  Every `WeaponSet` of the quick knife and the weapon shortcuts also holds those three back until the weapon
+  file load it queues (`bhSysCallMonitor` mode 3) has ended (`pc_weapon_load_started`, at most 120
+  frames): an inventory opened during it left the new weapon's number with the old weapon's model
+  and motions (the knife firing bullets), and the options screen crashed (`AdvEasySetupTextureBasic`).
 - **Weapon shortcuts** (`pc/glue/weapon_glue.c`, `wpn_pad` called from `knife_pad` after the quick
   knife): `B_WPN_PREV` / `B_WPN_NEXT` (keys 1 / 2, the d-pad's left / right) equip the equipable item
   (`itemdata[].type & 1`; not the lighter, item 55, nor the knife while the quick knife is on) before / after the equipped

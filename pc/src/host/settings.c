@@ -256,6 +256,7 @@ static int hdr_platform(void) { return 1; }
 #else
 static int hdr_platform(void) { return 0; }
 #endif
+static int quick_knife_shown(void) { return g_config.quick_knife; }
 static int hdr_shown(void) { return hdr_platform() && g_config.hdr; }
 static float hdr_display(const char* key) { return SDL_GetFloatProperty(SDL_GetWindowProperties(g_window), key, 1.0f); }
 static int pw_get(void) { return g_config.hdr_paper_white ? (g_config.hdr_paper_white - 70 + 5) / 10 : 0; }
@@ -457,6 +458,9 @@ const Setting g_settings[] = {
       .help = "NEW GAME asks for the difficulty, as the European and Japanese versions do: Normal, Easy (supplies in the item box, more ammo per pickup) or Very Easy (also twice the health, stronger healing, weaker enemies). Off: as the US original, always Normal." },
     { SP_GAMEPLAY, "Quick knife", V(g_config.quick_knife), 0, 1, 1,
       .help = "Hold the quick-knife key (Space, right trigger; see CONTROLS) to draw the knife without the inventory; release it for the weapon before." },
+    { SP_GAMEPLAY, "Always have the knife", V(g_config.knife_always), 0, 1, 1,
+      .shown = quick_knife_shown,
+      .help = "Experimental. The quick knife works without the combat knife in your bag, so you can leave it in the item box and keep the space. The bag's knife stays a normal item to equip from the inventory." },
     { SP_GAMEPLAY, "Weapon shortcuts", V(g_config.weapon_shortcuts), 0, 1, 1,
       .help = "1 / 2 or the d-pad's left / right equip the bag's previous / next weapon, skipping the lighter (and the knife while the quick knife is on). Left / right then no longer turn in play (the stick does); up / down still walk." },
     { SP_GAMEPLAY, "Auto-climb stairs", V(g_config.auto_stairs), 0, 1, 1,

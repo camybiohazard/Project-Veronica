@@ -58,6 +58,7 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "update_last", &g_config.update_last, 0, 2147483647 },     /* update.c: when it last asked GitHub */
     { "update_latest", &g_config.update_latest, 0, 999999999 },  /* update.c: the latest release's version then */
     { "quick_knife", &g_config.quick_knife, 0, 1 },
+    { "knife_always", &g_config.knife_always, 0, 1 },
     { "weapon_shortcuts", &g_config.weapon_shortcuts, 0, 1 },
     { "auto_stairs", &g_config.auto_stairs, 0, 1 },
     { "head_blowoff", &g_config.head_blowoff, 0, 1 },
