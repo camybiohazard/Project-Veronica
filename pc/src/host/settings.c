@@ -257,6 +257,7 @@ static int hdr_platform(void) { return 1; }
 static int hdr_platform(void) { return 0; }
 #endif
 static int quick_knife_shown(void) { return g_config.quick_knife; }
+static int fog_enhanced_shown(void) { return g_config.fog_style == 1; }
 static int hdr_shown(void) { return hdr_platform() && g_config.hdr; }
 static float hdr_display(const char* key) { return SDL_GetFloatProperty(SDL_GetWindowProperties(g_window), key, 1.0f); }
 static int pw_get(void) { return g_config.hdr_paper_white ? (g_config.hdr_paper_white - 70 + 5) / 10 : 0; }
@@ -411,6 +412,10 @@ const Setting g_settings[] = {
       .help = "A filmic look: bright parts (fire, lamps, bloom) ease towards white instead of clipping, the darkest tones go a little deeper, and shadows lean cool teal while highlights lean warm. Off: the original picture." },
     { SP_GRAPHICS, "Ambient occlusion", NULL, 0, 2, 1, (const char* const[]){ "Off", "Low", "High" }, .get = ao_get, .set = ao_set,
       .help = "Darkens creases, corners and where objects meet the floor, from the depth of the 3D picture. Only in play; text is left alone. Low: worked out once per game frame and kept for the frames shown in between, much cheaper with Display-rate frames; the shading of fast-moving edges trails a little. High: worked out for every frame shown." },
+    { SP_GRAPHICS, "Fog", V(g_config.fog_style), 0, 1, 1, (const char* const[]){ "Original", "Enhanced" },
+      .help = "Enhanced: the fog is worked out for every pixel instead of between the corners of each polygon (no stretched or banded fog on large walls and floors), clears more gently near you and thickens towards the distance, and takes on some of the light where it hangs, less of the tint. The far distance, where the fog hides the edge of the room, stays as the original. With the native 3D renderer." },
+    { SP_GRAPHICS, "Fog light glow", V(g_config.fog_glow), 0, 1, 1, .shown = fog_enhanced_shown,
+      .help = "With Enhanced fog: lamps and other lights glow in the fog around them, more where the fog is thick." },
     { SP_GRAPHICS, "Reset post-processing", NULL, .flags = SET_ACTION | SET_NOW, .apply = post_reset,
       .help = "Bloom, colour grading and ambient occlusion off: the original picture." },
     { SP_GRAPHICS, "Lighting", V(g_config.lighting), 0, 3, 1, (const char* const[]){ "Original", "Balanced", "Horror", "Nightmare" }, .group = "LIGHTING",

@@ -100,7 +100,7 @@ typedef struct {
     float clip[2];        /* native 3D: near/far clip distances (others: always inside) */
     float vpos[3], nrm[3];/* per-pixel lighting: view position and normal (NativeVertex) */
     uint8_t r, g, b, a;   /* GS colour (the shader gets it / 255) */
-    uint8_t fog, pad;     /* GS fog coefficient */
+    uint8_t fog, fogset;  /* GS fog coefficient; Enhanced fog: the fog set (gs_fog_sets), 0 none */
     uint16_t light;       /* per-pixel lighting: the light set (gs_light_sets), 0: the colour as is */
 } GlVertex;               /* 68 bytes: what each vertex costs to upload, every image */
 
@@ -143,8 +143,19 @@ static GLuint vao, vbo, ibo, present_prog, present_vao, svao, svbo;
    pixels cost nothing (per-pixel lighting above all). The others spare the work and registers of
    branches not taken (the light sets' above all, which 2D, effects and the GS path never use). */
 enum { V_ATEST = 1, V_TEX = 2, V_REGION = 4, V_FOG = 8, V_LIGHT = 16, NPROG = 32 };
+/* Enhanced fog (fs_src): the amount eased in as t^FOG_CURVE; near the viewer the fog colour keeps
+   FOG_SAT of its saturation and takes the surface's light, between FOG_LIGHT0 (unlit) and FOG_LIGHT1 */
+#define FOG_CURVE 1.0f
+#define FOG_SAT 0.6f
+#define FOG_LIGHT0 0.55f
+#define FOG_LIGHT1 1.25f
+/* ... light glow (fog_glow): each point light's falloff (near^2 / d^2, the near range as the least
+   distance: the game's lights are mostly fill lights, not lamps, so no bright core) summed along the
+   view ray to the pixel, over the fog's distance (the density, about its far range), times FOG_GLOW
+   and the pixel's share of fog (30% + 70% of it) */
+#define FOG_GLOW 0.15f
 typedef struct { GLint rt_size, rt_margin, tme, tfx, tcc, fst, texsize, fge, fogcol, ate, atst, aref,
-                 tex, tex_alpha_scale, texofs, premul, zscale, clamp_mode, clamp_vals, afail_pass, rt16, lopt, mat, dith; } ProgUni;
+                 tex, tex_alpha_scale, texofs, premul, zscale, clamp_mode, clamp_vals, afail_pass, rt16, lopt, mat, dith, xyofs; } ProgUni;
 static GLuint progs[NPROG];
 static ProgUni pu[NPROG], *pcur = &pu[0];
 static int lsets_n;            /* the executed frame's light sets (gs_light_sets): none, no vertex refers to one */
@@ -164,26 +175,47 @@ static const char* vs_src =
     "layout(location=5) in vec3 a_vpos;\n"
     "layout(location=6) in vec3 a_nrm;\n"
     "layout(location=7) in float a_light;\n"
+    "layout(location=8) in uint a_fogset;\n"
     "uniform vec2 u_rt_size; uniform float u_rt_margin; uniform float u_zscale;\n"
     /* everything perspective-correct: for GS vertices w = 1, so that is the GS's screen-space
        interpolation; native 3D triangles stay whole where VU1 would have cut them at the guard
        band, and screen-linear colour/fog across a triangle reaching far off-screen near the
        camera is wrong (walls came out fully fogged in third-person view) */
     "out vec3 v_stq; out vec4 v_col; out float v_fog;\n"
-    "out vec3 v_vpos; out vec3 v_nrm; out float v_nlen; flat out int v_light;\n"
+    "out vec3 v_vpos; out vec3 v_nrm; out float v_nlen; flat out int v_light; flat out int v_fogset;\n"
     "void main(){\n"
     "  float w = a_pos.w;\n"
     "  v_vpos = a_vpos; v_nrm = a_nrm; v_nlen = length(a_nrm); v_light = int(a_light + 0.5);\n"
     "  vec2 p = (vec2(a_pos.x + u_rt_margin * w, a_pos.y) / u_rt_size) * 2.0 - w;\n"
     "  gl_Position = vec4(p, a_pos.z * u_zscale * 2.0 - w, w);\n"
     "  gl_ClipDistance[0] = a_clip.x; gl_ClipDistance[1] = a_clip.y;\n"
-    "  v_stq = a_stq; v_col = a_col; v_fog = a_fog;\n"
+    "  v_stq = a_stq; v_col = a_col; v_fog = a_fog; v_fogset = int(a_fogset);\n"
     "}\n";
 
 static const char* fs_src =   /* (after "#version" and the variant's #defines, gs_renderer_init) */
     "in vec3 v_stq; in vec4 v_col; in float v_fog;\n"
-    "in vec3 v_vpos; in vec3 v_nrm; in float v_nlen; flat in int v_light;\n"
+    "in vec3 v_vpos; in vec3 v_nrm; in float v_nlen; flat in int v_light; flat in int v_fogset;\n"
     "uniform sampler2D u_tex;\n"
+    "#if FOG\n"   /* the fog sets (gs_fog_sets): 33 vec4 each, set id at (id - 1) * 33: the table, then the density */
+    "layout(std140) uniform FogSets { vec4 u_fs[FS_SETS * 33 + 19]; };\n"
+    "uniform float u_rt_margin; uniform float u_zscale; uniform vec4 u_xyofs;\n"
+    "float fog_tbl(int id, int i){ return u_fs[(id - 1) * 33 + (i >> 2)][i & 3]; }\n"
+    /* the frame's (stream.h STREAM_FX): 0 (light count, glow on, Enhanced on, the internal scale),
+       1 (projection centre x, y, kx, ky), 2 (depth a, b), per light k 3 + 2k (view position, far^2)
+       and 4 + 2k (colour, near^2) */
+    "#define FX(i) u_fs[FS_SETS * 33 + (i)]\n"
+    /* ps2_NaFog.c njCalcFogPowerEx at the pixel (iz: 1 / view depth): the table read at density * iz,
+       by the float's exponent and the top 4 bits of its mantissa, linear between neighbours */
+    "float fog_power(int id, float iz){\n"
+    "  float t = clamp(u_fs[(id - 1) * 33 + 32].x * iz, 1.0, 255.9999);\n"
+    "  uint b = floatBitsToUint(t);\n"
+    "  int i = int(((b >> 19) & 15u) | (((b >> 23) - 127u) * 16u));\n"
+    "  if (i >= 127) return fog_tbl(id, 127);\n"
+    "  float v0 = uintBitsToFloat((uint(i / 16 + 127) << 23) | (uint(i & 15) << 19));\n"
+    "  float vb = (16.0 / float(1 << (i / 16))) * (t - v0);\n"
+    "  return (1.0 - vb) * fog_tbl(id, i) + vb * fog_tbl(id, i + 1);\n"
+    "}\n"
+    "#endif\n"
     "uniform vec4 u_lopt;\n"
     "#if LIGHT\n"   /* the light sets (gs_light_sets): 26 vec4 each, set id at id * 26 (set 0 unused) */
     "layout(std140) uniform LightSets { vec4 u_ls[LS_VEC4]; };\n"
@@ -302,6 +334,7 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "    else if (any(greaterThan(fl, vec3(0.0)))) c.rgb = clamp(c.rgb + lit(v_light, i + fl) - lit(v_light, i), 0.0, 255.0);\n"
     "  }\n"
     "#endif\n"
+    "  vec3 lightc = c.rgb;\n"   /* the light the surface gets (Enhanced fog) */
     "#if TEX\n"
     "  {\n"
     "    vec2 tc = (u_fst != 0) ? v_stq.xy : (v_stq.xy / v_stq.z) * u_texsize, tg = tc * u_texofs.xy;\n"   /* tg: the mip level's coordinates, before the regions (aniso_filter) */
@@ -330,7 +363,46 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "#endif\n"
     "  if (u_mat.w > 0.0) c.rgb = mix(c.rgb, vec3(255.0, 40.0, 255.0), u_mat.w);\n"
     "#if FOG\n"
-    "  { float f = clamp(v_fog, 0.0, 255.0); c.rgb = (f * c.rgb + (255.0 - f) * u_fogcol.rgb) / 256.0; }\n"
+    "  {\n"
+    "    float f = clamp(v_fog, 0.0, 255.0);\n"
+    "    vec3 fc = u_fogcol.rgb;\n"
+    /* Enhanced fog: the game's fog power at this pixel (not between the vertices), its amount t
+       (0 clear .. 1 all fog) eased in (FOG_CURVE: clearer near, the same at the far end), and the
+       colour less saturated and lit as the surface is (lightc, GS units, 128 = 1.0) where the fog is
+       thin, both back to the original as it closes (far = te^2), so the fog hides the room's edge
+       and meets the background as before */
+    "    vec4 fx0 = FX(0);\n"
+    "    if (fx0.z > 0.0) {\n"   /* Enhanced: every fogged draw alike (the stains, herbs and hair drawn other ways take their vertex fog) */
+    "      int id = v_fogset > 0 ? v_fogset : 1;\n"
+    "      float t = v_fogset > 0 ? 1.0 - fog_power(v_fogset, gl_FragCoord.w) / 255.0 : 1.0 - f / 255.0;\n"
+    "      float te = pow(clamp(t, 0.0, 1.0), FOG_CURVE);\n"
+    "      float far = te * te;\n"
+    "      float fl = dot(fc, vec3(0.299, 0.587, 0.114)), ll = dot(lightc, vec3(0.299, 0.587, 0.114)) / 128.0;\n"
+    "      fc = mix(vec3(fl), fc, mix(FOG_SAT, 1.0, far));\n"
+    "      fc = min(fc * mix(clamp(FOG_LIGHT0 + (1.0 - FOG_LIGHT0) * ll, FOG_LIGHT0, FOG_LIGHT1), 1.0, far), vec3(255.0));\n"
+    "      f = 255.0 * (1.0 - te);\n"
+    "      c.rgb = (f * c.rgb + (255.0 - f) * fc) / 256.0;\n"
+    /* glow: per light, the integral of near^2 / (h^2 + (s - s0)^2) for s 0..L along the ray to the
+       pixel, whose view position comes from its GS depth (w = -b / (Z + a)) and its place (the
+       projection native_glue.c uses), whichever way it was drawn */
+    "      if (fx0.y > 0.0 && fx0.w > 0.0) {\n"
+    "        vec4 pj = FX(1), dz = FX(2);\n"
+    "        float vz = abs(gl_FragCoord.w - 1.0) > 1e-5 ? 1.0 / gl_FragCoord.w : -dz.y / (gl_FragCoord.z / u_zscale + dz.x);\n"   /* w is the view depth, unless a GS-path draw (w 1) */
+    "        vec2 sp = gl_FragCoord.xy / fx0.w - vec2(u_rt_margin, 0.0) + u_xyofs.xy - pj.xy;\n"
+    "        vec3 p = vec3(sp.x * vz / pj.z, sp.y * vz / pj.w, vz);\n"
+    "        float L = length(p), dd = u_fs[(id - 1) * 33 + 32].x;\n"
+    "        vec3 dir = p / max(L, 0.001), g = vec3(0.0);\n"
+    "        for (int k = 0; k < int(fx0.x); k++) {\n"
+    "          vec4 a = FX(3 + 2 * k), b = FX(4 + 2 * k);\n"
+    "          float s0 = dot(dir, a.xyz), h2 = max(dot(a.xyz, a.xyz) - s0 * s0, b.w + 1.0), h = sqrt(h2);\n"
+    "          if (h2 >= a.w) continue;\n"   /* the ray passes beyond its far range */
+    "          float win = 1.0 - h2 / a.w;\n"
+    "          g += b.rgb * (b.w * (atan((L - s0) / h) + atan(s0 / h)) / h) * win * win;\n"
+    "        }\n"
+    "        if (vz > 0.0) c.rgb = min(c.rgb + g * (255.0 * FOG_GLOW * (0.3 + 0.7 * te) / max(dd, 1.0)), vec3(255.0));\n"
+    "      }\n"
+    "    } else c.rgb = (f * c.rgb + (255.0 - f) * fc) / 256.0;\n"
+    "  }\n"
     "#endif\n"
     /* the GS's 8 bits: rounded down as the GS does, or with Dithering (u_dith) by a fixed per-pixel
        threshold (interleaved gradient noise), so smooth light and fog gradients keep their slope
@@ -474,6 +546,23 @@ static const char* bloom_up_fs =
 static const char* ao_fs =
     "#version 330 core\n"
     "in vec2 v_uv; uniform sampler2D u_depth; uniform vec4 u_rect, u_aoz, u_aok; out vec4 o;\n"
+    /* the frame's fog (gs_ao_fog: the table, then density, curve, on): the occlusion darkens the
+       surface, not the fog in front of it, so it fades as the fog thickens (it showed boldly
+       through distant fog) */
+    "uniform vec4 u_aofog[33];\n"
+    "float fog_tbl(int i){ return u_aofog[i >> 2][i & 3]; }\n"
+    "float fog_amount(float w){\n"   /* gs_gl.c fs_src fog_power at view depth w, as 0 clear .. 1 all fog */
+    "  if (u_aofog[32].z <= 0.0) return 0.0;\n"
+    "  float t = clamp(u_aofog[32].x / w, 1.0, 255.9999), p;\n"
+    "  uint b = floatBitsToUint(t);\n"
+    "  int i = int(((b >> 19) & 15u) | (((b >> 23) - 127u) * 16u));\n"
+    "  if (i >= 127) p = fog_tbl(127);\n"
+    "  else {\n"
+    "    float v0 = uintBitsToFloat((uint(i / 16 + 127) << 23) | (uint(i & 15) << 19)), vb = (16.0 / float(1 << (i / 16))) * (t - v0);\n"
+    "    p = (1.0 - vb) * fog_tbl(i) + vb * fog_tbl(i + 1);\n"
+    "  }\n"
+    "  return pow(clamp(1.0 - p / 255.0, 0.0, 1.0), u_aofog[32].y);\n"
+    "}\n"
     "float dist(vec2 uv){\n"
     "  float d = texture(u_depth, clamp(uv, u_rect.xy, u_rect.zw)).r;\n"
     "  if (d <= 0.0) return 1e9;\n"
@@ -506,7 +595,7 @@ static const char* ao_fs =
     "    float diff = 1.0 / ip - dist(s);\n"   /* how far the sample stands in front of it */
     "    if (diff > bias) occ += 1.0 - smoothstep(range * 0.5, range, diff);\n"
     "  }\n"
-    "  o = vec4(vec3(clamp(1.0 - u_aok.w * occ / 8.0, 0.0, 1.0)), 1.0);\n"
+    "  o = vec4(vec3(mix(clamp(1.0 - u_aok.w * occ / 8.0, 0.0, 1.0), 1.0, fog_amount(w0))), 1.0);\n"
     "}\n";
 static const char* ao_blur_fs =
     "#version 330 core\n"
@@ -700,18 +789,25 @@ void gs_renderer_init(void)
         for (int v = 0; v < NPROG; v++) {
             static char fs[24576];
             if ((v & V_REGION) && !(v & V_TEX)) continue;   /* (the region is the texture's) */
-            if (SDL_snprintf(fs, sizeof(fs), "#version 330 core\n#define ATEST %d\n#define TEX %d\n#define REGION %d\n#define FOG %d\n#define LIGHT %d\n#define LS_VEC4 %d\n%s",
-                             !!(v & V_ATEST), !!(v & V_TEX), !!(v & V_REGION), !!(v & V_FOG), !!(v & V_LIGHT), ls_vec4, fs_src) >= (int)sizeof(fs))
+            if (SDL_snprintf(fs, sizeof(fs), "#version 330 core\n#define ATEST %d\n#define TEX %d\n#define REGION %d\n#define FOG %d\n#define LIGHT %d\n#define LS_VEC4 %d\n"
+                             "#define FS_SETS %d\n#define FOG_CURVE %.2f\n#define FOG_SAT %.2f\n#define FOG_LIGHT0 %.2f\n#define FOG_LIGHT1 %.2f\n"
+                             "#define FOG_GLOW %.3f\n%s",
+                             !!(v & V_ATEST), !!(v & V_TEX), !!(v & V_REGION), !!(v & V_FOG), !!(v & V_LIGHT), ls_vec4,
+                             STREAM_FSET_MAX, FOG_CURVE, FOG_SAT, FOG_LIGHT0, FOG_LIGHT1, FOG_GLOW, fs_src) >= (int)sizeof(fs))
                 host_fatal("gs: fragment shader source too long");
             progs[v] = compile(vs_src, fs);
             n++;
 #define U(x) pu[v].x = glGetUniformLocation(progs[v], "u_" #x)
             U(rt_size); U(rt_margin); U(tme); U(tfx); U(tcc); U(fst); U(texsize); U(fge); U(fogcol); U(ate); U(atst); U(aref);
             U(tex); U(tex_alpha_scale); U(texofs); U(premul); U(zscale); U(clamp_mode); U(clamp_vals); U(afail_pass); U(rt16);
-            U(lopt); U(mat); U(dith);
+            U(lopt); U(mat); U(dith); U(xyofs);
             if (v & V_LIGHT) {   /* the light sets on binding point 0 (gs_light_sets) */
                 GLuint b = glGetUniformBlockIndex(progs[v], "LightSets");
                 if (b != GL_INVALID_INDEX) glUniformBlockBinding(progs[v], b, 0);
+            }
+            if (v & V_FOG) {   /* the fog sets on binding point 1 (gs_fog_sets) */
+                GLuint b = glGetUniformBlockIndex(progs[v], "FogSets");
+                if (b != GL_INVALID_INDEX) glUniformBlockBinding(progs[v], b, 1);
             }
 #undef U
         }
@@ -746,6 +842,7 @@ void gs_renderer_init(void)
         glEnableVertexAttribArray(5); glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, vpos));
         glEnableVertexAttribArray(6); glVertexAttribPointer(6, 3, GL_FLOAT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, nrm));
         glEnableVertexAttribArray(7); glVertexAttribPointer(7, 1, GL_UNSIGNED_SHORT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, light));
+        glEnableVertexAttribArray(8); glVertexAttribIPointer(8, 1, GL_UNSIGNED_BYTE, sizeof(GlVertex), (void*)offsetof(GlVertex, fogset));
     }
     glBindVertexArray(vao);
     glGenBuffers(1, &ibo);
@@ -1515,8 +1612,11 @@ static GLuint pretext_mask_tex;
 /* ambient occlusion ([0] while a frame executes, [1] in a replay): the depth native 3D wrote into
    a full-screen target (src: tex 0 none; zmax: the GS range of its format; dirty: written since
    the copy), and its copy (ao_keep), made before a draw that is not native 3D writes the same
-   depth (the camera filter and fades overwrite it with a flat value) or at the frame's end */
-static struct { GLuint tex; int pw, ph; float zmax; int dirty; } ao_src[2];
+   depth (the camera filter and fades overwrite it with a flat value) or at the frame's end; warped:
+   the image is the full-screen distortion's (screen.c, the submarine dock's under-water views): its
+   picture is drawn back warped from a capture, the depth is not, so it gets no AO (the AO showed
+   Claire's outline beside her, on High flickering) */
+static struct { GLuint tex; int pw, ph; float zmax; int dirty, warped; } ao_src[2];
 static struct { GLuint tex, fbo; int pw, ph, ok; float zmax; } ao_copy[2];
 static GLuint cur_dt, ao_read_fbo;
 static uint32_t mat_hl;   /* the material picker's highlighted texture (gs_mat_highlight) */
@@ -1650,7 +1750,7 @@ void gs_replay_begin(void)
 {
     rcap[0].live = rcap[1].live = 0;
     pretext[1].valid = 0;
-    ao_src[1].tex = 0; ao_src[1].dirty = 0; ao_copy[1].ok = 0;
+    ao_src[1].tex = 0; ao_src[1].dirty = 0; ao_src[1].warped = 0; ao_copy[1].ok = 0;
     RenderTarget* disp = start_valid ? rt_find(start_fbp, start_fbw) : NULL;
     if (disp && (disp->pw != img[sti].pw || disp->ph != img[sti].ph)) disp = NULL;
     for (int i = 0; i < nreloads; i++) reloads[i].applied = 0;
@@ -1970,6 +2070,8 @@ void gs_flush(void)
         float fr = (float)(st->fogcol & 0xFF), fg = (float)((st->fogcol >> 8) & 0xFF), fb = (float)((st->fogcol >> 16) & 0xFF);
         uni4f(pcur->fogcol, fr, fg, fb, 0.0f);
     }
+    if (pcur->xyofs >= 0)   /* Enhanced fog's glow: the draw's XYOFFSET (the projection centre on the target) */
+        uni4f(pcur->xyofs, (float)(st->ctx.xyoffset & 0xFFFF) / 16.0f, (float)((st->ctx.xyoffset >> 32) & 0xFFFF) / 16.0f, 0.0f, 0.0f);
     uni1i(pcur->ate, (int)(test & 1));
     uni1i(pcur->atst, (int)((test >> 1) & 7));
     uni1f(pcur->aref, (float)((test >> 4) & 0xFF));
@@ -2037,7 +2139,7 @@ static void push(const GsVertex* v, const GsVertex* attr, float s, float t)
     o->light = 0;
     o->s = s; o->t = t; o->q = attr->q;
     o->r = attr->r; o->g = attr->g; o->b = attr->b; o->a = attr->a;
-    o->fog = attr->f; o->pad = 0;
+    o->fog = attr->f; o->fogset = 0;
 }
 
 static void push_vertex(const GsVertex* v, int fst)
@@ -2126,7 +2228,7 @@ static inline void native_vertex_to_gl(const NativeVertex* q, const NativeVertex
     o->x = q->x - ofx * q->w; o->y = q->y - ofy * q->w; o->z = q->z; o->w = q->w;
     o->s = q->s; o->t = q->t; o->q = 1.0f;
     o->r = p->r; o->g = p->g; o->b = p->b; o->a = p->a;
-    o->fog = (uint8_t)((int32_t)q->fog & 0xFF); o->pad = 0;   /* XYZF2 F: FTOI4, low 8 bits */
+    o->fog = (uint8_t)((int32_t)q->fog & 0xFF); o->fogset = q->fogset;   /* XYZF2 F: FTOI4, low 8 bits */
     o->clip[0] = q->near_d; o->clip[1] = q->far_d;
     o->vpos[0] = q->vx; o->vpos[1] = q->vy; o->vpos[2] = q->vz;
     o->nrm[0] = q->nx; o->nrm[1] = q->ny; o->nrm[2] = q->nz;
@@ -2368,6 +2470,28 @@ void gs_light_sets(const float* sets, size_t n)
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
+/* Enhanced fog: the executed frame's fog sets (stream.h STREAM_FSET floats each, at most
+   STREAM_FSET_MAX) in a uniform buffer (binding point 1, the FogSets block), which fs_src reads by
+   NativeVertex.fogset (1..), then the frame's lights (STREAM_FX) with the glow option; replays draw
+   with the same */
+void gs_fog_sets(const float* sets, size_t n, const float* fx)
+{
+    static GLuint ubo;
+    const GLsizeiptr at = STREAM_FSET_MAX * STREAM_FSET * sizeof(float), size = at + STREAM_FX * sizeof(float);
+    float x[STREAM_FX];
+    if (!ubo) glGenBuffers(1, &ubo);
+    memcpy(x, fx, sizeof(x));
+    x[1] = g_config.fog_glow ? 1.0f : 0.0f;
+    x[2] = n && g_config.fog_style == 1 ? 1.0f : 0.0f;   /* a frame without fog sets: every draw as the original */
+    x[3] = g_scale;
+    glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+    glBufferData(GL_UNIFORM_BUFFER, size, NULL, GL_STREAM_DRAW);   /* orphaned, as gs_light_sets */
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, (GLsizeiptr)(n * STREAM_FSET * sizeof(float)), sets);
+    glBufferSubData(GL_UNIFORM_BUFFER, at, sizeof(x), x);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
 /* the display area rect (u_rect) of tex, vw x vh window pixels, into the bloom levels; returns
    how many there are (level 0 holds the sum of all), 0 for none */
 static int bloom_chain(GLuint tex, GLuint pre, const float rect[4], int vw, int vh)
@@ -2442,7 +2566,17 @@ static int bloom_chain(GLuint tex, GLuint pre, const float rect[4], int vw, int 
 static GLuint ao_tex[2], ao_fbo[2], ao_prog, ao_blur_prog;
 static int ao_w[2], ao_h[2];
 static float ao_cam[4];   /* kx, ky (GS pixels per unit at distance 1), depth a, b (w = -b / (Z + a)) */
-static GLint ua_depth, ua_rect, ua_aoz, ua_aok, ub_tex, ub_texel;
+static GLint ua_depth, ua_rect, ua_aoz, ua_aok, ua_aofog, ub_tex, ub_texel;
+static float ao_fog[33 * 4];   /* the frame's fog for the AO (gs_ao_fog), [130] 0: none */
+
+void gs_ao_fog(const float* set)
+{
+    if (!set) { ao_fog[130] = 0.0f; return; }
+    memcpy(ao_fog, set, 128 * sizeof(float));
+    ao_fog[128] = set[128];
+    ao_fog[129] = g_config.fog_style == 1 ? FOG_CURVE : 1.0f;   /* Enhanced fog's amount, else the original's */
+    ao_fog[130] = 1.0f;
+}
 
 void gs_ao_frame(const float* cam) { ao_cam[0] = cam[12]; ao_cam[1] = cam[13]; ao_cam[2] = cam[16]; ao_cam[3] = cam[17]; }
 
@@ -2455,6 +2589,7 @@ static int ao_pass(GLuint depth, float zmax, const float rect[4], int rt_vw, int
     if (!ao_prog) {
         ao_prog = compile(present_vs, ao_fs);
         ua_depth = glGetUniformLocation(ao_prog, "u_depth"); ua_rect = glGetUniformLocation(ao_prog, "u_rect");
+        ua_aofog = glGetUniformLocation(ao_prog, "u_aofog");
         ua_aoz = glGetUniformLocation(ao_prog, "u_aoz"); ua_aok = glGetUniformLocation(ao_prog, "u_aok");
         ao_blur_prog = compile(quad_vs, ao_blur_fs);
         ub_tex = glGetUniformLocation(ao_blur_prog, "u_tex"); ub_texel = glGetUniformLocation(ao_blur_prog, "u_texel");
@@ -2473,6 +2608,7 @@ static int ao_pass(GLuint depth, float zmax, const float rect[4], int rt_vw, int
     glBindTexture(GL_TEXTURE_2D, depth);
     glUniform1i(ua_depth, 0);
     glUniform4f(ua_rect, rect[0], rect[1], rect[2], rect[3]);
+    glUniform4fv(ua_aofog, 33, ao_fog);
     glUniform4f(ua_aoz, zmax, ao_cam[2], ao_cam[3], 0.0f);
     glUniform4f(ua_aok, 4.8f * AO_RADIUS / rt_vw, 4.8f * AO_RADIUS / rt_vh, fabsf(ao_cam[3]), AO_STRENGTH / 100.0f);   /* % of 480 lines */
     glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
@@ -2529,7 +2665,8 @@ static void draw_display(GLuint tex, int rt_vw, int rt_vh, GLuint pre, int repla
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, PT_X, PT_Y, GL_RED, GL_UNSIGNED_BYTE, m);   /* rows of 32 bytes: any alignment */
         }
         if (g_config.bloom > 0 && !post_movie && !post_menu) levels = bloom_chain(tex, pre, rect, pw, ph);
-        if (g_config.ao == AO_LOW && !post_movie && !post_menu) {   /* Low: the executed frame's AO, once, for all its images */
+        if (ao_src[replay ? 1 : 0].warped) ;   /* drawn back warped: no AO */
+        else if (g_config.ao == AO_LOW && !post_movie && !post_menu) {   /* Low: the executed frame's AO, once, for all its images */
             static uint64_t done = UINT64_MAX;
             static int done_w, done_h;
             if (ao_src[0].dirty) ao_keep(0);
@@ -2873,6 +3010,7 @@ unsigned int gs_capture_rt(uint32_t fbp, uint32_t fbw, uint32_t w, uint32_t h, i
 {
     GLuint tex = 0, fbo = 0;
     int cw = 0, ch = 0;
+    if (wide) ao_src[0].warped = 1;   /* the full-screen distortion (pc_rtex_wide) */
     capture_rt(&tex, &fbo, &cw, &ch, fbp, fbw, w, h, wide);
     glDeleteFramebuffers(1, &fbo); fb_forget();
     return tex;
@@ -2883,6 +3021,7 @@ void gs_replay_capture(unsigned int exec_tex, uint32_t fbp, uint32_t fbw, uint32
 {
     int k = 0;
     while (k < 2 && rcap[k].live && rcap[k].exec != exec_tex) k++;
+    if (wide) ao_src[1].warped = 1;
     if (!exec_tex || k == 2) return;
     capture_rt(&rcap[k].tex, &rcap[k].fbo, &rcap[k].pw, &rcap[k].ph, fbp, fbw, w, h, wide);
     rcap[k].exec = exec_tex; rcap[k].live = 1;
@@ -2999,7 +3138,7 @@ void gs_frame_begin(void)
     nreloads = 0;
     mv_tbp = UINT32_MAX;   /* a movie frame binds it again (EV_MOVIE) */
     pretext[0].valid = 0;
-    ao_src[0].tex = 0; ao_src[0].dirty = 0; ao_copy[0].ok = 0;
+    ao_src[0].tex = 0; ao_src[0].dirty = 0; ao_src[0].warped = 0; ao_copy[0].ok = 0;
     snapshot_valid = 0;   /* no replays of the previous frame while this one is half executed (download) */
     memset(first, 0, sizeof(first));
     gs_set_scale(gs_wanted_scale());

@@ -290,6 +290,9 @@ extern PFN_glGetFloatv gl_GetFloatv;
 typedef void (GLAPIENTRY *PFN_glDrawArrays)(GLenum mode, GLint first, GLsizei count);
 extern PFN_glDrawArrays gl_DrawArrays;
 #define glDrawArrays gl_DrawArrays
+typedef void (GLAPIENTRY *PFN_glUniform4fv)(GLint location, GLsizei count, const GLfloat* value);
+extern PFN_glUniform4fv gl_Uniform4fv;
+#define glUniform4fv gl_Uniform4fv
 typedef void (GLAPIENTRY *PFN_glDrawElementsBaseVertex)(GLenum mode, GLsizei count, GLenum type, const void* indices, GLint basevertex);   /* GL 3.2 */
 extern PFN_glDrawElementsBaseVertex gl_DrawElementsBaseVertex;
 #define glDrawElementsBaseVertex gl_DrawElementsBaseVertex

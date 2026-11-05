@@ -33,6 +33,8 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "screen_effects", &g_config.screen_effects, 0, 2 },
     { "movie_zoom", &g_config.movie_zoom, 0, 1 },
     { "fog_intensity", &g_config.fog_intensity, 0, 100 },
+    { "fog_style", &g_config.fog_style, 0, 1 },
+    { "fog_glow", &g_config.fog_glow, 0, 1 },
     { "brightness", &g_config.brightness, -50, 50 },
     { "contrast", &g_config.contrast, 50, 150 },
     { "gamma", &g_config.gamma, 5, 20 },

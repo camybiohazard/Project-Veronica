@@ -15,6 +15,7 @@ typedef struct {
                                    SingleMain); bit 1: the triangle ending here is skipped;
                                    bit 2 (on the last vertex): the triangle is drawn only outside
                                    the 4:3 screen, in the hor+ margins (NATIVE_43_X0..X1) */
+    uint8_t fogset;             /* Enhanced fog: the frame's fog set (stream_fog_set), 0 none: the vertex fog as is */
     uint16_t light;             /* per-pixel lighting: the frame's light set (stream_light_set), 0 none: the colour as is */
 } NativeVertex;
 #define NATIVE_43_X0 1728.0f   /* the 4:3 screen (the PS2's 640-wide display), GS x */

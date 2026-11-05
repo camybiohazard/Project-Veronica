@@ -35,6 +35,8 @@ typedef struct {
     int  frame_blend;        /* PS2_swap's 25% previous-frame blend (motion trail): 1 on, 0 off, -1 auto (off in enhanced) */
     int  screen_filter;      /* camera filter (vignette): 0 original 4:3, 1 stretched to the view, 2 off */
     int  cinema_bars;        /* cutscene letterbox bars: same modes */
+    int  fog_style;          /* 0 Original, 1 Enhanced: per pixel, reshaped (pc/glue/fog_glue.c, gs_gl.c fs_src) */
+    int  fog_glow;           /* Enhanced fog: the point lights glow in it */
     int  fog_intensity;      /* fog at this % of the original, 0..100 (pc_fog_scale); 100 original, 0 none */
     int  movie_zoom;         /* movies scaled evenly until the letterbox bars leave the screen (movie_glue.c vbrank_draw) */
     int  screen_effects;     /* full-screen effect overlays (noise/scanline layers): same modes */

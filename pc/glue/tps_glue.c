@@ -1373,15 +1373,17 @@ static void scope_look(void)
    and bhCalcModel): mouse X turns the character, or the camera while aiming freely */
 /* "Move while aiming" (THIRD PERSON, Modern gamepad): with the weapon raised (aiming 65-67 or firing 69; not the knife,
    the scope, raising, lowering or reloading) the left stick walks towards its way seen from the camera, as a walk does,
-   slower; the body keeps the aim. The legs walk the game's walk motion (the stick ahead of her or to a side) or its step
-   back (behind her), run at the walk's rate under the aim (aim_legs), facing ahead: to a side the feet slide (legs turned
-   at the hips towards the way, even by 5 degrees, looked out of place in play). The speed is that motion's own travel
-   per frame (PlyTrsZ, as bhCPM2_act_wlk / _bak). Moved before the game's wall check (bhControlPlayer checks px against
+   slower; the body keeps the aim. The hips and legs walk the game's walk motion (the stick ahead of her or to a side) or
+   its step back (behind her), from where the game's walks start, at AIM_WALK of the walk's rate (legs_pose, after
+   aikatore/recvx-enhanced-port's Move While Aiming: the hips' bob and sway with the stride, the upper body keeping the
+   aim's orientation on them), facing ahead: to a side the feet slide (theirs turns the hips up to 55 degrees towards
+   the way; even 5 looked out of place in play). The speed is that motion's own travel per frame (PlyTrsZ, as
+   bhCPM2_act_wlk / _bak). Moved before the game's wall check (bhControlPlayer checks px against
    pxb after the mode handlers), so walls, doors and enemies stop it as a walk. Its footsteps are the walk's
    (PlFootSnd). While the walking legs show, the game's planted-foot correction is off for the tick (flg 0x40000:
    bhFixPostion moves the player by where the aim motion's foot is now against where it was drawn last tick, the walk's
    foot, which pushed her about each tick); it is back once the model is posed (aim_legs). */
-#define AIM_WALK 0.65f                   /* of a walk: the speed and the legs' motion rate, the stick fully pushed */
+#define AIM_WALK 0.65f                    /* of a walk: the speed and the legs' motion rate, the stick fully pushed */
 #define LEG_FIRST 14                    /* the legs: nodes 14-17 and 18-21 (player.c PlyLegRoute), the feet 17 and 21 */
 #define LEG_LAST 21
 #define AIM_BACK DEG(125.0f)            /* the stick this far from ahead: the step back (back to the walk under AIM_FWD); */
@@ -1412,7 +1414,7 @@ static void aim_walk(void)
     d = modern_wrap(pad_target - (short)plp->ay);   /* the way from her facing */
     back = fabsf(d) > (aim_leg_back == 1 ? AIM_FWD : AIM_BACK);   /* (either side of the line: as it was) */
     rate = aim_mag * AIM_WALK;
-    if (back != aim_leg_back) { aim_leg_frm = 0; aim_leg_back = back; }   /* (each motion from its start) */
+    if (back != aim_leg_back || aim_leg_w < 0.02f) { aim_leg_frm = (back ? 25 : 5) << 16; aim_leg_back = back; }   /* (where the game's walks start) */
     n = plp->mnwP[aim_leg_mtn(back)].frm_num;
     if (n < 2) return;
     was = aim_leg_frm >> 16;
@@ -1438,35 +1440,51 @@ static void aim_walk(void)
                (short)plp->ay * (360.0f / 65536.0f), plp->flg);
 }
 
-/* p's motion mtn (of its set) at frame frm (16.16) on its legs over the pose it has, by w. bhSetMotion poses every node
-   (a node can only be left out of a motion, which shifts the tracks after it), so the whole of it is posed and all but
-   the legs put back; the hips and everything above keep their pose. */
-static void legs_over(BH_PWORK* p, int mtn, int frm, float w)
+/* The walk mtn (of set) at frame frm (16.16) on p's hips and legs (nodes 0, 1, 14..21), by w, over its model as just
+   posed (bhCalcModel): the upper body (node 2 on: spine, chest, arms, head) keeps the orientation p's own motion gave
+   it, carried on the walking hips, so the aim and the weapon motions stay as they are. The matrices are posed again;
+   p's motion state (node angles, frame, blend) is left as it was. After aikatore/recvx-enhanced-port's tps_legs, without
+   its turn of the hips. */
+static void legs_pose(BH_PWORK* p, MN_WORK* set, int mtn, int frm, float w)
 {
-    NJS_CNK_OBJECT* ob = p->mlwP->objP;
-    float pos[64][3];
-    int ang[64][3], n = p->mlwP->obj_num, mtn_no, frm_no, hokan, attr, i, j;
-    if (n > 64) return;
-    for (i = 0; i < n; i++)
-        for (j = 0; j < 3; j++) { pos[i][j] = ob[i].pos[j]; ang[i][j] = ob[i].ang[j]; }
-    mtn_no = p->mtn_no; frm_no = p->frm_no; hokan = p->hokan_count; attr = p->mtn_attr;
-    p->mtn_no = mtn;
-    p->frm_no = frm;
-    p->hokan_count = 0;
-    bhSetMotion(p, 0, 0, NULL);
-    p->mtn_no = mtn_no; p->frm_no = frm_no; p->hokan_count = hokan; p->mtn_attr = attr;
-    for (i = 0; i < n; i++)
-        for (j = 0; j < 3; j++) {
-            if (i < LEG_FIRST || i > LEG_LAST) { ob[i].pos[j] = pos[i][j]; ob[i].ang[j] = ang[i][j]; continue; }
-            ob[i].pos[j] = pos[i][j] + (ob[i].pos[j] - pos[i][j]) * w;
-            ob[i].ang[j] = ang[i][j] + (int)((short)(ob[i].ang[j] - ang[i][j]) * w);   /* (the short way round) */
+    ML_WORK* ml = p->mlwP;
+    NJS_CNK_OBJECT* o;
+    O_WORK* ow;
+    struct { float pos[3]; int ang[3]; } keep[22];
+    float a2[12];
+    BH_PWORK t;
+    int i, j, n;
+    if (w <= 0 || !set || !ml || ml->obj_num < 22 || !set[mtn].datP || set[mtn].obj_num > 22) return;
+    o = ml->objP; ow = ml->owP;
+    n = (int)set[mtn].frm_num;
+    if (n <= 0) return;
+    memcpy(a2, ow[2].mtx, sizeof(a2));   /* the upper body's axes as its motion has them */
+    for (i = 0; i < 22; i++) { memcpy(keep[i].pos, o[i].pos, sizeof(keep[i].pos)); memcpy(keep[i].ang, o[i].ang, sizeof(keep[i].ang)); }
+    t = *p;   /* (a work of its own: the frame and blend of p's motion stay) */
+    t.mnwP = set; t.mtn_no = mtn; t.frm_no = frm % (n << 16); t.hokan_count = 0;
+    bhSetMotion(&t, 0, 0, NULL);
+    for (i = 0; i < 22; i++) {
+        if (i >= 2 && i < 14) {   /* the upper body: p's own */
+            memcpy(o[i].pos, keep[i].pos, sizeof(keep[i].pos)); memcpy(o[i].ang, keep[i].ang, sizeof(keep[i].ang));
+            continue;
         }
+        for (j = 0; j < 3; j++) {
+            o[i].pos[j] = keep[i].pos[j] + (o[i].pos[j] - keep[i].pos[j]) * w;
+            o[i].ang[j] = keep[i].ang[j] + (int)((short)(o[i].ang[j] - keep[i].ang[j]) * w);   /* (the short way round) */
+        }
+    }
+    bhCalcModel(p);
+    memcpy(ow[2].mtx, a2, sizeof(a2));   /* (its place: from the walking hips) */
+    ow[2].flg |= 1;
+    bhCalcModel(p);
+    ow[2].flg &= ~1;
+    for (i = 0; i < 22; i++) { memcpy(o[i].pos, keep[i].pos, sizeof(keep[i].pos)); memcpy(o[i].ang, keep[i].ang, sizeof(keep[i].ang)); }
 }
 
 static int aim_leg_shown;               /* this tick's model has the walking legs (tps_aim_legs) */
 
-/* tps_calc_model, before the model is posed: the walk motion's legs over the aim motion's, eased in and out over a few
-   ticks */
+/* tps_calc_model, before the model is posed: the walking legs' weight, eased in and out over a few ticks (calc poses
+   them) */
 static void aim_legs(void)
 {
     aim_leg_shown = 0;
@@ -1474,13 +1492,19 @@ static void aim_legs(void)
     if (!aim_walk_ok() || plp->mlwP->obj_num > 64) { aim_leg_w = 0; return; }   /* (raising, lowering, a reload: the game's motion alone) */
     aim_leg_w += (aim_walking - aim_leg_w) * 0.3f;
     if (aim_leg_w < 0.02f || aim_leg_back < 0) return;
-    legs_over(plp, aim_leg_mtn(aim_leg_back), aim_leg_frm, aim_leg_w);
     aim_leg_shown = 1;
 }
 
+/* bhCalcModel of our player, with the walking hips and legs under the aim */
+static void calc(void)
+{
+    bhCalcModel(plp);
+    if (aim_leg_shown) legs_pose(plp, plp->mnwP, aim_leg_mtn(aim_leg_back), aim_leg_frm, aim_leg_w);
+}
+
 /* actor_glue.c, the gender-matched copy of our player ("You appear as" a man while Claire is played, or a woman while a
-   man is), posed in its own set's motion equivalent to hers: the walking legs over it too, its set's walk (the same
-   number, PlMtnAct) at her walk's phase. p: posed, before bhCalcModel. */
+   man is), posed in its own set's motion equivalent to hers: the walking hips and legs on it too, its set's walk (the
+   same number, PlMtnAct) at her walk's phase. p: posed (after bhCalcModel and the arm's IK). */
 void tps_aim_legs(BH_PWORK* p)
 {
     int mtn, n0, n1;
@@ -1489,7 +1513,7 @@ void tps_aim_legs(BH_PWORK* p)
     n0 = plp->mnwP[mtn].frm_num;
     n1 = p->mnwP[mtn].frm_num;
     if (!p->mnwP[mtn].datP || n0 < 1 || n1 < 1) return;   /* (none in its set: its aim pose alone) */
-    legs_over(p, mtn, (int)((long)aim_leg_frm * n1 / n0), aim_leg_w);
+    legs_pose(p, p->mnwP, mtn, (int)((long)aim_leg_frm * n1 / n0), aim_leg_w);
 }
 
 void tps_player(void)
@@ -1612,9 +1636,11 @@ static void bend(BH_PWORK* p, float a)
     turn(ow[3].mtx, u, c, a);
     for (int j = 0; j < 3; j++) c[j] = ow[3].mtx[12 + j];
     turn(ow[3].mtx, u, c, a);
-    ow[2].flg |= 1; ow[3].flg |= 1;
+    for (int k = 0; k < p->mlwP->obj_num && k < 22; k++)   /* the hips and legs as they are (legs_pose: walking) */
+        if (k < 4 || k >= 14) ow[k].flg |= 1;
     bhCalcModel(p);
-    ow[2].flg &= ~1; ow[3].flg &= ~1;
+    for (int k = 0; k < p->mlwP->obj_num && k < 22; k++)
+        if (k < 4 || k >= 14) ow[k].flg &= ~1;
 }
 
 void tps_calc_model(void)
@@ -1624,8 +1650,8 @@ void tps_calc_model(void)
     float a, dx, dz, ofs[3];
     int on = tps_cam_active && !lock_aim() && plp->mode0 == 1 && plp->mode1 == 1 && plp->mode2 != 68 && !reload_at_rest();
 
-    aim_legs();   /* "Move while aiming": the walk's legs under the aim */
-    bhCalcModel(plp);
+    aim_legs();   /* "Move while aiming": the walk's hips and legs under the aim */
+    calc();
     bend_a = 0;
     w += (on - w) * 0.35f;
     if (w < 0.01f || plp->mlwP->obj_num <= 9) { aim_corr = 0; return; }
@@ -1678,14 +1704,14 @@ void tps_calc_model(void)
             pe = fabsf(e); pt = t;
             t += e;
             t = t > 1.047f ? 1.047f : t < -1.047f ? -1.047f : t;
-            bhCalcModel(plp);   /* (unbent) */
+            calc();   /* (unbent) */
             bend(plp, w * t / 2);
         }
         if (steady) goal = t - t0;
         aim_corr += (goal - aim_corr) * 0.35f;
         t = t0 + aim_corr;
         t = t > 1.047f ? 1.047f : t < -1.047f ? -1.047f : t;
-        bhCalcModel(plp);   /* (unbent) */
+        calc();   /* (unbent) */
         bend_a = w * t / 2;
         bend(plp, bend_a);
     }

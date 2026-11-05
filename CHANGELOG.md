@@ -8,6 +8,22 @@
 
 ### Changes
 
+- **Move while aiming: a fuller walk** (after aikatore's recvx-enhanced-port): the hips walk with the
+  legs now (their sway and bob carried up to a steady aim, instead of the legs alone under still
+  hips), the walks start where the game's walks start, and the pace is 60% of a walk (was 65%). The
+  hips still face the aim when walking sideways; upstream's turn of the hips is left out.
+- **Ambient occlusion fades in fog**: the shading now thins out with the fog at each point instead
+  of showing at full strength through it (dark outlines of distant objects in foggy rooms), with
+  either fog style.
+- **Enhanced fog** (GRAPHICS, Fog: Original / Enhanced; off by default): the fog is worked out per
+  pixel from the game's own fog table (no stretched or banded fog on large surfaces), clears more
+  gently near you, keeps less of its tint up close and takes on the light where it hangs; at the
+  far distance it stays the original, so room edges stay hidden.
+  With it, **Fog light glow** (the room's lights lift and tint the fog around them), on by default
+  and switchable.
+- **Fixed: ambient occlusion under water** (submarine dock, fixed camera): the wavy under-water views
+  no longer get AO, which showed a dark outline of Claire beside her (flickering on High), as the
+  distortion moves the picture but not the depth AO is worked out from.
 - **Fixed: flickering elevator door in third person** (Antarctic Base pipe corridor): an unused dark
   copy of the door, which no camera of the room shows, is no longer drawn.
 - **Always have the knife** (GAMEPLAY, experimental, off by default; shown while Quick knife is on):

@@ -351,6 +351,46 @@ a cubic shoulder on the brightest channel above 0.5 reaching white at a point th
 hue kept), saturation around the luminance, warmth (red up, blue down) and split toning (a tint
 from teal in the shadows to orange in the highlights by luminance).
 
+Enhanced fog (`fog_style` 1; `pc/glue/fog_glue.c`, `gs_gl.c fs_src fog_power`). The game's fog power is
+a function of view depth: `ps2_NaFog.c njCalcFogPower(Ex)` reads the 128-entry table
+`njGenerateFogTable3` builds from the cut's range at density / z (Fog intensity scales the density,
+`pc_fog_scale`), by the float's exponent and top four mantissa bits, linear between entries; the
+vertex gets that value and the GS interpolates it. With Enhanced, `pc_native_strip` gives each
+vertex the frame's fog set (`stream_fog_set`: the table and the scaled density, up to 15 per frame,
+`NativeVertex.fogset`, the GL vertex's byte after the fog) while the fog is on, and the shader
+repeats the lookup per pixel with `gl_FragCoord.w` (1 / view depth): the same value at the
+vertices (checked on the CPU: 0 difference over 1.8 million vertices; with the shaping below
+neutral the picture is within 2 levels of Original). It is then reshaped: the amount t (0 clear,
+1 all fog) as t^`FOG_CURVE` (1.4), and near the viewer the fog colour keeps `FOG_SAT` (60%) of its
+saturation and is scaled by the light the surface gets (its lit colour before the texture,
+`FOG_LIGHT0` 0.55 unlit to `FOG_LIGHT1` 1.25), both returning to the original as t^2 nears 1, so
+the far end, which hides the room's edge and meets the background colour, is unchanged. The
+sets live in a uniform buffer (`gs_fog_sets`, binding point 1, `FogSets`, 33 vec4 each). The
+CPU-built strips of the ordering table (`pc_native_prim3d`; Claire's hair among them, which
+otherwise kept the heavier original fog and showed as a grey cap) take a fog set when each
+vertex's fog is the table's at its depth (`fog_glue.c pc_fog_is_table`). Every other fogged draw
+(GS-path draws, `Ps2AddPrim` effects, strips whose fog is not the table's: the stains on the shower
+room's walls, herbs, hats) gets the same reshaping from its own vertex fog (FogSets row 0: Enhanced
+on, set when the frame has fog sets), so nothing keeps the original fog among reshaped surfaces.
+
+Light glow with Enhanced fog (`fog_glow`). The frame's point lights follow the fog sets in the
+same block (`STREAM_FX`, `stream_fog_light`, filled by `fog_glue.c fog_lights` with every fogged
+strip: up to 8 lights that light fogged strips, `light_glue.c pc_light_points`: view position, far
+range^2, colour, near range^2). The pixel's view position is found from its place and depth, so every
+fogged draw glows alike (a stain over a wall as the wall; at first it came from the native strips'
+view positions only, and the stains showed as dark patches in the glow): depth 1 / `gl_FragCoord.w`
+(w is the view depth for native draws), or -b / (Z + a) for GS-path draws (w 1); x and y through the
+projection `fog_lights` streams (`fVu1Offset*`, kx, ky; `stream_fog_view`) and the draw's XYOFFSET
+(`u_xyofs`), which the target's coordinates have taken off. Per light, the game's falloff near^2 / d^2 is integrated along the
+ray from the eye to the pixel in closed form, near^2 (atan((L - s0) / h) + atan(s0 / h)) / h (s0 the
+light's distance along the ray, h its distance from the ray, at least the near range: the game's
+point lights are mostly fill lights without a visible lamp, and a sharper core showed as discs in
+mid-air, the palace front courtyard's doorway), faded out towards the far range, divided by the
+fog's distance (its density) and added after the fog, times `FOG_GLOW` (0.15) and 30% + 70% of the
+pixel's fog; lights whose far range the ray misses are skipped. Cost at 4K (Prison courtyard and
+graveyard, per image): Enhanced about 0.25 ms over Original, the glow 0.3-0.45 ms. (A drifting mist,
+noise varying the fog amount, was tried and dropped: barely visible.)
+
 Ambient occlusion (`ao`: 0 off, 1 High, 2 Low; `gs_gl.c AO_*`: 60% strength, radius 2% of the screen's height; `ao_pass`) is computed from the depth native 3D
 wrote into a full-screen target. Full-screen 2D drawn later (the camera filter, fades) overwrites
 that depth with a flat value, so `gs_flush` copies it (`ao_keep`: at half the size, of the 480
@@ -363,9 +403,17 @@ within a radius set as a share of the screen's height (the fixed cameras stand 1
 off) are measured against the pixel's surface plane (1 / w is linear across it on screen; its
 slope from the steadier neighbour), so flat floors seen at a slant do not shade themselves (the pixel and each sample are taken at the centre of the depth texel they read, as the AO pass and the depth copy differ in size: measured at the pixel's own position, distant floors showed horizontal stripes); a
 sample in front of the plane by more than two steps of the 16-bit depth buffer occludes, less so
-up to a tenth of the distance in front. The result is blurred (3 x 3) and multiplies the picture
+up to a tenth of the distance in front. The occlusion darkens the surface, not the fog in front of
+it, so it fades with the fog at the pixel's depth: `fog_glue.c pc_fog_set` streams the frame's first
+fog table and density with any fog style (`stream_fog_ao` -> `gs_ao_fog`), and `ao_fs fog_amount`
+repeats the game's lookup (`fs_src fog_power`), with Enhanced fog's curve; the result is mixed
+towards 1 by that amount (it showed boldly through distant fog: the chains and the statue base in
+the Residence front garden). The result is blurred (3 x 3) and multiplies the picture
 in `present_fs` before bloom, except where the frame differs from its copy before the first text
-(`pretext_capture`, taken when bloom or AO is on). Not on movies and menu screens. Low (`AO_LOW`) computes it once per executed frame, from that frame's copy, and its in-between
+(`pretext_capture`, taken when bloom or AO is on). Not on movies and menu screens, nor on an image
+drawn back warped by the full-screen distortion (the submarine dock's under-water views; its
+`StoreRenderTex` capture with `pc_rtex_wide` sets `ao_src[k].warped`): the picture moves, the depth
+does not, so the AO showed the character's outline beside them. Low (`AO_LOW`) computes it once per executed frame, from that frame's copy, and its in-between
 images show that result as it is (`draw_display`: `ao_pass` only when `frame_no` or the size changed;
 replays keep no depth copy of their own), about a quarter of High's cost at 144 Hz. Bloom (`gs_gl.c bloom_chain`,
 run per presented image, in-between images included) takes from the display area what is

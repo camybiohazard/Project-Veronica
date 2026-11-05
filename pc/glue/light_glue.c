@@ -251,3 +251,18 @@ uint32_t pc_light_set(int color_mode)
     memcpy(s + 88, flash, sizeof(flash));
     return stream_light_set(s);
 }
+
+/* Enhanced fog's light glow (fog_glue.c): the current lighting's point lights that are on, 8 floats
+   each (view position, far range^2, colour, near range^2), at most max; returns the count */
+int pc_light_points(float* out, int max)
+{
+    const CNK_LIGHT* l = pNaCnkCrntLighting->pLightTop;
+    int n = 0;
+    for (int k = 0; k < pNaCnkCrntLighting->lLightMax && n < max; k++, l++) {
+        if (!l->ulState || l->ulMode == 0 || !(l->fFarRR > 0.0f)) continue;
+        float* o = out + 8 * n++;
+        o[0] = l->fCx; o[1] = l->fCy; o[2] = l->fCz; o[3] = l->fFarRR;
+        o[4] = l->fR; o[5] = l->fG; o[6] = l->fB; o[7] = l->fNearRR;
+    }
+    return n;
+}

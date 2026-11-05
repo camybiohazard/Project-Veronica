@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #define NOEV 0xFFFFFFFFu
 #define NATIVE_KEY (1ull << 63)   /* Group.key0 of a native 3D strip (v0 = its event) */
@@ -47,6 +48,9 @@ struct Frame {
     int fade;                                /* pc_frame_fade: the picture shows through a screen fade */
     int menu;                                /* pc_frame_menu: a menu task runs (no bloom) */
     float* lset; size_t nlset, clset;        /* per-pixel lighting: light sets, STREAM_LSET floats each (stream_light_set) */
+    float* fset; size_t nfset, cfset;        /* Enhanced fog: fog sets, STREAM_FSET floats each (stream_fog_set) */
+    float fx[STREAM_FX];                     /* ... and the frame's projection and lights (stream_fog_view, stream_fog_light) */
+    float aofog[STREAM_FSET]; int aofog_ok;  /* the frame's first fog, for the AO (stream_fog_ao) */
     /* filled by the render thread when executed */
     Group* g; size_t ng, cg;
     Inst* in; size_t nin, cin;
@@ -130,6 +134,9 @@ static Frame* recording(void)
         prof_pop();
         rec->nev = rec->npool = 0;
         rec->nlset = 0;
+        rec->nfset = 0;
+        memset(rec->fx, 0, sizeof(rec->fx));
+        rec->aofog_ok = 0;
         rec->partial = 0;
         rec->continuation = continuation_next;
         continuation_next = 0;
@@ -147,6 +154,45 @@ uint32_t stream_light_set(const float* set)
     GROW(f->lset, f->nlset * STREAM_LSET, f->clset, STREAM_LSET);
     memcpy(f->lset + f->nlset * STREAM_LSET, set, STREAM_LSET * sizeof(float));
     return (uint32_t)++f->nlset;
+}
+
+/* Enhanced fog (fog_glue.c pc_fog_set): as stream_light_set, the fog set of the native strips that follow */
+uint32_t stream_fog_set(const float* set)
+{
+    Frame* f = recording();
+    if (f->nfset && !memcmp(f->fset + (f->nfset - 1) * STREAM_FSET, set, STREAM_FSET * sizeof(float))) return (uint32_t)f->nfset;
+    for (size_t i = 0; i + 1 < f->nfset; i++)   /* an earlier one again (the fog switched back and forth) */
+        if (!memcmp(f->fset + i * STREAM_FSET, set, STREAM_FSET * sizeof(float))) return (uint32_t)i + 1;
+    if (f->nfset >= STREAM_FSET_MAX) return 0;
+    GROW(f->fset, f->nfset * STREAM_FSET, f->cfset, STREAM_FSET);
+    memcpy(f->fset + f->nfset * STREAM_FSET, set, STREAM_FSET * sizeof(float));
+    return (uint32_t)++f->nfset;
+}
+
+void stream_fog_ao(const float* set)
+{
+    Frame* f = recording();
+    if (f->aofog_ok) return;
+    memcpy(f->aofog, set, sizeof(f->aofog));
+    f->aofog_ok = 1;
+}
+void stream_fog_view(const float* proj)
+{
+    Frame* f = recording();
+    memcpy(f->fx + 4, proj, 4 * sizeof(float));
+    f->fx[8] = proj[4]; f->fx[9] = proj[5];
+}
+void stream_fog_light(const float* light)
+{
+    Frame* f = recording();
+    int n = (int)f->fx[0];
+    for (int k = 0; k < n; k++) {
+        const float* o = f->fx + 12 + 8 * k;
+        if (fabsf(o[0] - light[0]) + fabsf(o[1] - light[1]) + fabsf(o[2] - light[2]) < 1.0f) return;
+    }
+    if (n >= STREAM_FX_LIGHTS) return;
+    memcpy(f->fx + 12 + 8 * n, light, 8 * sizeof(float));
+    f->fx[0] = (float)(n + 1);
 }
 
 static void push_ev(int kind, int reg, uint32_t len, uint64_t v)
@@ -461,7 +507,9 @@ void stream_exec(Frame* f)
     hdpack_frame(f->fade);
     gs_post_frame(f->menu);
     gs_light_sets(f->lset, f->nlset);
+    gs_fog_sets(f->fset, f->nfset, f->fx);
     gs_ao_frame(f->cam);
+    gs_ao_fog(f->aofog_ok ? f->aofog : NULL);
     for (size_t i = 0; i < f->nev; i++) {
         const Ev* e = &f->ev[i];
         int same = 0;

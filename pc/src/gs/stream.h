@@ -24,6 +24,19 @@ void     stream_submit(void);                       /* end of frame (buffer swap
 #define  STREAM_LSET 104
 #define  STREAM_LSET_MAX 4095
 uint32_t stream_light_set(const float* set);
+/* Enhanced fog: a fog set, STREAM_FSET floats (the game's fog table, 128, then its density and 3 unused;
+   gs_gl.c fs_src fog_power), into the frame; returns its number for NativeVertex.fogset (0: the table is full) */
+#define  STREAM_FSET 132
+#define  STREAM_FSET_MAX 15
+uint32_t stream_fog_set(const float* set);
+/* ... and the frame's projection and lights for the glow: STREAM_FX floats (gs_gl.c fs_src FX: row 0
+   the light count (the render thread adds the options and the scale), row 1 the projection centre and
+   kx, ky, row 2 the depth's a, b, then per light 8: view position, far range^2, colour, near range^2) */
+#define  STREAM_FX 76
+#define  STREAM_FX_LIGHTS 8
+void     stream_fog_ao(const float* set);       /* STREAM_FSET floats: the frame's first fog (ambient occlusion fades in it), any fog style */
+void     stream_fog_view(const float* proj);     /* 6 floats: centre x, y, kx, ky, a, b */
+void     stream_fog_light(const float* light);   /* 8 floats; the same position again: skipped */
 #define  STREAM_CAM 20                              /* view_glue.c pc_frame_view: the frame's camera and projection */
 void     stream_download(void* dst, uint32_t len);  /* StoreImage: waits for the pixels */
 uint64_t stream_game_frames(void);
