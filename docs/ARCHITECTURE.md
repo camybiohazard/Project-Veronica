@@ -421,8 +421,14 @@ finds a pixel's place, and the copy's depth there turned into view depth: in fro
 more than a unit and two steps of the depth (w^2 / |b|; the game's depth is 16-bit, 2.4 units at 400)
 and less than `SH_THICK` (5 units, a character's depth) more blocks the beam, eased in and out at both
 ends. The
-depth is the last image's (a moving character's shadow trails by an image) and in the current view
-(a turning camera shifts it a little). The thickness is what keeps the player from shadowing the
+depth is the last image's (a moving character's shadow trails by an image). Each point goes from
+this image's view into the view that depth was drawn in (`u_shm`, `sh_matrix`: view = world * R + T,
+so R_img^-1 R_sh and T_sh - T_img R_img^-1 R_sh) before it is projected: every image records its
+camera (`gs_image_cam`: the executed frame's from `gs_ao_frame`, an in-between image's the blend of
+the two frames' cameras at its t, as its native vertices blend linearly in view space), each depth
+copy the camera it was drawn with. Read in the current view instead, the shadows jittered while the
+third-person camera panned, by the camera's movement over one image, unevenly between executed and
+in-between images. The thickness is what keeps the player from shadowing the
 beam: in third person the player's back is in front of the beam's first stretch from the camera, a
 few units nearer (at 12 units the whole spot went dark). The spill is not shadowed. Cost at 4K
 (Prison shower room, third person, the beam over much of the picture): about 0.3-0.5 ms.

@@ -162,7 +162,7 @@ enum { V_ATEST = 1, V_TEX = 2, V_REGION = 4, V_FOG = 8, V_LIGHT = 16, NPROG = 32
 #define BEAM_STEPS 12
 #define BEAM_FWD 0.6f
 typedef struct { GLint rt_size, rt_margin, tme, tfx, tcc, fst, texsize, fge, fogcol, ate, atst, aref,
-                 tex, tex_alpha_scale, texofs, premul, zscale, clamp_mode, clamp_vals, afail_pass, rt16, lopt, mat, dith, xyofs, shd, shp, shz, shs; } ProgUni;
+                 tex, tex_alpha_scale, texofs, premul, zscale, clamp_mode, clamp_vals, afail_pass, rt16, lopt, mat, dith, xyofs, shd, shp, shz, shs, shm; } ProgUni;
 #define SH_UNIT 4   /* the texture unit of the flashlight shadows' depth (sh) */
 static GLuint progs[NPROG];
 static ProgUni pu[NPROG], *pcur = &pu[0];
@@ -231,7 +231,9 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     /* flashlight shadows (flash_shadow): the last image's depth (u_shd, ao_keep's half-size copy), the
        projection (u_shp: kx, ky, centre x, y), u_shz (zmax, depth a, b, on), u_shs (internal scale,
        rows of the copy) */
-    "uniform sampler2D u_shd; uniform vec4 u_shp, u_shz, u_shs;\n"
+    /* u_shm: this image's view to the view the depth was drawn in (rows: x, y, z of the other view
+       from (x, y, z, 1)), so a turning camera does not move the shadows */
+    "uniform sampler2D u_shd; uniform vec4 u_shp, u_shz, u_shs; uniform vec4 u_shm[3];\n"
     "#endif\n"
     "uniform vec4 u_mat;\n"
     "uniform float u_dith;\n"
@@ -286,7 +288,8 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "  ivec2 sz = textureSize(u_shd, 0); sz.y = min(sz.y, int(u_shs.y));\n"
     "  float j = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))), occ = 0.0;\n"
     "  for (int i = 0; i < SH_STEPS; i++) {\n"
-    "    vec3 x = p + d * mix(t0, t1, (float(i) + j) / float(SH_STEPS));\n"
+    "    vec4 xc = vec4(p + d * mix(t0, t1, (float(i) + j) / float(SH_STEPS)), 1.0);\n"
+    "    vec3 x = vec3(dot(u_shm[0], xc), dot(u_shm[1], xc), dot(u_shm[2], xc));\n"
     "    if (x.z < 1.0) continue;\n"
     "    vec2 sp = u_shp.zw + u_shp.xy * x.xy / x.z;\n"   /* GS pixels, as the glow finds a pixel's view position */
     "    ivec2 tc = ivec2((sp - u_xyofs.xy + vec2(u_rt_margin, 0.0)) * u_shs.x * 0.5);\n"
@@ -879,7 +882,7 @@ void gs_renderer_init(void)
 #define U(x) pu[v].x = glGetUniformLocation(progs[v], "u_" #x)
             U(rt_size); U(rt_margin); U(tme); U(tfx); U(tcc); U(fst); U(texsize); U(fge); U(fogcol); U(ate); U(atst); U(aref);
             U(tex); U(tex_alpha_scale); U(texofs); U(premul); U(zscale); U(clamp_mode); U(clamp_vals); U(afail_pass); U(rt16);
-            U(lopt); U(mat); U(dith); U(xyofs); U(shd); U(shp); U(shz); U(shs);
+            U(lopt); U(mat); U(dith); U(xyofs); U(shd); U(shp); U(shz); U(shs); U(shm);
             if (pu[v].shd >= 0) { glUseProgram(progs[v]); glUniform1i(pu[v].shd, SH_UNIT); }
             if (v & V_LIGHT) {   /* the light sets on binding point 0 (gs_light_sets) */
                 GLuint b = glGetUniformBlockIndex(progs[v], "LightSets");
@@ -1697,14 +1700,41 @@ static GLuint pretext_mask_tex;
    picture is drawn back warped from a capture, the depth is not, so it gets no AO (the AO showed
    Claire's outline beside her, on High flickering) */
 static struct { GLuint tex; int pw, ph; float zmax; int dirty, warped; } ao_src[2];
-static struct { GLuint tex, fbo; int pw, ph, ok, rows; float zmax; } ao_copy[2];
+static struct { GLuint tex, fbo; int pw, ph, ok, rows; float zmax, cam[12]; } ao_copy[2];
 /* flashlight shadows (fs_src flash_shadow): the depth is tracked for them with or without the AO;
    sh_next is the copy ao_keep made last (-1: none since sh_take), which each image takes into its own
    (sh) as it begins, so it reads one whole image's depth throughout: the copies themselves are
    remade during an image (the next replay's partial depth, or none at a replay's start) and the
    shadows flickered. The light variants read sh on texture unit SH_UNIT */
 static int sh_next = -1;
-static struct { GLuint tex, fbo; int pw, ph, rows, ok; float zmax; } sh;
+static struct { GLuint tex, fbo; int pw, ph, rows, ok; float zmax, cam[12]; } sh;
+/* the camera this image is drawn with (gs_image_cam: cam.mtx's rotation rows and translation, view =
+   world * R + T; all 0: none), and u_shm from it to sh's (sh_matrix; sh_mdirty: either changed) */
+static float img_cam[12], sh_m[12];
+static int sh_mdirty = 1;
+void gs_image_cam(const float* cam) { memcpy(img_cam, cam, sizeof(img_cam)); sh_mdirty = 1; }
+/* sh_m rows j: x_sh[j] = x . (column j of R_img^-1 R_sh) + (T_sh - T_img R_img^-1 R_sh)[j]; the identity
+   without both cameras */
+static void sh_matrix(void)
+{
+    const float *r = img_cam, *q = sh.cam;
+    float inv[9], m[9], det;
+    sh_mdirty = 0;
+    memset(sh_m, 0, sizeof(sh_m));
+    sh_m[0] = sh_m[5] = sh_m[10] = 1.0f;
+    inv[0] = r[4] * r[8] - r[5] * r[7]; inv[1] = r[2] * r[7] - r[1] * r[8]; inv[2] = r[1] * r[5] - r[2] * r[4];
+    inv[3] = r[5] * r[6] - r[3] * r[8]; inv[4] = r[0] * r[8] - r[2] * r[6]; inv[5] = r[2] * r[3] - r[0] * r[5];
+    inv[6] = r[3] * r[7] - r[4] * r[6]; inv[7] = r[1] * r[6] - r[0] * r[7]; inv[8] = r[0] * r[4] - r[1] * r[3];
+    det = r[0] * inv[0] + r[1] * inv[3] + r[2] * inv[6];
+    if (!(det > 1e-12f || det < -1e-12f) || (q[0] == 0.0f && q[1] == 0.0f && q[2] == 0.0f)) return;
+    for (int i = 0; i < 9; i++) inv[i] /= det;
+    for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++) m[i * 3 + j] = inv[i * 3] * q[j] + inv[i * 3 + 1] * q[3 + j] + inv[i * 3 + 2] * q[6 + j];
+    for (int j = 0; j < 3; j++) {
+        for (int i = 0; i < 3; i++) sh_m[j * 4 + i] = m[i * 3 + j];
+        sh_m[j * 4 + 3] = q[9 + j] - (r[9] * m[j] + r[10] * m[3 + j] + r[11] * m[6 + j]);
+    }
+}
 static float ao_cam[6];   /* kx, ky (GS pixels per unit at distance 1), depth a, b (w = -b / (Z + a)), the projection centre x, y */
 static int sh_on(void) { return g_config.flash_shadow && g_config.flashlight; }
 static GLuint cur_dt, ao_read_fbo;
@@ -1738,6 +1768,7 @@ static void ao_keep(int k)
     glBlitFramebuffer(0, 0, pw * 2, rows, 0, 0, pw, rows / 2, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
     ao_copy[k].zmax = ao_src[k].zmax;
     ao_copy[k].rows = rows / 2;
+    memcpy(ao_copy[k].cam, img_cam, sizeof(img_cam));
     ao_copy[k].ok = 1;
     sh_next = k;
 }
@@ -1765,6 +1796,8 @@ static void sh_take(void)
     glBlitFramebuffer(0, 0, sh.pw, ao_copy[k].rows, 0, 0, sh.pw, ao_copy[k].rows, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
     glBindFramebuffer(GL_FRAMEBUFFER, cur_rt ? cur_rt->fbo : 0);   /* (gs_flush binds its target again anyway) */
     sh.rows = ao_copy[k].rows; sh.zmax = ao_copy[k].zmax; sh.ok = 1;
+    memcpy(sh.cam, ao_copy[k].cam, sizeof(sh.cam));
+    sh_mdirty = 1;
 }
 static int post_menu;
 static int start_valid;
@@ -2070,6 +2103,8 @@ void gs_flush(void)
                 static GLuint bound_sh;
                 uni4f(pcur->shp, ao_cam[0], ao_cam[1], ao_cam[4], ao_cam[5]);
                 uni4f(pcur->shs, g_scale, (float)sh.rows, 0.0f, 0.0f);
+                if (sh_mdirty) sh_matrix();
+                glUniform4fv(pcur->shm, 3, sh_m);
                 if (bound_sh != sh.tex) {
                     glActiveTexture(GL_TEXTURE0 + SH_UNIT);
                     glBindTexture(GL_TEXTURE_2D, bound_sh = sh.tex);
@@ -2709,7 +2744,7 @@ void gs_ao_fog(const float* set)
     ao_fog[130] = 1.0f;
 }
 
-void gs_ao_frame(const float* cam) { ao_cam[0] = cam[12]; ao_cam[1] = cam[13]; ao_cam[2] = cam[16]; ao_cam[3] = cam[17]; ao_cam[4] = cam[14]; ao_cam[5] = cam[15]; }
+void gs_ao_frame(const float* cam) { gs_image_cam(cam); ao_cam[0] = cam[12]; ao_cam[1] = cam[13]; ao_cam[2] = cam[16]; ao_cam[3] = cam[17]; ao_cam[4] = cam[14]; ao_cam[5] = cam[15]; }
 
 /* the AO of depth (zmax: its GS range) over the display area rect of a target rt_vw x rt_vh GS
    pixels into ao_tex[1], half of vw x vh; 0 if there is none */

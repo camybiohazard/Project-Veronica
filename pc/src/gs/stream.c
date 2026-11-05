@@ -1190,6 +1190,12 @@ void stream_replay(const Frame* r, float t)
     ntex_state_save(ntex_end);
     ntex_state_restore(r->ntex_start);
     gs_replaying = 1;
+    {   /* the in-between camera: native vertices blend linearly in view space, so the blend of the two cameras */
+        const float *q = nat_prev_frame ? nat_prev_frame->cam : NULL, *c = r->cam;
+        float m[12];
+        for (int k = 0; k < 12; k++) m[k] = q && q[12] != 0.0f && c[12] != 0.0f ? q[k] + (c[k] - q[k]) * t : c[k];
+        gs_image_cam(m);
+    }
     gs_replay_begin();
     int in_def = 0;
     gs_tex_epoch = 0;

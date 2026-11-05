@@ -103,6 +103,7 @@ void gs_post_frame(int menu);   /* stream_exec: the frame runs a menu task (no b
 void gs_light_sets(const float* sets, size_t n);
 void gs_fog_sets(const float* sets, size_t n, const float* fx);   /* Enhanced fog: the executed frame's fog sets (stream.h STREAM_FSET floats each) and its lights (STREAM_FX) */
 void gs_ao_fog(const float* set);     /* stream_exec: the frame's first fog (stream.h STREAM_FSET), NULL none: the AO fades in it */
+void gs_image_cam(const float* cam);   /* stream_replay: the in-between image's camera (12 floats of stream.h STREAM_CAM); gs_ao_frame sets the executed frame's */
 void gs_ao_frame(const float* cam);   /* stream_exec: the frame's projection and depth a, b (stream.h STREAM_CAM) */   /* stream_exec: the frame's per-pixel light sets (stream.h STREAM_LSET) */
 uint64_t gs_present(const struct Frame* cur, float t);   /* returns the swap's blocking time (ns) */
 int gs_gpu_ready(uint64_t wait_ns);   /* at most the last executed frame or image still on the GPU (waits up to wait_ns) */
