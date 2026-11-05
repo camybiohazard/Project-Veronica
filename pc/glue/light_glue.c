@@ -252,6 +252,15 @@ uint32_t pc_light_set(int color_mode)
     return stream_light_set(s);
 }
 
+/* Enhanced fog's flashlight beam (fog_glue.c): this frame's flashlight (16 floats, as in the light
+   sets, from texel 22); returns whether it shines */
+int pc_flash_light(float* out)
+{
+    if (!flash_made) flash_make();
+    memcpy(out, flash, sizeof(flash));
+    return flash[3] > 0.0f;
+}
+
 /* Enhanced fog's light glow (fog_glue.c): the current lighting's point lights that are on, 8 floats
    each (view position, far range^2, colour, near range^2), at most max; returns the count */
 int pc_light_points(float* out, int max)

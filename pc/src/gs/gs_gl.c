@@ -154,8 +154,16 @@ enum { V_ATEST = 1, V_TEX = 2, V_REGION = 4, V_FOG = 8, V_LIGHT = 16, NPROG = 32
    view ray to the pixel, over the fog's distance (the density, about its far range), times FOG_GLOW
    and the pixel's share of fog (30% + 70% of it) */
 #define FOG_GLOW 0.15f
+/* ... flashlight beam (fog_beam): the beam's light (as fs_src light_sum's, without the spill) taken
+   at BEAM_STEPS points along the view ray where it is within the beam's range and ahead of the light
+   (moved by a per-pixel fraction of a step, so the steps do not band), forward scattering brighter
+   (BEAM_FWD: looking into the beam), over the fog's distance, times FOG_BEAM and the fog's share there */
+#define FOG_BEAM 1.2f
+#define BEAM_STEPS 12
+#define BEAM_FWD 0.6f
 typedef struct { GLint rt_size, rt_margin, tme, tfx, tcc, fst, texsize, fge, fogcol, ate, atst, aref,
-                 tex, tex_alpha_scale, texofs, premul, zscale, clamp_mode, clamp_vals, afail_pass, rt16, lopt, mat, dith, xyofs; } ProgUni;
+                 tex, tex_alpha_scale, texofs, premul, zscale, clamp_mode, clamp_vals, afail_pass, rt16, lopt, mat, dith, xyofs, shd, shp, shz, shs; } ProgUni;
+#define SH_UNIT 4   /* the texture unit of the flashlight shadows' depth (sh) */
 static GLuint progs[NPROG];
 static ProgUni pu[NPROG], *pcur = &pu[0];
 static int lsets_n;            /* the executed frame's light sets (gs_light_sets): none, no vertex refers to one */
@@ -196,13 +204,13 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "in vec3 v_stq; in vec4 v_col; in float v_fog;\n"
     "in vec3 v_vpos; in vec3 v_nrm; in float v_nlen; flat in int v_light; flat in int v_fogset;\n"
     "uniform sampler2D u_tex;\n"
-    "#if FOG\n"   /* the fog sets (gs_fog_sets): 33 vec4 each, set id at (id - 1) * 33: the table, then the density */
-    "layout(std140) uniform FogSets { vec4 u_fs[FS_SETS * 33 + 19]; };\n"
     "uniform float u_rt_margin; uniform float u_zscale; uniform vec4 u_xyofs;\n"
+    "#if FOG\n"   /* the fog sets (gs_fog_sets): 33 vec4 each, set id at (id - 1) * 33: the table, then the density */
+    "layout(std140) uniform FogSets { vec4 u_fs[FS_SETS * 33 + 23]; };\n"
     "float fog_tbl(int id, int i){ return u_fs[(id - 1) * 33 + (i >> 2)][i & 3]; }\n"
     /* the frame's (stream.h STREAM_FX): 0 (light count, glow on, Enhanced on, the internal scale),
        1 (projection centre x, y, kx, ky), 2 (depth a, b), per light k 3 + 2k (view position, far^2)
-       and 4 + 2k (colour, near^2) */
+       and 4 + 2k (colour, near^2), the flashlight 19..22 (as the light sets' 22..25; 19.w 0: off) */
     "#define FX(i) u_fs[FS_SETS * 33 + (i)]\n"
     /* ps2_NaFog.c njCalcFogPowerEx at the pixel (iz: 1 / view depth): the table read at density * iz,
        by the float's exponent and the top 4 bits of its mantissa, linear between neighbours */
@@ -220,6 +228,10 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "#if LIGHT\n"   /* the light sets (gs_light_sets): 26 vec4 each, set id at id * 26 (set 0 unused) */
     "layout(std140) uniform LightSets { vec4 u_ls[LS_VEC4]; };\n"
     "#define LS(t, id) u_ls[(id) * 26 + (t)]\n"
+    /* flashlight shadows (flash_shadow): the last image's depth (u_shd, ao_keep's half-size copy), the
+       projection (u_shp: kx, ky, centre x, y), u_shz (zmax, depth a, b, on), u_shs (internal scale,
+       rows of the copy) */
+    "uniform sampler2D u_shd; uniform vec4 u_shp, u_shz, u_shs;\n"
     "#endif\n"
     "uniform vec4 u_mat;\n"
     "uniform float u_dith;\n"
@@ -261,6 +273,34 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "  if (dot(nn, l) <= 0.0) return vec3(0.0);\n"
     "  return vec3(pow(max(dot(nn, h), 0.0), u_mat.y > 0.0 ? u_mat.x : WET_SHINE) * (0.3 + 0.7 * pow(1.0 - max(dot(v, h), 0.0), 5.0)));\n"
     "}\n"
+    /* flashlight shadows: SH_STEPS points from the pixel p to the light lp (from a little off the
+       surface, stopping short of the light: the hand and gun), each projected onto the last image's
+       depth; one with the scene in front of it, by more than the depth's precision and less than
+       SH_THICK more (a character's depth, not a wall far in front), is blocked, eased in and out at
+       both ends. Moved by a per-pixel fraction of a step (the dithering's noise) */
+    "const int SH_STEPS = 16; const float SH_THICK = 5.0, SH_NEAR = 11.0;\n"
+    "float flash_shadow(vec3 p, vec3 lp){\n"
+    "  vec3 d = lp - p; float len = length(d);\n"
+    "  float t0 = min(1.5, 0.2 * len) / len, t1 = 1.0 - SH_NEAR / len;\n"
+    "  if (t1 <= t0) return 1.0;\n"
+    "  ivec2 sz = textureSize(u_shd, 0); sz.y = min(sz.y, int(u_shs.y));\n"
+    "  float j = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))), occ = 0.0;\n"
+    "  for (int i = 0; i < SH_STEPS; i++) {\n"
+    "    vec3 x = p + d * mix(t0, t1, (float(i) + j) / float(SH_STEPS));\n"
+    "    if (x.z < 1.0) continue;\n"
+    "    vec2 sp = u_shp.zw + u_shp.xy * x.xy / x.z;\n"   /* GS pixels, as the glow finds a pixel's view position */
+    "    ivec2 tc = ivec2((sp - u_xyofs.xy + vec2(u_rt_margin, 0.0)) * u_shs.x * 0.5);\n"
+    "    if (tc.x < 0 || tc.y < 0 || tc.x >= sz.x || tc.y >= sz.y) continue;\n"
+    "    float dz = texelFetch(u_shd, tc, 0).r;\n"
+    "    if (dz <= 0.0) continue;\n"
+    /* x's depth less the scene's (w = -b / (Z + a)); bias: a unit and two steps of the depth there
+       (w^2 / |b|: 16-bit depth, 2.4 units at 400), the band as thick again (the hits came and went
+       with the steps at the fixed cameras' distances) */
+    "    float gap = x.z + u_shz.z / (dz * u_shz.x + u_shz.y), bias = 1.0 + 2.0 * x.z * x.z / abs(u_shz.z), th = SH_THICK + bias;\n"
+    "    occ = max(occ, smoothstep(bias, 2.0 * bias, gap) * (1.0 - smoothstep(th - 2.0, th, gap)));\n"
+    "  }\n"
+    "  return 1.0 - occ;\n"
+    "}\n"
     "vec3 light_sum(int id, vec3 p, vec3 n, float wet, inout vec3 spec, inout vec3 fl){\n"
     "  int nl = int(LS(0, id).y);\n"
     "  vec3 s = vec3(0.0), nn = normalize(n), v = normalize(-p);\n"
@@ -294,6 +334,7 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "      float t = (1.0 - r / fb.w) * 4.0, sp = clamp(1.0 - r / fd.w, 0.0, 1.0);\n"   /* beam, spill */
     "      float beam = smoothstep(fd.y, fd.x, dot(-d * il, fb.xyz)) * min(1.0, fc.w / d2);\n"
     "      if (t < 1.0) beam *= t * t * (3.0 - 2.0 * t);\n"
+    "      if (beam > 0.002 && u_shz.w > 0.0) beam *= flash_shadow(p, fa.xyz);\n"
     "      if (f > 0.0) fl += f * (beam + fd.z * sp * sp) * fc.rgb;\n"
     "      if (wet > 0.0) spec += beam * fc.rgb * shine(nn, d * il, v);\n"
     "    }\n"
@@ -385,21 +426,59 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     /* glow: per light, the integral of near^2 / (h^2 + (s - s0)^2) for s 0..L along the ray to the
        pixel, whose view position comes from its GS depth (w = -b / (Z + a)) and its place (the
        projection native_glue.c uses), whichever way it was drawn */
-    "      if (fx0.y > 0.0 && fx0.w > 0.0) {\n"
+    "      vec4 fa = FX(19);\n"   /* the flashlight: position, on */
+    "      if ((fx0.y > 0.0 || fa.w > 0.0) && fx0.w > 0.0) {\n"
     "        vec4 pj = FX(1), dz = FX(2);\n"
     "        float vz = abs(gl_FragCoord.w - 1.0) > 1e-5 ? 1.0 / gl_FragCoord.w : -dz.y / (gl_FragCoord.z / u_zscale + dz.x);\n"   /* w is the view depth, unless a GS-path draw (w 1) */
     "        vec2 sp = gl_FragCoord.xy / fx0.w - vec2(u_rt_margin, 0.0) + u_xyofs.xy - pj.xy;\n"
     "        vec3 p = vec3(sp.x * vz / pj.z, sp.y * vz / pj.w, vz);\n"
     "        float L = length(p), dd = u_fs[(id - 1) * 33 + 32].x;\n"
     "        vec3 dir = p / max(L, 0.001), g = vec3(0.0);\n"
-    "        for (int k = 0; k < int(fx0.x); k++) {\n"
+    "        for (int k = 0; fx0.y > 0.0 && k < int(fx0.x); k++) {\n"
     "          vec4 a = FX(3 + 2 * k), b = FX(4 + 2 * k);\n"
     "          float s0 = dot(dir, a.xyz), h2 = max(dot(a.xyz, a.xyz) - s0 * s0, b.w + 1.0), h = sqrt(h2);\n"
     "          if (h2 >= a.w) continue;\n"   /* the ray passes beyond its far range */
     "          float win = 1.0 - h2 / a.w;\n"
     "          g += b.rgb * (b.w * (atan((L - s0) / h) + atan(s0 / h)) / h) * win * win;\n"
     "        }\n"
-    "        if (vz > 0.0) c.rgb = min(c.rgb + g * (255.0 * FOG_GLOW * (0.3 + 0.7 * te) / max(dd, 1.0)), vec3(255.0));\n"
+    "        g *= FOG_GLOW * (0.3 + 0.7 * te);\n"
+    /* the beam: the ray's stretch s0..s1 within its range (a sphere about the light) and ahead of it
+       (s dir.D > A.D), then the steps */
+    "        if (fa.w > 0.0) {\n"
+    "          vec4 fb = FX(20), fk = FX(21), fd = FX(22);\n"
+    "          float sa = dot(dir, fa.xyz), disc = sa * sa - dot(fa.xyz, fa.xyz) + fb.w * fb.w;\n"
+    "          float dd2 = dot(dir, fb.xyz), off = dot(fa.xyz, fb.xyz), r = sqrt(max(disc, 0.0));\n"
+    "          float s0 = max(sa - r, 0.0), s1 = disc > 0.0 ? min(sa + r, L) : 0.0;\n"
+    "          if (dd2 > 0.0) s0 = max(s0, off / dd2); else if (dd2 < 0.0) s1 = min(s1, off / dd2); else if (off >= 0.0) s1 = 0.0;\n"
+    /* ... and within the cone: (v.D)^2 >= cos^2 |v|^2 for v = s dir - A, a quadratic in s; inside
+       between its roots (qa < 0), or outside them (one side is the cone behind the light, cut above) */
+    "          float c2 = fd.y * fd.y, qa = dd2 * dd2 - c2, qb = 2.0 * (c2 * sa - dd2 * off), qc = off * off - c2 * dot(fa.xyz, fa.xyz);\n"
+    "          float qd = qb * qb - 4.0 * qa * qc;\n"
+    "          if (abs(qa) < 1e-6) ;\n"
+    "          else if (qd < 0.0) { if (qa < 0.0) s1 = 0.0; }\n"
+    "          else {\n"
+    "            float rq = sqrt(qd), r1 = (-qb - rq) / (2.0 * qa), r2 = (-qb + rq) / (2.0 * qa);\n"
+    "            if (r1 > r2) { float tt = r1; r1 = r2; r2 = tt; }\n"
+    "            if (qa < 0.0) { s0 = max(s0, r1); s1 = min(s1, r2); }\n"
+    "            else { bool lo = min(s1, r1) > s0, hi = s1 > max(s0, r2);\n"
+    "              if (lo && !hi) s1 = min(s1, r1); else if (hi && !lo) s0 = max(s0, r2); else if (!lo) s1 = 0.0; }\n"
+    "          }\n"
+    "          if (s1 > s0) {\n"
+    "            float ds = (s1 - s0) / float(BEAM_STEPS), j = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))), acc = 0.0;\n"
+    "            for (int i = 0; i < BEAM_STEPS; i++) {\n"
+    "              vec3 x = dir * (s0 + (float(i) + j) * ds) - fa.xyz;\n"
+    "              float d2 = max(dot(x, x), 1e-4), il = inversesqrt(d2);\n"
+    "              float w = smoothstep(fd.y, fd.x, dot(x, fb.xyz) * il) * min(1.0, fk.w / d2);\n"
+    "              float t = (1.0 - d2 * il / fb.w) * 4.0;\n"
+    "              if (t < 1.0) w *= t * t * (3.0 - 2.0 * t);\n"
+    "              acc += w * (1.0 + BEAM_FWD * dot(x * il, -dir));\n"
+    "            }\n"
+    "            float tb = te;\n"   /* the fog's share midway along the stretch */
+    "            if (v_fogset > 0) tb = pow(clamp(1.0 - fog_power(v_fogset, 1.0 / max(0.5 * (s0 + s1) * dir.z, 1.0)) / 255.0, 0.0, 1.0), FOG_CURVE);\n"
+    "            g += fk.rgb * (acc * ds * FOG_BEAM * (0.3 + 0.7 * tb));\n"
+    "          }\n"
+    "        }\n"
+    "        if (vz > 0.0) c.rgb = min(c.rgb + g * (255.0 / max(dd, 1.0)), vec3(255.0));\n"
     "      }\n"
     "    } else c.rgb = (f * c.rgb + (255.0 - f) * fc) / 256.0;\n"
     "  }\n"
@@ -791,16 +870,17 @@ void gs_renderer_init(void)
             if ((v & V_REGION) && !(v & V_TEX)) continue;   /* (the region is the texture's) */
             if (SDL_snprintf(fs, sizeof(fs), "#version 330 core\n#define ATEST %d\n#define TEX %d\n#define REGION %d\n#define FOG %d\n#define LIGHT %d\n#define LS_VEC4 %d\n"
                              "#define FS_SETS %d\n#define FOG_CURVE %.2f\n#define FOG_SAT %.2f\n#define FOG_LIGHT0 %.2f\n#define FOG_LIGHT1 %.2f\n"
-                             "#define FOG_GLOW %.3f\n%s",
+                             "#define FOG_GLOW %.3f\n#define FOG_BEAM %.3f\n#define BEAM_STEPS %d\n#define BEAM_FWD %.3f\n%s",
                              !!(v & V_ATEST), !!(v & V_TEX), !!(v & V_REGION), !!(v & V_FOG), !!(v & V_LIGHT), ls_vec4,
-                             STREAM_FSET_MAX, FOG_CURVE, FOG_SAT, FOG_LIGHT0, FOG_LIGHT1, FOG_GLOW, fs_src) >= (int)sizeof(fs))
+                             STREAM_FSET_MAX, FOG_CURVE, FOG_SAT, FOG_LIGHT0, FOG_LIGHT1, FOG_GLOW, FOG_BEAM, BEAM_STEPS, BEAM_FWD, fs_src) >= (int)sizeof(fs))
                 host_fatal("gs: fragment shader source too long");
             progs[v] = compile(vs_src, fs);
             n++;
 #define U(x) pu[v].x = glGetUniformLocation(progs[v], "u_" #x)
             U(rt_size); U(rt_margin); U(tme); U(tfx); U(tcc); U(fst); U(texsize); U(fge); U(fogcol); U(ate); U(atst); U(aref);
             U(tex); U(tex_alpha_scale); U(texofs); U(premul); U(zscale); U(clamp_mode); U(clamp_vals); U(afail_pass); U(rt16);
-            U(lopt); U(mat); U(dith); U(xyofs);
+            U(lopt); U(mat); U(dith); U(xyofs); U(shd); U(shp); U(shz); U(shs);
+            if (pu[v].shd >= 0) { glUseProgram(progs[v]); glUniform1i(pu[v].shd, SH_UNIT); }
             if (v & V_LIGHT) {   /* the light sets on binding point 0 (gs_light_sets) */
                 GLuint b = glGetUniformBlockIndex(progs[v], "LightSets");
                 if (b != GL_INVALID_INDEX) glUniformBlockBinding(progs[v], b, 0);
@@ -1617,7 +1697,16 @@ static GLuint pretext_mask_tex;
    picture is drawn back warped from a capture, the depth is not, so it gets no AO (the AO showed
    Claire's outline beside her, on High flickering) */
 static struct { GLuint tex; int pw, ph; float zmax; int dirty, warped; } ao_src[2];
-static struct { GLuint tex, fbo; int pw, ph, ok; float zmax; } ao_copy[2];
+static struct { GLuint tex, fbo; int pw, ph, ok, rows; float zmax; } ao_copy[2];
+/* flashlight shadows (fs_src flash_shadow): the depth is tracked for them with or without the AO;
+   sh_next is the copy ao_keep made last (-1: none since sh_take), which each image takes into its own
+   (sh) as it begins, so it reads one whole image's depth throughout: the copies themselves are
+   remade during an image (the next replay's partial depth, or none at a replay's start) and the
+   shadows flickered. The light variants read sh on texture unit SH_UNIT */
+static int sh_next = -1;
+static struct { GLuint tex, fbo; int pw, ph, rows, ok; float zmax; } sh;
+static float ao_cam[6];   /* kx, ky (GS pixels per unit at distance 1), depth a, b (w = -b / (Z + a)), the projection centre x, y */
+static int sh_on(void) { return g_config.flash_shadow && g_config.flashlight; }
 static GLuint cur_dt, ao_read_fbo;
 static uint32_t mat_hl;   /* the material picker's highlighted texture (gs_mat_highlight) */
 #define GL_NONE 0
@@ -1648,7 +1737,34 @@ static void ao_keep(int k)
     glDepthMask(GL_TRUE);
     glBlitFramebuffer(0, 0, pw * 2, rows, 0, 0, pw, rows / 2, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
     ao_copy[k].zmax = ao_src[k].zmax;
+    ao_copy[k].rows = rows / 2;
     ao_copy[k].ok = 1;
+    sh_next = k;
+}
+/* an image begins: the last copy into sh (flash_shadow) */
+static void sh_take(void)
+{
+    int k = sh_next;
+    if (!sh_on() || k < 0 || !ao_copy[k].ok) return;
+    sh_next = -1;
+    if (!sh.tex || sh.pw != ao_copy[k].pw || sh.ph != ao_copy[k].ph) {
+        if (!sh.tex) { glGenTextures(1, &sh.tex); glGenFramebuffers(1, &sh.fbo); }
+        glBindTexture(GL_TEXTURE_2D, sh.tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, ao_copy[k].pw, ao_copy[k].ph, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glBindFramebuffer(GL_FRAMEBUFFER, sh.fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, sh.tex, 0);
+        glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
+        sh.pw = ao_copy[k].pw; sh.ph = ao_copy[k].ph;
+    }
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, ao_copy[k].fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, sh.fbo);
+    glDisable(GL_SCISSOR_TEST);
+    glDepthMask(GL_TRUE);
+    glBlitFramebuffer(0, 0, sh.pw, ao_copy[k].rows, 0, 0, sh.pw, ao_copy[k].rows, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_FRAMEBUFFER, cur_rt ? cur_rt->fbo : 0);   /* (gs_flush binds its target again anyway) */
+    sh.rows = ao_copy[k].rows; sh.zmax = ao_copy[k].zmax; sh.ok = 1;
 }
 static int post_menu;
 static int start_valid;
@@ -1748,6 +1864,7 @@ static GLuint replay_capture_for(GLuint t)
 
 void gs_replay_begin(void)
 {
+    sh_take();
     rcap[0].live = rcap[1].live = 0;
     pretext[1].valid = 0;
     ao_src[1].tex = 0; ao_src[1].dirty = 0; ao_src[1].warped = 0; ao_copy[1].ok = 0;
@@ -1945,7 +2062,21 @@ void gs_flush(void)
             (batch_native3d && lsets_n ? V_LIGHT : 0);
         pcur = &pu[v];
         glUseProgram(progs[v]);
-        if (v & V_LIGHT) uni4f(pcur->lopt, lopt[0], lopt[1], lopt[2], lopt[3]);
+        if (v & V_LIGHT) {
+            int on = sh_on() && sh.ok && ao_cam[3] != 0.0f;
+            uni4f(pcur->lopt, lopt[0], lopt[1], lopt[2], lopt[3]);
+            uni4f(pcur->shz, on ? sh.zmax : 0.0f, ao_cam[2], ao_cam[3], on ? 1.0f : 0.0f);
+            if (on) {   /* flashlight shadows: the last image's depth */
+                static GLuint bound_sh;
+                uni4f(pcur->shp, ao_cam[0], ao_cam[1], ao_cam[4], ao_cam[5]);
+                uni4f(pcur->shs, g_scale, (float)sh.rows, 0.0f, 0.0f);
+                if (bound_sh != sh.tex) {
+                    glActiveTexture(GL_TEXTURE0 + SH_UNIT);
+                    glBindTexture(GL_TEXTURE_2D, bound_sh = sh.tex);
+                    glActiveTexture(GL_TEXTURE0);
+                }
+            }
+        }
     }
     clip_distances(1);
     uni2f(pcur->rt_size, (float)cur_rt->vw, (float)cur_rt->vh);
@@ -1964,7 +2095,7 @@ void gs_flush(void)
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(zte ? zf[ztst] : GL_ALWAYS);
         glDepthMask(zmsk ? GL_FALSE : GL_TRUE);
-        if (g_config.ao > 0 && !(g_config.ao == AO_LOW && gs_replaying) && zte && !zmsk && cur_rt->vw >= 640 && cur_rt->vh >= 448) {   /* ambient occlusion: the 3D depth (Low: the executed frame's only) */
+        if ((g_config.ao > 0 || sh_on()) && !(g_config.ao == AO_LOW && gs_replaying && !sh_on()) && zte && !zmsk && cur_rt->vw >= 640 && cur_rt->vh >= 448) {   /* ambient occlusion: the 3D depth (Low: the executed frame's only; every image's for the flashlight shadows) */
             int k = gs_replaying ? 1 : 0;
             if (nsruns || (vcount && vbuf[0].w != 1.0f)) {   /* native 3D (homogeneous positions) */
                 uint32_t zpsm = (st->ctx.zbuf >> 24) & 0xF;
@@ -2484,6 +2615,7 @@ void gs_fog_sets(const float* sets, size_t n, const float* fx)
     x[1] = g_config.fog_glow ? 1.0f : 0.0f;
     x[2] = n && g_config.fog_style == 1 ? 1.0f : 0.0f;   /* a frame without fog sets: every draw as the original */
     x[3] = g_scale;
+    if (!g_config.fog_beam) x[79] = 0.0f;   /* the flashlight's on: no beam */
     glBindBuffer(GL_UNIFORM_BUFFER, ubo);
     glBufferData(GL_UNIFORM_BUFFER, size, NULL, GL_STREAM_DRAW);   /* orphaned, as gs_light_sets */
     glBufferSubData(GL_UNIFORM_BUFFER, 0, (GLsizeiptr)(n * STREAM_FSET * sizeof(float)), sets);
@@ -2565,7 +2697,6 @@ static int bloom_chain(GLuint tex, GLuint pre, const float rect[4], int vw, int 
 /* ambient occlusion: the frame's projection (gs_ao_frame) and the half-size AO and its blur */
 static GLuint ao_tex[2], ao_fbo[2], ao_prog, ao_blur_prog;
 static int ao_w[2], ao_h[2];
-static float ao_cam[4];   /* kx, ky (GS pixels per unit at distance 1), depth a, b (w = -b / (Z + a)) */
 static GLint ua_depth, ua_rect, ua_aoz, ua_aok, ua_aofog, ub_tex, ub_texel;
 static float ao_fog[33 * 4];   /* the frame's fog for the AO (gs_ao_fog), [130] 0: none */
 
@@ -2578,7 +2709,7 @@ void gs_ao_fog(const float* set)
     ao_fog[130] = 1.0f;
 }
 
-void gs_ao_frame(const float* cam) { ao_cam[0] = cam[12]; ao_cam[1] = cam[13]; ao_cam[2] = cam[16]; ao_cam[3] = cam[17]; }
+void gs_ao_frame(const float* cam) { ao_cam[0] = cam[12]; ao_cam[1] = cam[13]; ao_cam[2] = cam[16]; ao_cam[3] = cam[17]; ao_cam[4] = cam[14]; ao_cam[5] = cam[15]; }
 
 /* the AO of depth (zmax: its GS range) over the display area rect of a target rt_vw x rt_vh GS
    pixels into ao_tex[1], half of vw x vh; 0 if there is none */
@@ -2629,14 +2760,136 @@ static GLuint fsr_src_tex, fsr_src_fbo, fsr_mid_tex, fsr_mid_fbo, fsr_easu, fsr_
 static int fsr_src_w, fsr_src_h, fsr_mid_w, fsr_mid_h;
 static GLint uf_tex, uf_con, ur_tex, ur_rc;
 
+/* SMAA 1x (g_config.smaa; Jimenez et al., SMAA.hlsl built as GLSL 3.30, the Ultra preset: its edge
+   threshold of 0.05 of the luma, as High's 0.1 missed most edges of this dark game): the
+   post-processed picture at the internal resolution (smaa_in) -> luma edges (smaa_edge) ->
+   blending weights from the area and search tables (smaa_wgt) -> neighbourhood blending
+   (smaa_out), which FSR or a plain scale (copy_fs) takes to the window. The tables are read at the
+   coordinates SMAA works out, so OpenGL's bottom-up rows change nothing: the picture is
+   anti-aliased upside down, which is the same. */
+#ifndef GL_RG8
+#define GL_RG8 0x822B
+#define GL_RG 0x8227
+#endif
+#include "AreaTex.h"
+#include "SearchTex.h"
+#include "smaa_hlsl.h"
+static GLuint smaa_in_tex, smaa_in_fbo, smaa_edge_tex, smaa_edge_fbo, smaa_wgt_tex, smaa_wgt_fbo, smaa_out_tex, smaa_out_fbo;
+static int smaa_in_w, smaa_in_h, smaa_edge_w, smaa_edge_h, smaa_wgt_w, smaa_wgt_h, smaa_out_w, smaa_out_h;
+static GLuint smaa_area, smaa_search, smaa_prog[3], copy_prog;
+static GLint us_metrics[3], uc_tex;
+/* each pass's vertex and pixel shader main(), after SMAA.hlsl */
+static const char* const smaa_main[3][2] = {
+    { "out vec2 v_uv; out vec4 v_off[3];\n"
+      "void main(){ vec2 c = vec2(gl_VertexID & 1, gl_VertexID >> 1); v_uv = c; gl_Position = vec4(c * 2.0 - 1.0, 0.0, 1.0); SMAAEdgeDetectionVS(v_uv, v_off); }\n",
+      "in vec2 v_uv; in vec4 v_off[3]; uniform sampler2D u_color; out vec4 o;\n"
+      "void main(){ o = vec4(SMAALumaEdgeDetectionPS(v_uv, v_off, u_color), 0.0, 0.0); }\n" },
+    { "out vec2 v_uv; out vec2 v_pix; out vec4 v_off[3];\n"
+      "void main(){ vec2 c = vec2(gl_VertexID & 1, gl_VertexID >> 1); v_uv = c; gl_Position = vec4(c * 2.0 - 1.0, 0.0, 1.0); SMAABlendingWeightCalculationVS(v_uv, v_pix, v_off); }\n",
+      "in vec2 v_uv; in vec2 v_pix; in vec4 v_off[3]; uniform sampler2D u_edges, u_area, u_search; out vec4 o;\n"
+      "void main(){ o = SMAABlendingWeightCalculationPS(v_uv, v_pix, v_off, u_edges, u_area, u_search, vec4(0.0)); }\n" },
+    { "out vec2 v_uv; out vec4 v_off;\n"
+      "void main(){ vec2 c = vec2(gl_VertexID & 1, gl_VertexID >> 1); v_uv = c; gl_Position = vec4(c * 2.0 - 1.0, 0.0, 1.0); SMAANeighborhoodBlendingVS(v_uv, v_off); }\n",
+      "in vec2 v_uv; in vec4 v_off; uniform sampler2D u_color, u_blend; out vec4 o;\n"
+      "void main(){ o = SMAANeighborhoodBlendingPS(v_uv, v_off, u_color, u_blend); }\n" },
+};
+static const char* copy_fs =
+    "#version 330 core\n"
+    "in vec2 v_uv; uniform sampler2D u_tex; out vec4 o;\n"
+    "void main(){ o = vec4(texture(u_tex, v_uv).rgb, 1.0); }\n";
+
+static void smaa_init(void)
+{
+    static const char* const samplers[3][3] = { { "u_color" }, { "u_edges", "u_area", "u_search" }, { "u_color", "u_blend" } };
+    size_t n = sizeof(smaa_hlsl) - 1, at = 0;
+    char* body = SDL_malloc(n + 1);
+    for (size_t i = 0; i < n; i++) {   /* the file's few Latin-1 bytes (in comments) and CRs are no GLSL */
+        unsigned char ch = (unsigned char)smaa_hlsl[i];
+        if (ch != '\r') body[at++] = ch < 128 ? (char)ch : ' ';
+    }
+    body[at] = 0;
+    for (int p = 0; p < 3; p++) {
+        char* src[2];
+        for (int s = 0; s < 2; s++) {
+            size_t len = at + 512 + SDL_strlen(smaa_main[p][s]);
+            src[s] = SDL_malloc(len);
+            SDL_snprintf(src[s], len, "#version 330 core\nuniform vec4 u_metrics;\n#define SMAA_RT_METRICS u_metrics\n#define SMAA_GLSL_3\n"
+                         "#define SMAA_PRESET_ULTRA\n#define SMAA_INCLUDE_VS %d\n#define SMAA_INCLUDE_PS %d\n%s\n%s", s == 0, s == 1, body, smaa_main[p][s]);
+        }
+        smaa_prog[p] = compile(src[0], src[1]);
+        SDL_free(src[0]); SDL_free(src[1]);
+        glUseProgram(smaa_prog[p]);
+        us_metrics[p] = glGetUniformLocation(smaa_prog[p], "u_metrics");
+        for (int t = 0; t < 3 && samplers[p][t]; t++) glUniform1i(glGetUniformLocation(smaa_prog[p], samplers[p][t]), t);
+    }
+    SDL_free(body);
+    copy_prog = compile(quad_vs, copy_fs);
+    uc_tex = glGetUniformLocation(copy_prog, "u_tex");
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glGenTextures(1, &smaa_area);
+    glBindTexture(GL_TEXTURE_2D, smaa_area);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, AREATEX_WIDTH, AREATEX_HEIGHT, 0, GL_RG, GL_UNSIGNED_BYTE, areaTexBytes);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glGenTextures(1, &smaa_search);
+    glBindTexture(GL_TEXTURE_2D, smaa_search);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, searchTexBytes);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);   /* read point-sampled, as SMAA's PointSampler */
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+}
+
+/* smaa_in (w x h) -> smaa_out; the edges and weights are cleared first: SMAA discards where it finds none */
+static void smaa_run(int w, int h)
+{
+    const float m[4] = { 1.0f / w, 1.0f / h, (float)w, (float)h };
+    if (!smaa_prog[0]) smaa_init();
+    ensure_target_fmt(&smaa_edge_tex, &smaa_edge_fbo, &smaa_edge_w, &smaa_edge_h, w, h, GL_RGBA8);
+    ensure_target_fmt(&smaa_wgt_tex, &smaa_wgt_fbo, &smaa_wgt_w, &smaa_wgt_h, w, h, GL_RGBA8);
+    ensure_target_fmt(&smaa_out_tex, &smaa_out_fbo, &smaa_out_w, &smaa_out_h, w, h, GL_RGB10_A2);
+    glViewport(0, 0, w, h);
+    glClearColor(0, 0, 0, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, smaa_edge_fbo);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glUseProgram(smaa_prog[0]);
+    glUniform4fv(us_metrics[0], 1, m);
+    glBindTexture(GL_TEXTURE_2D, smaa_in_tex);
+    glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
+    glBindFramebuffer(GL_FRAMEBUFFER, smaa_wgt_fbo);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glUseProgram(smaa_prog[1]);
+    glUniform4fv(us_metrics[1], 1, m);
+    glBindTexture(GL_TEXTURE_2D, smaa_edge_tex);
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindTexture(GL_TEXTURE_2D, smaa_area);
+    glActiveTexture(GL_TEXTURE0 + 2);
+    glBindTexture(GL_TEXTURE_2D, smaa_search);
+    glActiveTexture(GL_TEXTURE0);
+    glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
+    glBindFramebuffer(GL_FRAMEBUFFER, smaa_out_fbo);
+    glUseProgram(smaa_prog[2]);
+    glUniform4fv(us_metrics[2], 1, m);
+    glBindTexture(GL_TEXTURE_2D, smaa_in_tex);
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindTexture(GL_TEXTURE_2D, smaa_wgt_tex);
+    glActiveTexture(GL_TEXTURE0);
+    glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
+    glClearColor(0, 0, 0, 1);
+}
+
 /* the 640x480 display area of a render-target texture to the window; bloom from pre (the same
    target before its text, pretext_for) if not 0; replay: an in-between image (its AO from the
    replay's depth, else the executed frame's copy). With FSR upscaling and a display area smaller
    than its place in the window, the post-processing runs at the internal resolution and FSR
-   brings it to the window. */
+   brings it to the window. With SMAA it runs at the internal resolution too, and SMAA works on
+   that (smaa_run) before FSR or a plain scale to the window; movies are left as they are. */
 static void draw_display(GLuint tex, int rt_vw, int rt_vh, GLuint pre, int replay)
 {
-    int ww, wh, vx = 0, vy = 0, vw = 0, vh = 0, levels = 0, ao_on = 0, fsr = 0, pw = 0, ph = 0;
+    int ww, wh, vx = 0, vy = 0, vw = 0, vh = 0, levels = 0, ao_on = 0, fsr = 0, smaa = 0, pw = 0, ph = 0;
     float dw = 640.0f, dh = 480.0f, rect[4] = { 0, 0, 1, 1 };
     SDL_GetWindowSizeInPixels(g_window, &ww, &wh);
     if (tex) {
@@ -2647,6 +2900,10 @@ static void draw_display(GLuint tex, int rt_vw, int rt_vh, GLuint pre, int repla
         pw = vw; ph = vh;   /* the size the picture is post-processed at */
         if (g_config.fsr > 0 && (int)(dh * g_scale + 0.5f) < vh) {
             fsr = 1;
+            pw = (int)(dw * g_scale + 0.5f); ph = (int)(dh * g_scale + 0.5f);
+        }
+        if (g_config.smaa > 0 && !post_movie) {
+            smaa = 1;
             pw = (int)(dw * g_scale + 0.5f); ph = (int)(dh * g_scale + 0.5f);
         }
         if (pre) {   /* which tiles of pre hold the picture before the text */
@@ -2665,6 +2922,7 @@ static void draw_display(GLuint tex, int rt_vw, int rt_vh, GLuint pre, int repla
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, PT_X, PT_Y, GL_RED, GL_UNSIGNED_BYTE, m);   /* rows of 32 bytes: any alignment */
         }
         if (g_config.bloom > 0 && !post_movie && !post_menu) levels = bloom_chain(tex, pre, rect, pw, ph);
+        if (sh_on() && ao_src[replay ? 1 : 0].dirty) ao_keep(replay ? 1 : 0);   /* the flashlight shadows of the next image */
         if (ao_src[replay ? 1 : 0].warped) ;   /* drawn back warped: no AO */
         else if (g_config.ao == AO_LOW && !post_movie && !post_menu) {   /* Low: the executed frame's AO, once, for all its images */
             static uint64_t done = UINT64_MAX;
@@ -2687,7 +2945,11 @@ static void draw_display(GLuint tex, int rt_vw, int rt_vh, GLuint pre, int repla
     glDisable(GL_BLEND);
     clip_distances(0);   /* also for the overlay drawn after it */
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    if (fsr) {
+    if (smaa) {
+        ensure_target_fmt(&smaa_in_tex, &smaa_in_fbo, &smaa_in_w, &smaa_in_h, pw, ph, GL_RGB10_A2);
+        glBindFramebuffer(GL_FRAMEBUFFER, smaa_in_fbo);
+        glViewport(0, 0, pw, ph);
+    } else if (fsr) {
         ensure_target_fmt(&fsr_src_tex, &fsr_src_fbo, &fsr_src_w, &fsr_src_h, pw, ph, GL_RGB10_A2);   /* display-referred: 10 bits suffice */
         glBindFramebuffer(GL_FRAMEBUFFER, fsr_src_fbo);
         glViewport(0, 0, pw, ph);
@@ -2735,6 +2997,19 @@ static void draw_display(GLuint tex, int rt_vw, int rt_vh, GLuint pre, int repla
         glBindVertexArray(present_vao);
         glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
     }
+    if (smaa) {
+        smaa_run(pw, ph);
+        if (!fsr) {   /* to the window as it is */
+            glBindFramebuffer(GL_FRAMEBUFFER, out_fbo);
+            glViewport(0, 0, ww, wh);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glViewport(vx, vy, vw, vh);
+            glUseProgram(copy_prog);
+            glBindTexture(GL_TEXTURE_2D, smaa_out_tex);
+            glUniform1i(uc_tex, 0);
+            glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
+        }
+    }
     if (fsr) {
         if (!fsr_easu) {
             fsr_easu = compile(quad_vs, fsr_easu_fs);
@@ -2746,7 +3021,7 @@ static void draw_display(GLuint tex, int rt_vw, int rt_vh, GLuint pre, int repla
         glBindFramebuffer(GL_FRAMEBUFFER, fsr_mid_fbo);
         glViewport(0, 0, vw, vh);
         glUseProgram(fsr_easu);
-        glBindTexture(GL_TEXTURE_2D, fsr_src_tex);
+        glBindTexture(GL_TEXTURE_2D, smaa ? smaa_out_tex : fsr_src_tex);
         glUniform1i(uf_tex, 0);
         glUniform4f(uf_con, (float)pw / vw, (float)ph / vh, 0.0f, 0.0f);
         glDrawArrays(0x0005 /* GL_TRIANGLE_STRIP */, 0, 4);
@@ -3128,6 +3403,7 @@ static int snapshot_valid, final_dumped, interp_dumped;
 /* frame boundary: resolution / widescreen changes are applied between frames */
 void gs_frame_begin(void)
 {
+    sh_take();
     gt_exec_begin();
     if (++memo_gen == 0) memo_gen = 1;   /* resources of the frame about to execute */
     if (ndoomed) {

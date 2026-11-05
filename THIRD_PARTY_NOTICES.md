@@ -23,6 +23,7 @@ or CRI Middleware.
 | Dear ImGui | v1.92.9b | https://github.com/ocornut/imgui | MIT |
 | xxHash (header only: XXH3, the hash PCSX2 names texture replacements by) | v0.8.3 | https://github.com/Cyan4973/xxHash | BSD-2-Clause |
 | bcdec (header only: BC1-BC7 decoding for HD texture packs) | 80859ed3 | https://github.com/iOrange/bcdec | MIT or Unlicense (dual) |
+| SMAA (the anti-aliasing shader `SMAA.hlsl`, embedded at build time, and its area and search tables) | 71c806a8 | https://github.com/iryoku/smaa | MIT, Copyright (C) 2013 Jorge Jimenez, Jose I. Echevarria, Belen Masia, Fernando Navarro, Diego Gutierrez |
 
 The built binaries link these libraries statically; ship their license texts
 with any binary release.

@@ -8,6 +8,13 @@
 
 ### Changes
 
+- **Anti-aliasing: SMAA** (GRAPHICS, QUALITY; off by default): smooths jagged edges of the 3D picture at
+  the resolution it is drawn at, before FSR or the scaling to the window. About 0.3 ms at 4K.
+- **Flashlight shadows** (GRAPHICS, shown with the flashlight; on by default): characters and objects
+  in the beam cast shadows, worked out from the picture (things off screen cast none). They show best
+  from the fixed cameras.
+- **Flashlight beam in the fog** (GRAPHICS, with Enhanced fog; on by default): the flashlight's beam
+  shows as a soft cone of light where it passes through fog, brightest when you look into it.
 - **Fixed: some zombies' legs ignored the flashlight**: parts the game draws see-through (the trousers of one
   prisoner zombie model, as after the fire extinguisher in the graveyard, and grates and wires in some rooms) now
   take per-pixel lighting and the flashlight like the rest of the model.

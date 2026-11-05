@@ -97,11 +97,11 @@ void pc_flashlight_config(int* brightness, int* range, int* beam)
 }
 /* fog at i % of the original: the fog density (njCalcFogPower) x 100 / i, so everything's fog is
    that of something i % as far: 50 % = x 2. 0 %: every distance reads the table's nearest
-   entry, 254 or 255 of 255 (no fog). The third-person camera takes 75 % of the setting (100 % looked too foggy close
+   entry, 254 or 255 of 255 (no fog). The third-person camera takes 65 % of the setting (100 % looked too foggy close
    behind the player in many rooms). Lighting Nightmare: NIGHTMARE_FOG % instead of the setting */
 float pc_fog_scale(void)
 {
-    float i = (g_config.lighting == 3 ? NIGHTMARE_FOG : g_config.fog_intensity) * (tps_cam_active ? 0.60f : 1.0f);
+    float i = (g_config.lighting == 3 ? NIGHTMARE_FOG : g_config.fog_intensity) * (tps_cam_active ? 0.65f : 1.0f);
     return i <= 0 ? 1e6f : 100.0f / i;
 }
 int pc_skip_intro_press_start(void)
@@ -137,7 +137,7 @@ float pc_overlay_x(float x)
     return overlay_stretch ? 320.0f + (x - 320.0f) * pc_hor_scale() : x;
 }
 
-HostConfig g_config = { .window_w = 1280, .window_h = 960, .fullscreen = 1, .borderless_extra = 1, .vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .frame_blend = 0, .aspect = 2, .fsr = 1, .fog_glow = 1,
+HostConfig g_config = { .window_w = 1280, .window_h = 960, .fullscreen = 1, .borderless_extra = 1, .vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .frame_blend = 0, .aspect = 2, .fsr = 1, .fog_glow = 1, .fog_beam = 1, .flash_shadow = 1,
                        .screen_filter = 1, .cinema_bars = 1, .screen_effects = 1, .native_3d = 1, .model_cull = 1, .native_tex = 1, .hd_textures = 1, .hd_textures_ui = 1, .quick_knife = 1, .head_blowoff = 1, .ammo_hud = 1,
                        .skip_doors = 1, .fast_loading = 1, .update_check = 1, .auto_stairs = 1, .skip_intro = 1, .battle_unlocked = 1, .difficulty_select = 1, .contrast = 100, .gamma = 10, .fog_intensity = 100,
                        .light_falloff = 1, .lighting = 1,

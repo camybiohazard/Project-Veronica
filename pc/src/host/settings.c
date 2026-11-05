@@ -258,6 +258,7 @@ static int hdr_platform(void) { return 0; }
 #endif
 static int quick_knife_shown(void) { return g_config.quick_knife; }
 static int fog_enhanced_shown(void) { return g_config.fog_style == 1; }
+static int flash_shown(void) { return g_config.flashlight; }
 static int hdr_shown(void) { return hdr_platform() && g_config.hdr; }
 static float hdr_display(const char* key) { return SDL_GetFloatProperty(SDL_GetWindowProperties(g_window), key, 1.0f); }
 static int pw_get(void) { return g_config.hdr_paper_white ? (g_config.hdr_paper_white - 70 + 5) / 10 : 0; }
@@ -388,6 +389,8 @@ const Setting g_settings[] = {
       .help = "AMD FSR 1: a picture drawn below the window's resolution is upscaled with sharp edges instead of a plain stretch. Use auto internal resolution or below when using FSR." },
     { SP_GRAPHICS, "Anisotropic filtering", V(g_config.aniso), 0, 4, 1, .name = aniso_name, .group = "QUALITY",
       .help = "Floors, walls and ceilings seen at a shallow angle stay sharp into the distance instead of blurring, without shimmering. Textures with cut-outs (railings, fences, foliage) are left as they are. Needs Native textures or HD textures." },
+    { SP_GRAPHICS, "Anti-aliasing", V(g_config.smaa), 0, 1, 1, (const char* const[]){ "Off", "SMAA" },
+      .help = "SMAA: smooths the jagged edges of the 3D picture (railings, fences, roof lines) at the resolution it is drawn at. Matters most at lower resolutions." },
     { SP_GRAPHICS, "Dithering", V(g_config.dither), 0, 1, 1,
       .help = "Smooths the colour banding of dark gradients (lamplight falloff, fog, the tone curve) with a fine fixed noise too small to see." },
     { SP_DISPLAY, "Display-rate frames", V(g_config.interpolate), 0, 1, 1, .help = "In-between frames blended from the last two game frames. The game still runs at 30 FPS; half a frame of latency." },
@@ -416,6 +419,8 @@ const Setting g_settings[] = {
       .help = "Enhanced: smoother, more natural fog that picks up the light around it and is less heavily tinted. Distant fog stays as the original." },
     { SP_GRAPHICS, "Fog light glow", V(g_config.fog_glow), 0, 1, 1, .shown = fog_enhanced_shown,
       .help = "With Enhanced fog: lamps and other lights glow in the fog around them, more where the fog is thick." },
+    { SP_GRAPHICS, "Flashlight beam", V(g_config.fog_beam), 0, 1, 1, .shown = fog_enhanced_shown,
+      .help = "With Enhanced fog: the flashlight's beam shows as a cone of light in the fog." },
     { SP_GRAPHICS, "Reset post-processing", NULL, .flags = SET_ACTION | SET_NOW, .apply = post_reset,
       .help = "Bloom, colour grading and ambient occlusion off: the original picture." },
     { SP_GRAPHICS, "Lighting", V(g_config.lighting), 0, 3, 1, (const char* const[]){ "Original", "Balanced", "Horror", "Nightmare" }, .group = "LIGHTING",
@@ -428,6 +433,8 @@ const Setting g_settings[] = {
       .help = "Highlights of the surface materials in mods/materials.ini (metal, tile, wood, ...; assigned with the picker in the F2 window). Off: none. Needs the native 3D renderer." },
     { SP_GRAPHICS, "Flashlight", V(g_config.flashlight), 0, 1, 1,
       .help = "A flashlight switched on and off with Flashlight on/off in CONTROLS (L, the left stick click), in play only, with the native 3D renderer. It runs on a battery that lasts 4 minutes and recharges in 3 while off: low, the beam dims and flickers; empty, it goes out. Off: no flashlight." },
+    { SP_GRAPHICS, "Flashlight shadows", V(g_config.flash_shadow), 0, 1, 1, .shown = flash_shown,
+      .help = "Characters and objects in the flashlight's beam cast shadows. Worked out from the picture, so things off screen cast none." },
     { SP_GRAPHICS, "Light falloff", V(g_config.light_falloff), 0, 1, 1, (const char* const[]){ "Original", "Smooth" },
       .help = "Lamps, fires and other point lights. Original: they end at their range at a step, so something leaving the light darkens at once. Smooth: they fade out over the outer quarter of it." },
     { SP_GRAPHICS, "Soft shading", V(g_config.light_soft), 0, 1, 1,

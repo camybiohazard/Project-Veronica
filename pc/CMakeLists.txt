@@ -128,8 +128,15 @@ include(FetchContent)
 FetchContent_Declare(xxhash GIT_REPOSITORY https://github.com/Cyan4973/xxHash.git GIT_TAG v0.8.3 GIT_SHALLOW TRUE SOURCE_SUBDIR none)
 # bcdec (MIT / Unlicense, header only): BC1-BC7 decoding for the replacements' content check
 FetchContent_Declare(bcdec GIT_REPOSITORY https://github.com/iOrange/bcdec.git GIT_TAG 80859ed3b7afb1c527a2a99d70c61457bea72d0c SOURCE_SUBDIR none)
-FetchContent_MakeAvailable(xxhash bcdec)
-target_include_directories(recvx_platform PRIVATE ${xxhash_SOURCE_DIR} ${bcdec_SOURCE_DIR})
+# SMAA (MIT): the anti-aliasing shader (SMAA.hlsl, built as GLSL 3.30) and its area and search tables
+# (src/gs/gs_gl.c smaa_*); the shader is embedded as bytes in a generated smaa_hlsl.h
+FetchContent_Declare(smaa GIT_REPOSITORY https://github.com/iryoku/smaa.git GIT_TAG 71c806a838bdd7d517df19192a20f0c61b3ca29d SOURCE_SUBDIR none)
+FetchContent_MakeAvailable(xxhash bcdec smaa)
+file(READ ${smaa_SOURCE_DIR}/SMAA.hlsl SMAA_HEX HEX)
+string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," SMAA_BYTES "${SMAA_HEX}")
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/smaa_hlsl.h "static const char smaa_hlsl[] = { ${SMAA_BYTES} 0 };\n")
+target_include_directories(recvx_platform PRIVATE ${xxhash_SOURCE_DIR} ${bcdec_SOURCE_DIR}
+    ${smaa_SOURCE_DIR}/Textures ${CMAKE_CURRENT_BINARY_DIR}/generated)
 set_property(SOURCE src/host/host.c src/host/overlay.cpp APPEND PROPERTY COMPILE_DEFINITIONS "RECVX_VERSION=\"${RECVX_VERSION}\"")
 set_property(SOURCE src/host/update.c APPEND PROPERTY COMPILE_DEFINITIONS   # the release this is (update check)
     RECVX_VERSION_MAJOR=${PROJECT_VERSION_MAJOR} RECVX_VERSION_MINOR=${PROJECT_VERSION_MINOR} RECVX_VERSION_PATCH=${PROJECT_VERSION_PATCH})

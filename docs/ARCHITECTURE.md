@@ -347,6 +347,19 @@ resolution rounds down instead of to the nearest (`gs_wanted_scale`) where that 
 (`FSR_MAX_UPSCALE`, AMD's Quality mode), so FSR upscales the rest; with
 it off, or a picture as large as the window, the present path is unchanged and bit-identical.
 
+SMAA (`smaa`; `gs_gl.c smaa_init`, `smaa_run`; Jimenez et al., MIT, fetched by CMake, the shader
+embedded as bytes in a generated `smaa_hlsl.h`, its Latin-1 comment bytes and CRs dropped before
+compiling): the present shader runs at the internal resolution into `smaa_in` (as for FSR), then
+SMAA 1x: luma edges (`smaa_edge`), blending weights from the area and search tables (`smaa_wgt`; the
+area table read linear, the search table point-sampled), neighbourhood blending (`smaa_out`); FSR's
+EASU reads `smaa_out` instead of `fsr_src`, else a plain copy (`copy_fs`) scales it to the viewport.
+Built as `SMAA_GLSL_3` with the Ultra preset: High's edge threshold (0.1 of the luma) missed most
+edges in this game's dark rooms, Ultra's 0.05 finds the railings and roof lines against the sky.
+OpenGL's bottom-up rows need no flip: the tables are read at the coordinates SMAA works out, so the
+picture is simply anti-aliased upside down. Movies are not passed through it. The edge and weight
+targets are cleared first, as SMAA discards where it finds nothing. Cost at 4K (Prison courtyard):
+about 0.3 ms.
+
 Post-processing (`bloom`, `color_grading`; each on is a fixed look, `gs_gl.c BLOOM_*`: strength 50%,
 threshold 75% of white, warmth +10, saturation unchanged; `GRADE_*`: highlight rolloff 60%, shadow
 depth 30%, split toning 20%) is applied in the same shader before the calibration, in linear light (the picture
@@ -394,6 +407,40 @@ fog's distance (its density) and added after the fog, times `FOG_GLOW` (0.15) an
 pixel's fog; lights whose far range the ray misses are skipped. Cost at 4K (Prison courtyard and
 graveyard, per image): Enhanced about 0.25 ms over Original, the glow 0.3-0.45 ms. (A drifting mist,
 noise varying the fog amount, was tried and dropped: barely visible.)
+
+Flashlight shadows (`flash_shadow`, screen space). The depth native 3D writes is tracked and copied
+(`ao_src`, `ao_keep`: half size, the shown rows) for them as for the ambient occlusion, every image
+(the AO's Low setting copies only executed frames). Each image takes the copy made last into its own
+(`sh_take`, at `gs_frame_begin` and `gs_replay_begin`), so it reads one whole image's depth throughout:
+read straight from the copies, the shadows flickered, as a replay's start marks its copy invalid and
+the next replay remakes it from partial depth. The light variants read it on texture unit `SH_UNIT` (4) with the frame's projection (`ao_cam`: kx, ky, the centre, depth
+a, b). Where the flashlight's beam lights a pixel, `fs_src flash_shadow` takes 16 points from it
+towards the light (from a little off the surface, stopping `SH_NEAR` (10 units) short of the light,
+the player's hand and gun), moved by a per-pixel fraction of a step; each is projected as the glow
+finds a pixel's place, and the copy's depth there turned into view depth: in front of the point by
+more than a unit and two steps of the depth (w^2 / |b|; the game's depth is 16-bit, 2.4 units at 400)
+and less than `SH_THICK` (5 units, a character's depth) more blocks the beam, eased in and out at both
+ends. The
+depth is the last image's (a moving character's shadow trails by an image) and in the current view
+(a turning camera shifts it a little). The thickness is what keeps the player from shadowing the
+beam: in third person the player's back is in front of the beam's first stretch from the camera, a
+few units nearer (at 12 units the whole spot went dark). The spill is not shadowed. Cost at 4K
+(Prison shower room, third person, the beam over much of the picture): about 0.3-0.5 ms.
+
+Flashlight beam with Enhanced fog (`fog_beam`). `fog_lights` also streams the frame's flashlight
+(`light_glue.c pc_flash_light`, the light sets' 16 floats; `stream_fog_flash`, `STREAM_FX` from 76,
+`FX(19..22)`; 0s while it is off, and the render thread clears its on flag without the option). The
+shader cuts the view ray to the pixel down to where it is inside the beam: within its range (a sphere
+about the light), ahead of the light, and inside the cone (the outer beam's cosine; a quadratic in the
+ray's distance), so pixels whose ray misses the beam do nothing more. Over that stretch it takes
+`BEAM_STEPS` (12) points, moved by a per-pixel fraction of a step (the dithering's noise) so the steps
+do not band, and sums the beam's light there as `light_sum` lights a surface (the beam's edge, the
+near range, the range's fade; no spill), brighter where the ray looks into the light (`BEAM_FWD`),
+times `FOG_BEAM` (1.2) and 30% + 70% of the fog's share midway along the stretch, divided by the fog's
+distance as the glow. Walls do not block the beam (no shadows): it ends at the pixel, so it shows
+only in front of what is drawn. Cost at 4K (Prison graveyard, fixed camera, beam across the picture):
+within the measuring noise (about 0.85 ms before the cone cut, when every pixel within the range
+stepped).
 
 Ambient occlusion (`ao`: 0 off, 1 High, 2 Low; `gs_gl.c AO_*`: 60% strength, radius 2% of the screen's height; `ao_pass`) is computed from the depth native 3D
 wrote into a full-screen target. Full-screen 2D drawn later (the camera filter, fades) overwrites

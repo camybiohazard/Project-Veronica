@@ -37,6 +37,7 @@ typedef struct {
     int  cinema_bars;        /* cutscene letterbox bars: same modes */
     int  fog_style;          /* 0 Original, 1 Enhanced: per pixel, reshaped (pc/glue/fog_glue.c, gs_gl.c fs_src) */
     int  fog_glow;           /* Enhanced fog: the point lights glow in it */
+    int  fog_beam;           /* ... and the flashlight's beam shows in it */
     int  fog_intensity;      /* fog at this % of the original, 0..100 (pc_fog_scale); 100 original, 0 none */
     int  movie_zoom;         /* movies scaled evenly until the letterbox bars leave the screen (movie_glue.c vbrank_draw) */
     int  screen_effects;     /* full-screen effect overlays (noise/scanline layers): same modes */
@@ -51,9 +52,11 @@ typedef struct {
     int  light_pixel;        /* per-pixel lighting of the chunk models (light_glue.c, gs_gl.c fs_src), with the native 3D renderer */
     int  wet;                /* wet surfaces in rain (light_glue.c, gs_gl.c fs_src): 0/1, on at WET_ON % */
     int  dither;             /* dithering of the GS's 8 bits and the output (gs_gl.c fs_src, present_fs): 0/1 */
+    int  smaa;               /* anti-aliasing: 0 off, 1 SMAA (gs_gl.c smaa_run) */
     int  aniso;              /* anisotropic filtering (gs_gl.c aniso_filter): 0 off, else 2^aniso samples */
     int  mat_shine;          /* surface materials' highlights (gs/materials.c, mods/materials.ini): 0/1 */
     int  flashlight;              /* the flashlight (light_glue.c; host.c FLASH_*): 0/1, off: the button does nothing */
+    int  flash_shadow;            /* ... and what it lights casts shadows (gs_gl.c flash_shadow) */
     int  light_soft;         /* 0/1: light wraps round the shadow side (N.L + w) / (1 + w), w = SOFT_ON % / 100; 0 original */
     int  hdr;                /* Windows: HDR output through Direct3D 11 (render/hdr_win.c), at the next start */
     int  hdr_paper_white;    /* nits of the game's white (and the overlay), 0 = Windows' SDR content brightness */

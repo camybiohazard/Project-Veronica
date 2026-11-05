@@ -195,6 +195,11 @@ void stream_fog_light(const float* light)
     f->fx[0] = (float)(n + 1);
 }
 
+void stream_fog_flash(const float* flash)
+{
+    memcpy(recording()->fx + 76, flash, 16 * sizeof(float));
+}
+
 static void push_ev(int kind, int reg, uint32_t len, uint64_t v)
 {
     Frame* f = recording();

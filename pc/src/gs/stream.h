@@ -31,12 +31,14 @@ uint32_t stream_light_set(const float* set);
 uint32_t stream_fog_set(const float* set);
 /* ... and the frame's projection and lights for the glow: STREAM_FX floats (gs_gl.c fs_src FX: row 0
    the light count (the render thread adds the options and the scale), row 1 the projection centre and
-   kx, ky, row 2 the depth's a, b, then per light 8: view position, far range^2, colour, near range^2) */
-#define  STREAM_FX 76
+   kx, ky, row 2 the depth's a, b, then per light 8: view position, far range^2, colour, near range^2;
+   from 76 the flashlight, 16 floats as in the light sets, 0s when off) */
+#define  STREAM_FX 92
 #define  STREAM_FX_LIGHTS 8
 void     stream_fog_ao(const float* set);       /* STREAM_FSET floats: the frame's first fog (ambient occlusion fades in it), any fog style */
 void     stream_fog_view(const float* proj);     /* 6 floats: centre x, y, kx, ky, a, b */
 void     stream_fog_light(const float* light);   /* 8 floats; the same position again: skipped */
+void     stream_fog_flash(const float* flash);   /* 16 floats (light_glue.c pc_flash_light) */
 #define  STREAM_CAM 20                              /* view_glue.c pc_frame_view: the frame's camera and projection */
 void     stream_download(void* dst, uint32_t len);  /* StoreImage: waits for the pixels */
 uint64_t stream_game_frames(void);
