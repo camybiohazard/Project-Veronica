@@ -8,6 +8,9 @@
 
 ### Changes
 
+- **Fixed: some zombies' legs ignored the flashlight**: parts the game draws see-through (the trousers of one
+  prisoner zombie model, as after the fire extinguisher in the graveyard, and grates and wires in some rooms) now
+  take per-pixel lighting and the flashlight like the rest of the model.
 - **Camera in tight places** (third person, after aikatore's recvx-enhanced-port): the camera no
   longer slips through walls and ceilings that you can see but that are not solid to the game, such as
   the vault under the stairs at the palace's submarine dock. It moves closer or lower instead, keeps

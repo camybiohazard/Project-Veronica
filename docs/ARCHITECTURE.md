@@ -463,7 +463,12 @@ it (`ps2_Vu1Strip.c vu1SetAmbient` -> `pc_light_ambient_scale`), which the VU1 p
 strips and native 3D all take from there.
 Only the light sum changes (ambient, material colours and the colour modes of `native_glue.c
 vertex_color` stay), for both the native 3D and the emulated VU1 path. At the original values
-nothing is computed again and the VU emulation is untouched.
+nothing is computed again and the VU emulation is untouched. The models' see-through parts the game draws through the CPU strip functions (`ps2_Vu1Strip.c`,
+the ordering table: the legs of zombie model version 31, "prisoner 3", and the room's grates and wires) are lit
+per pixel too: the strip's copy of each vertex keeps its vertex buffer entry in its pad words (`ps2_NinjaCnk.c
+PC_STR_SRC`), each output vertex notes it (`PC_PRIM_SRC`, also in the asm2c blocks, which are what the PC build
+runs), and `native_glue.c pc_native_prim3d` takes that entry's view position and normal and the strip's light set
+(`prim_light`); before, they kept their vertex colour, and the flashlight did not light them.
 
 Per-pixel lighting (`light_pixel`, native 3D only). The light sets below are made when it is on or
 when the flashlight, wet surfaces or surface materials need them (`host.c pc_light_pixel`); with

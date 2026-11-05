@@ -165,11 +165,47 @@ void pc_native_strip(const unsigned short* idx_uv, int n, const VU1_STRIP_BUF* v
    path. Returns the deferred strip's number; *zavg gets the ordering-table key the original
    computes (mean GS depth, clamped to 0..65534 per vertex). */
 extern uint32_t pc_cur_mesh, pc_cur_strip;
+
+/* per-pixel lighting for the CPU strip functions (ps2_Vu1Strip.c PC_PRIM_BEGIN / PC_PRIM_SRC): the strip's colour
+   mode and, by slot in Ps2_DRAW_TMP, the vertex buffer entry each vertex came from (as the strip's copy of it names
+   it), stamped with the strip's serial (a slot no strip function noted for this strip is not taken). The game draws
+   some models' see-through parts this way (the legs of zombie model version 31, prisoner 3), which kept their
+   vertex colour under per-pixel light and the flashlight. */
+#define PRIM_SLOTS (16384 / (int)sizeof(VU1_PRIM_BUF))
+static struct { unsigned serial; int idx; } prim_src[PRIM_SLOTS];
+static unsigned prim_serial;
+static int prim_mode;
+void pc_prim_begin(int mode) { prim_serial++; prim_mode = mode; }
+void pc_prim_note(int slot, const VU1_STRIP_BUF* v)   /* (the strip's copy: its pad words, ps2_NinjaCnk.c PC_STR_SRC) */
+{
+    if (slot < 0 || slot >= PRIM_SLOTS || *(const unsigned int*)&v->fPad1 != 0x5C0FFEE5u) return;
+    prim_src[slot].serial = prim_serial; prim_src[slot].idx = *(const int*)&v->fPad0;
+}
+VU1_STRIP_BUF* pc_cnk_verbuf(void);
+extern unsigned char Ps2_DRAW_TMP[16384];
+
+/* the light set of the CPU strip in[0..n) and its vertices' buffer entries (src), 0: none (not from a noted strip,
+   a vertex without a normal, or per-pixel lighting off) */
+static uint32_t prim_light(const VU1_PRIM_BUF* in, int n, int* src)
+{
+    int slot = (int)(in - (const VU1_PRIM_BUF*)Ps2_DRAW_TMP);
+    float nv[3];
+    if (slot < 0 || slot + n > PRIM_SLOTS || n > 64) return 0;
+    for (int i = 0; i < n; i++) {
+        if (prim_src[slot + i].serial != prim_serial || !pc_light_normal(prim_src[slot + i].idx, nv)) return 0;
+        src[i] = prim_src[slot + i].idx;
+    }
+    return pc_light_set(prim_mode);
+}
+
 uint32_t pc_native_prim3d(unsigned int prim, const VU1_PRIM_BUF* in, int n, int deferred, float* zavg)
 {
     NativeVertex v[64];   /* what native_draw draws; the key is over all vertices */
     float zsum = 0.0f;
     int fogset = pc_fog_set();   /* Enhanced fog, if the strip's fog is the table's at its depth (fog_glue.c) */
+    int src[64];
+    uint32_t light = prim_light(in, n, src);   /* per-pixel lighting, as pc_native_strip */
+    const VU1_STRIP_BUF* vb = light ? pc_cnk_verbuf() : NULL;
     for (int i = 0; fogset && i < n && i < 64; i++) if (!pc_fog_is_table(in[i].fZ, in[i].fF)) fogset = 0;
     for (int i = 0; i < n; i++) {
         const VU1_PRIM_BUF* p = &in[i];
@@ -188,6 +224,14 @@ uint32_t pc_native_prim3d(unsigned int prim, const VU1_PRIM_BUF* in, int n, int 
         o->far_d = _fNaViwClipFar - w;
         o->cull = ((p->ulKick & 0x8001) == 0x8001 ? 2 : 0) | (pc_margin_mesh ? 4 : 0);
         o->vx = o->vy = o->vz = o->nx = o->ny = o->nz = 0.0f; o->light = 0; o->fogset = (uint8_t)fogset;
+        if (light) {   /* (the vertex buffer entry's view position and normal, as pc_native_strip) */
+            const VU1_STRIP_BUF* q = &vb[src[i]];
+            float nv[3];
+            pc_light_normal(src[i], nv);
+            o->vx = q->fVx; o->vy = q->fVy; o->vz = q->fVz;
+            o->nx = nv[0]; o->ny = nv[1]; o->nz = nv[2];
+            o->light = (uint16_t)light;
+        }
     }
     *zavg = n ? zsum / (float)n : 0.0f;
     return native_defer(prim, v, n < 64 ? n : 64, deferred ? pc_cur_mesh : 0, pc_cur_mesh & 1 ? pc_cur_strip++ : pc_cur_strip);
