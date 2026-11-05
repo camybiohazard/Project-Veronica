@@ -158,7 +158,11 @@ a wider lens would show it. A part left out takes along the hidden parts below i
 tree whose bounding sphere lies inside its box (of its vertices in view space; `ps2_NinjaCnk.c`
 `njCnkEasy*DrawObject` -> `view_glue.c pc_margin_children`, `pc_rules.h pc_margin_inside`): what
 it holds, so the dolls on the shelves of Alexia's cabinet (2/5, second cut) no longer stand in
-the margin in front of an empty frame. Trees also group parts that only stand beside each other
+the margin in front of an empty frame. The sphere may reach out of the box by a quarter of its
+radius, as spheres are loose around their models: the ship in the niche of the Gold Luger
+room's corner wall (1/5, first cut, the camera turned right) floated in the margin, as did a
+painting over the void in 2/1 and a shelf piece in 1/8 (after aikatore/recvx-enhanced-port
+09669fcb). Trees also group parts that only stand beside each other
 (a flower pot under a terrace part in 1/0, pillars along a wall in 1/7); those stay. Without the native 3D renderer a hidden part is
 only drawn when its bounding sphere lies entirely outside the 4:3 view and away from the
 camera. "Cull off-screen models" (`model_cull`) is unrelated: it only skips actors and objects

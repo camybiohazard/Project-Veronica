@@ -8,6 +8,13 @@
 
 ### Changes
 
+- **Camera in tight places** (third person, after aikatore's recvx-enhanced-port): the camera no
+  longer slips through walls and ceilings that you can see but that are not solid to the game, such as
+  the vault under the stairs at the palace's submarine dock. It moves closer or lower instead, keeps
+  the character in the picture and eases back out afterwards.
+- **Floating models at the widescreen edges** (after aikatore's recvx-enhanced-port): a few display
+  pieces, such as the model ship in the Gold Luger room, a painting in 2/1 and a shelf piece in 1/8,
+  no longer hang in the air at the sides of the screen without the wall they belong to.
 - **Move while aiming: a fuller walk** (after aikatore's recvx-enhanced-port): the hips walk with the
   legs now (their sway and bob carried up to a steady aim, instead of the legs alone under still
   hips), the walks start where the game's walks start, and the pace is 60% of a walk (was 65%). The
