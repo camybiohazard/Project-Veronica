@@ -413,7 +413,7 @@ const Setting g_settings[] = {
     { SP_GRAPHICS, "Ambient occlusion", NULL, 0, 2, 1, (const char* const[]){ "Off", "Low", "High" }, .get = ao_get, .set = ao_set,
       .help = "Darkens creases, corners and where objects meet the floor, from the depth of the 3D picture. Only in play; text is left alone. Low: worked out once per game frame and kept for the frames shown in between, much cheaper with Display-rate frames; the shading of fast-moving edges trails a little. High: worked out for every frame shown." },
     { SP_GRAPHICS, "Fog", V(g_config.fog_style), 0, 1, 1, (const char* const[]){ "Original", "Enhanced" },
-      .help = "Enhanced: the fog is worked out for every pixel instead of between the corners of each polygon (no stretched or banded fog on large walls and floors), clears more gently near you and thickens towards the distance, and takes on some of the light where it hangs, less of the tint. The far distance, where the fog hides the edge of the room, stays as the original. With the native 3D renderer." },
+      .help = "Enhanced: smoother, more natural fog that picks up the light around it and is less heavily tinted. Distant fog stays as the original." },
     { SP_GRAPHICS, "Fog light glow", V(g_config.fog_glow), 0, 1, 1, .shown = fog_enhanced_shown,
       .help = "With Enhanced fog: lamps and other lights glow in the fog around them, more where the fog is thick." },
     { SP_GRAPHICS, "Reset post-processing", NULL, .flags = SET_ACTION | SET_NOW, .apply = post_reset,
