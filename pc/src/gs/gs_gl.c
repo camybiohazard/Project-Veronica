@@ -112,10 +112,18 @@ typedef struct {
 static GlVertex vbuf[MAX_VERTS];
 static uint16_t ibuf[MAX_IDX];
 static int vcount, icount;
-/* vertex stream: batches are appended and the buffer orphaned when full, so a batch never
-   overwrites data the GPU may still be drawing from (no implicit sync per batch) */
-#define VBO_VERTS (MAX_VERTS * 8)
-#define IBO_IDX (MAX_IDX * 8)
+/* vertex stream: batches are appended to a set of buffers (vertices, indices, their VAO); when
+   either is full the stream moves on to the next of STREAM_SETS, allocated once. The GPU drew
+   from that set two sets of batches ago and is long done with it, so writing it does not wait
+   (no fence: a client wait syncs with a threaded driver, NVIDIA on Windows; glBufferSubData is
+   correct regardless). Orphaning one buffer instead (glBufferData NULL) had the driver allocate
+   35 MB anew each time: about 11 ms, every few game frames where a room streams many vertices
+   (the Antarctic cultivation room facing its webs) */
+#define VBO_VERTS (MAX_VERTS * 4)
+#define IBO_IDX (MAX_IDX * 4)
+#define STREAM_SETS 3
+static struct { GLuint vao, vbo, ibo; } sset[STREAM_SETS];
+static int sset_cur;
 static int vbo_first, ibo_first;
 /* parts of the batch drawn from the executed frame's vertices on the GPU (svbo, a replay's
    unblended native strips, gs_draw_native_cached) instead of vbuf: index positions
@@ -908,15 +916,22 @@ void gs_renderer_init(void)
     up_aoon = glGetUniformLocation(present_prog, "u_aoon");
     up_pmask = glGetUniformLocation(present_prog, "u_pmask");
 
-    glGenVertexArrays(1, &vao);
     glGenVertexArrays(1, &svao);
     glGenVertexArrays(1, &present_vao);
-    glGenBuffers(1, &vbo);
     glGenBuffers(1, &svbo);
-    for (int i = 0; i < 2; i++) {   /* the vertex stream, the executed frame's native strips */
-        glBindVertexArray(i ? svao : vao);
-        glBindBuffer(GL_ARRAY_BUFFER, i ? svbo : vbo);
-        if (!i) glBufferData(GL_ARRAY_BUFFER, VBO_VERTS * sizeof(GlVertex), NULL, GL_STREAM_DRAW);
+    for (int i = 0; i <= STREAM_SETS; i++) {   /* the vertex stream's sets, the executed frame's native strips */
+        if (i < STREAM_SETS) {
+            glGenVertexArrays(1, &sset[i].vao);
+            glGenBuffers(1, &sset[i].vbo);
+        }
+        glBindVertexArray(i < STREAM_SETS ? sset[i].vao : svao);
+        glBindBuffer(GL_ARRAY_BUFFER, i < STREAM_SETS ? sset[i].vbo : svbo);
+        if (i < STREAM_SETS) {
+            glBufferData(GL_ARRAY_BUFFER, VBO_VERTS * sizeof(GlVertex), NULL, GL_STREAM_DRAW);
+            glGenBuffers(1, &sset[i].ibo);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sset[i].ibo);   /* the set's VAO keeps it */
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, IBO_IDX * sizeof(uint16_t), NULL, GL_STREAM_DRAW);
+        }
         glEnableVertexAttribArray(0); glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, x));
         glEnableVertexAttribArray(1); glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, s));
         glEnableVertexAttribArray(2); glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(GlVertex), (void*)offsetof(GlVertex, r));
@@ -927,10 +942,9 @@ void gs_renderer_init(void)
         glEnableVertexAttribArray(7); glVertexAttribPointer(7, 1, GL_UNSIGNED_SHORT, GL_FALSE, sizeof(GlVertex), (void*)offsetof(GlVertex, light));
         glEnableVertexAttribArray(8); glVertexAttribIPointer(8, 1, GL_UNSIGNED_BYTE, sizeof(GlVertex), (void*)offsetof(GlVertex, fogset));
     }
+    vao = sset[0].vao; vbo = sset[0].vbo; ibo = sset[0].ibo;
     glBindVertexArray(vao);
-    glGenBuffers(1, &ibo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);   /* the vertex stream's VAO keeps it */
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, IBO_IDX * sizeof(uint16_t), NULL, GL_STREAM_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
     g_scale = gs_wanted_scale();
 }
@@ -2243,21 +2257,18 @@ void gs_flush(void)
     uni1f(pcur->aref, (float)((test >> 4) & 0xFF));
     pretext_track(st, fbw);
 
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
     {
         static int vbo_next, ibo_next;
-        if (vbo_next + vcount > VBO_VERTS) {
-            glBufferData(GL_ARRAY_BUFFER, VBO_VERTS * sizeof(GlVertex), NULL, GL_STREAM_DRAW);   /* orphan */
-            vbo_next = 0;
+        if (vbo_next + vcount > VBO_VERTS || ibo_next + icount > IBO_IDX) {   /* the next set */
+            sset_cur = (sset_cur + 1) % STREAM_SETS;
+            vao = sset[sset_cur].vao; vbo = sset[sset_cur].vbo; ibo = sset[sset_cur].ibo;
+            vbo_next = ibo_next = 0;
         }
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
         vbo_first = vbo_next;
         if (vcount) glBufferSubData(GL_ARRAY_BUFFER, (GLintptr)vbo_first * (GLintptr)sizeof(GlVertex), (GLsizeiptr)(vcount * sizeof(GlVertex)), vbuf);
         vbo_next += vcount;
-        if (ibo_next + icount > IBO_IDX) {
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, IBO_IDX * sizeof(uint16_t), NULL, GL_STREAM_DRAW);   /* orphan */
-            ibo_next = 0;
-        }
         ibo_first = ibo_next;
         if (!nsruns) glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, (GLintptr)ibo_first * (GLintptr)sizeof(uint16_t), (GLsizeiptr)(icount * sizeof(uint16_t)), ibuf);
         else for (int r = 0, at = 0; r <= nsruns; r++) {   /* the parts between the static runs */

@@ -451,6 +451,36 @@ void gs_decode_texture(uint64_t tex0, uint64_t texa, uint32_t w, uint32_t h, uin
         int n = (psm == PSMT8 || psm == PSMT8H) ? 256 : 16;
         for (int i = 0; i < n; i++) pal[i] = clut_lookup(tex0, texa, (uint32_t)i);
     }
+    /* the indexed formats the rooms' textures mostly are, without gs_read_pixel's call and format
+       switch per texel: a 512x512 8-bit texture took 3-7 ms, and the first view of a room decodes
+       dozens (the Antarctic cultivation room: 240, a third of a second). The row's part of the
+       address (page row, block row, column row) once per row; the same addresses as addr8/addr4. */
+    if (psm == PSMT8) {
+        const uint32_t pw = tbw >> 1 ? tbw >> 1 : 1;
+        for (uint32_t y = 0; y < h; y++) {
+            const uint32_t row = tbp + (y >> 6) * pw * 32;
+            const uint8_t* bt = blockTable8[(y >> 4) & 3];
+            const uint8_t* ct = columnTable8[y & 15];
+            uint32_t* o = out + y * w;
+            for (uint32_t x = 0; x < w; x++)
+                o[x] = pal[gs_memp[((row + (x >> 7) * 32 + bt[(x >> 4) & 7]) * 256 + ct[x & 15]) & (GS_MEM_SIZE - 1)]];
+        }
+        return;
+    }
+    if (psm == PSMT4) {
+        const uint32_t pw = tbw >> 1 ? tbw >> 1 : 1;
+        for (uint32_t y = 0; y < h; y++) {
+            const uint32_t row = tbp + (y >> 7) * pw * 32;
+            const uint8_t* bt = blockTable4[(y >> 4) & 7];
+            const uint16_t* ct = columnTable4[y & 15];
+            uint32_t* o = out + y * w;
+            for (uint32_t x = 0; x < w; x++) {
+                uint32_t a = ((row + (x >> 7) * 32 + bt[(x >> 5) & 3]) * 512 + ct[x & 31]) & (GS_MEM_SIZE * 2 - 1);
+                o[x] = pal[(gs_memp[a >> 1] >> ((a & 1) * 4)) & 15];
+            }
+        }
+        return;
+    }
     for (uint32_t y = 0; y < h; y++)
         for (uint32_t x = 0; x < w; x++) {
             uint32_t v = gs_read_pixel(psm, tbp, tbw, x, y);

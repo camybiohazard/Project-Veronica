@@ -8,6 +8,12 @@
 
 ### Changes
 
+- **Fixed: frame drops in busy rooms** (most of all the Antarctic Base cultivation room, facing the webs
+  in third person): the renderer no longer has the graphics driver set aside a new 35 MB vertex buffer every few
+  frames, a stall of about 11 ms each time. It now reuses three buffers in turn.
+- **Shorter hitch the first time a room's textures come into view**: the game's 8- and 4-bit textures
+  convert about 3x faster. Turning towards the cultivation room's webs and gas for the first time froze
+  the picture for about a third of a second, now about 60 ms.
 - **Anti-aliasing: SMAA** (GRAPHICS, QUALITY; off by default): smooths jagged edges of the 3D picture at
   the resolution it is drawn at, before FSR or the scaling to the window. About 0.3 ms at 4K.
 - **Flashlight shadows** (GRAPHICS, shown with the flashlight; on by default): characters and objects
