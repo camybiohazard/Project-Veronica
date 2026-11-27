@@ -8,6 +8,8 @@
 
 ### Changes
 
+- **Fixed: Antarctic Spotter cutscene softlock** (from aikatore's recvx-enhanced-port): the
+  pipe corridor scene finishes when Chris is using a swapped model.
 - **Fixed: B.O.W. gas rounds in widescreen** (from aikatore's recvx-enhanced-port): the
   grenade launcher's green flash follows **Screen effects**, filling the view with **Stretch to width**.
 - **Fixed: frame drops in busy rooms** (most of all the Antarctic Base cultivation room, facing the webs

@@ -575,8 +575,10 @@ weapon of a hand the model lacks floated at the invisible source's hand.
 * **The shot** (`actor_hands_back`, game.c before `bhControlPlayer`): the game's own matrices of
   nodes 5, 9, 13 are saved before they are moved and put back before the next player control, so
   the game fires (`bhCheckGunAtari` from the muzzle at `owP[9]`), swings the knife and places the
-  lighter light from the real skeleton; only the drawing uses the model's hands. Third-person aim:
-  [THIRDPERSON.md](THIRDPERSON.md) "Free-aim pose".
+  lighter light from the real skeleton. The saved matrices are restored only while the chest
+  matrix still matches the saved pose. In the Antarctic pipe corridor (9/10), the Spotter scene
+  hides Chris and computes a new pose. Keeping that pose prevents a searchlight from detecting
+  him at his old position and interrupting the scene. See "Free-aim pose" in [THIRDPERSON.md](THIRDPERSON.md).
 * **Lighter**: the game holds the lighter by an arm IK after the motion (`bhArmIkMdk` on node 6
   towards a point in front of chest node 4, nodes 7..9 flagged 2). The same IK runs on the
   gender-matched copy whenever the source's arm is flagged.

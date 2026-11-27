@@ -1179,48 +1179,59 @@ int actor_put_body(int who, BH_PWORK* src)
    the source's nodes 5, 9 and 13 carry the model's (actor_pose, shadow). Before the next tick's
    player control the game's own come back (actor_hands_back, game.c): bhControlPlayer reads the hand
    for the shot (the wall test of bhCheckGunAtari starts at the muzzle, owP[9]), the knife and sounds,
-   so a taller model shot higher than the crosshair. */
-static struct { BH_PWORK* src; O_WORK* ow; float mtx[3][16]; } real[1];   /* slot 0 */
+   so a taller model shot higher than the crosshair. The chest matrix identifies the pose the
+   saved joints belong to. In room 9/10 the Spotter scene moves Chris and recomputes his pose
+   while he is hidden. Restoring his old joints there can trigger the searchlight event over
+   the cutscene. */
+static struct { BH_PWORK* src; O_WORK* ow; float mtx[3][16], chest[16]; } real[1];   /* slot 0 */
 static float aim_ofs[3];   /* our weapon hand as drawn minus the real one, in the frame of the real chest (node 3) */
 static float aim_rot[9];   /* the drawn weapon hand's rotation in that frame (the gender-matched pose's hand turns otherwise) */
 static int aim_set;        /* aim_rot is set */
 
 static void hands_save(int who, BH_PWORK* src)
 {
+    O_WORK* ow = src->mlwP->owP;
     int i;
-    if (real[who].src == src && real[who].ow == src->mlwP->owP) return;   /* saved this tick */
     if (src->mlwP->obj_num < 14) return;
+    if (real[who].src == src && real[who].ow == ow &&
+        !memcmp(real[who].chest, ow[3].mtx, sizeof(real[who].chest)))
+        return;   /* saved from this pose */
     real[who].src = src;
-    real[who].ow = src->mlwP->owP;
-    for (i = 0; i < 3; i++) memcpy(real[who].mtx[i], real[who].ow[5 + 4 * i].mtx, sizeof(real[who].mtx[i]));
+    real[who].ow = ow;
+    for (i = 0; i < 3; i++) memcpy(real[who].mtx[i], ow[5 + 4 * i].mtx, sizeof(real[who].mtx[i]));
+    memcpy(real[who].chest, ow[3].mtx, sizeof(real[who].chest));
 }
 
-static void hands_back(int who)
+static int hands_back(int who)
 {
+    BH_PWORK* src = real[who].src;
     O_WORK* ow = real[who].ow;
     int i, j;
-    if (!real[who].src) return;
-    if (real[who].src->mlwP && ow == real[who].src->mlwP->owP) {
-        if (who == 0 && real[0].src == plp) {   /* local = world x R^T, R: the chest's rows */
-            float dl[3];
-            for (j = 0; j < 3; j++) dl[j] = ow[9].mtx[12 + j] - real[0].mtx[1][12 + j];
-            for (j = 0; j < 3; j++) aim_ofs[j] = dl[0] * ow[3].mtx[j * 4] + dl[1] * ow[3].mtx[j * 4 + 1] + dl[2] * ow[3].mtx[j * 4 + 2];
-            for (i = 0; i < 3; i++)   /* hand rows x chest^T */
-                for (j = 0; j < 3; j++)
-                    aim_rot[i * 3 + j] = ow[9].mtx[i * 4] * ow[3].mtx[j * 4] + ow[9].mtx[i * 4 + 1] * ow[3].mtx[j * 4 + 1] + ow[9].mtx[i * 4 + 2] * ow[3].mtx[j * 4 + 2];
-            aim_set = 1;
-        }
-        for (i = 0; i < 3; i++) memcpy(ow[5 + 4 * i].mtx, real[who].mtx[i], sizeof(real[who].mtx[i]));
-    }
     real[who].src = NULL;
+    if (!src || !src->mlwP || src->mlwP->obj_num < 14 || ow != src->mlwP->owP ||
+        memcmp(real[who].chest, ow[3].mtx, sizeof(real[who].chest)))
+        return 0;
+    if (who == 0 && src == plp) {   /* local = world x R^T, R: the chest's rows */
+        float dl[3];
+        for (j = 0; j < 3; j++) dl[j] = ow[9].mtx[12 + j] - real[0].mtx[1][12 + j];
+        for (j = 0; j < 3; j++) aim_ofs[j] = dl[0] * ow[3].mtx[j * 4] + dl[1] * ow[3].mtx[j * 4 + 1] + dl[2] * ow[3].mtx[j * 4 + 2];
+        for (i = 0; i < 3; i++)   /* hand rows x chest^T */
+            for (j = 0; j < 3; j++)
+                aim_rot[i * 3 + j] = ow[9].mtx[i * 4] * ow[3].mtx[j * 4] + ow[9].mtx[i * 4 + 1] * ow[3].mtx[j * 4 + 1] + ow[9].mtx[i * 4 + 2] * ow[3].mtx[j * 4 + 2];
+        aim_set = 1;
+    }
+    for (i = 0; i < 3; i++) memcpy(ow[5 + 4 * i].mtx, real[who].mtx[i], sizeof(real[who].mtx[i]));
+    return 1;
 }
 
 /* game.c, before bhControlPlayer */
 void actor_hands_back(void)
 {
     pc_plp_frm = -1;   /* (set again by this tick's bhControlPlayer) */
-    if (!real[0].src) aim_ofs[0] = aim_ofs[1] = aim_ofs[2] = 0, aim_set = 0;
-    hands_back(0);
+    if (!hands_back(0)) {
+        aim_ofs[0] = aim_ofs[1] = aim_ofs[2] = 0;
+        aim_set = 0;
+    }
 }
 
 void tps_trace_hands(const float* drawn, const float* real);
