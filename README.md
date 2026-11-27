@@ -11,26 +11,37 @@ native paths replace the expensive parts. The game reads your own disc image in 
 
 ## Features
 
-- **Enhanced renderer**: native 3D and textures on the GPU, widescreen (hor+, up to ultrawide),
-  internal resolution up to 8x, in-between frames up to the display's refresh rate while the game
-  logic stays at its original 30 FPS, a frame rate limit, optional PS2 motion trail.
-- **Third-person mode** (optional): over-the-shoulder camera with mouse/keyboard controls, free
-  aim and two camera styles.
-- **Modern controls** (optional) for the fixed cameras: the stick walks where it points on screen,
-  as in the RE HD remasters, and keeps its direction through camera cuts.
-- **Model swaps**: play as other characters and creatures, with matching voices and cutscene
-  doubles.
-- **Enemy options**: extra enemies, rearranged placements, a seeded randomizer, and an enemy
-  spawner.
-- **Save files**: every save its own file, as many as you like, in the game's own save screens
-  without the memory card screens (the emulated memory card stays available).
-- **Enhanced settings** in the game's own OPTION menu and an F1 overlay; full rebinding of keyboard,
-  mouse and gamepad; per-window input source for local co-op on one PC.
-- **Cheats and debug tools** (F2), co-op window (F3).
-- **HD texture packs**: PCSX2 HD texture packs for the game load as they come, from
-  `mods/textures/` (see [HD texture packs](#hd-texture-packs)).
-- **Mods**: replacement room files and archive entries from a `mods/` folder, plus tools to build
-  new rooms.
+### Lighting and rendering
+
+- **Per-pixel lighting** brings out pools of light from lamps and fires across large floors and
+  walls and smooths the lighting on characters. Smooth light falloff and soft shading are
+  independently adjustable.
+- **Four lighting modes** tune the room lighting. Original uses the PS2's main and ambient
+  light, Balanced dims both, and Horror and Nightmare make local lights and the flashlight
+  increasingly important. Lamps, fires, and the flashlight keep their strength in all four modes.
+- **Rechargeable flashlight with screen-space shadows** lights rooms, characters, and objects.
+  Characters and objects visible in the beam can cast shadows.
+- **Surface materials and wet surfaces** give metal, tile, glass, and wood distinct highlights.
+  In rainy areas, wet floors glint under lamps, moonlight, and the flashlight. Assign materials
+  to textures with the in-game picker. [Material guide](docs/modding/MATERIALS.md)
+- **Enhanced fog and post-processing** include per-pixel fog with local light glow and a visible
+  flashlight beam, plus optional ambient occlusion, bloom, and colour grading.
+- **Display options** include widescreen and ultrawide, up to 8× internal resolution, SMAA,
+  AMD FSR 1 upscaling, and HDR output on supported displays. Display-rate interpolation smooths
+  motion while game logic runs at its original 30 FPS. [Display settings](docs/USER_GUIDE.md#display)
+
+### Gameplay and modding
+
+- **Camera and controls** include an optional over-the-shoulder mode with free aim and optional
+  screen-relative movement for fixed cameras. Keyboard, mouse, and gamepad controls are rebindable.
+- **Model swaps and enemy options** let you play as other characters and creatures, adjust
+  enemy placements, and spawn enemies.
+- **Individual save files** are managed through the game's own save screens. The emulated
+  memory card is also available.
+- **Mods** include PCSX2 HD texture packs, replacement room files and archive entries, and
+  tools for building custom rooms. [HD texture packs](#hd-texture-packs)
+- **In-game settings and tools** are available through Enhanced Settings in the OPTION menu,
+  the F1 settings overlay, and the F2 cheats and debug overlay.
 
 ## Requirements
 
@@ -42,7 +53,7 @@ native paths replace the expensive parts. The game reads your own disc image in 
 
 ## Download
 
-Prebuilt Linux and Windows builds and the co-op server are on the
+Prebuilt Linux and Windows builds are on the
 [Releases](https://github.com/camybiohazard/Project-Veronica/releases) page (no game data
 included). Unpack and run `recvx.exe` (Windows) or `./recvx` (Linux); see
 [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
@@ -88,8 +99,6 @@ with mingw-w64: see [docs/BUILDING.md](docs/BUILDING.md).
 | Document | For |
 |---|---|
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | players: first start, settings, controls, cheats, saves, troubleshooting |
-| [docs/COOP.md](docs/COOP.md) | players and developers: online and local co-op, protocol reference |
-| [docs/SERVER.md](docs/SERVER.md) | running the co-op rendezvous/relay server |
 | [docs/BUILDING.md](docs/BUILDING.md) | building on Linux and for Windows, CMake options, tests |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | developers: how the port works, renderer, determinism, test aids |
 | [docs/THIRDPERSON.md](docs/THIRDPERSON.md) | third-person mode internals |

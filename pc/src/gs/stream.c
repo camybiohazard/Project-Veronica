@@ -33,6 +33,7 @@
 
 #define NOEV 0xFFFFFFFFu
 #define NATIVE_KEY (1ull << 63)   /* Group.key0 of a native 3D strip (v0 = its event) */
+#define RAW_KEY (1ull << 62)      /* Group.key0 of an effect's points, lines or sprites (v0 = its event) */
 enum { EV_REG, EV_IMAGE, EV_DISP, EV_DOWNLOAD, EV_TAG, EV_STRIP, EV_NATIVE, EV_TEXDEF, EV_TEXDEF_END, EV_TEXBIND, EV_TEXFORGET, EV_RAW, EV_RTEX, EV_MOVIE, EV_TAGLAST, EV_PRETEXT };
 typedef struct { uint8_t kind, reg; uint32_t len; uint64_t v; } Ev;
 typedef struct { uint64_t key0; uint32_t v0, nv, strip, ord, sp; } Group;   /* sp: native strip's first Frame.spos */
@@ -362,12 +363,12 @@ static Deferred* deferred; static size_t ndef, cdef;
 static NativeVertex* defv; static size_t ndefv, cdefv;
 static NativeRawVertex* defr; static size_t ndefr, cdefr;
 
-uint32_t native_defer_raw(unsigned int prim, const NativeRawVertex* v, int n)
+uint32_t native_defer_raw(unsigned int prim, const NativeRawVertex* v, int n, uint32_t mesh, uint32_t strip)
 {
     GROW(defr, ndefr, cdefr, (size_t)n);
     memcpy(defr + ndefr, v, (size_t)n * sizeof(*v));
     GROW(deferred, ndef, cdef, 1);
-    deferred[ndef] = (Deferred){ prim, (uint32_t)ndefr, (uint32_t)n, 0, 0, 1 };
+    deferred[ndef] = (Deferred){ prim, (uint32_t)ndefr, (uint32_t)n, mesh, strip, 1 };
     ndefr += (size_t)n;
     return (uint32_t)ndef++;
 }
@@ -389,24 +390,26 @@ void native_marker(uint64_t v)
     if ((uint32_t)v == NATIVE_PRETEXT) { push_ev(EV_PRETEXT, 0, 0, 0); return; }
     if ((uint32_t)v >= ndef) return;
     d = &deferred[(uint32_t)v];
+    if (d->mesh) stream_tag(d->mesh);
     if (d->raw) {
         Frame* f;
         uint32_t len = d->n * (uint32_t)sizeof(NativeRawVertex);
+        if (d->strip != NATIVE_NO_STRIP) stream_strip(d->strip);
         f = recording();
         GROW(f->pool, f->npool, f->cpool, len);
         memcpy(f->pool + f->npool, defr + d->first, len);
         GROW(f->ev, f->nev, f->cev, 1);
         f->ev[f->nev++] = (Ev){ EV_RAW, 0, d->n, f->npool | ((uint64_t)d->prim << 32) };
         f->npool += len;
-        return;
+    } else {
+        stream_strip(d->strip);
+        native_strip(d->prim, defv + d->first, (int)d->n);
     }
-    if (d->mesh) stream_tag(d->mesh);
-    stream_strip(d->strip);
-    native_strip(d->prim, defv + d->first, (int)d->n);
     if (d->mesh) stream_tag(0);
 }
 
 static const NativeVertex* native_verts(const Frame* f, uint32_t ev) { return (const NativeVertex*)(f->pool + (uint32_t)f->ev[ev].v); }
+static const NativeRawVertex* raw_verts(const Frame* f, uint32_t ev) { return (const NativeRawVertex*)(f->pool + (uint32_t)f->ev[ev].v); }
 void stream_disp(uint32_t fbp, uint32_t fbw, uint32_t psm) { push_ev(EV_DISP, 0, 0, fbp | ((uint64_t)fbw << 16) | ((uint64_t)psm << 32)); }
 
 static void submit(int partial)
@@ -535,7 +538,13 @@ void stream_exec(Frame* f)
             ntex_forget((uint32_t)e->v);
             break;
         case EV_RAW:
-            gs_draw_raw((unsigned int)(e->v >> 32), (const NativeRawVertex*)(f->pool + (uint32_t)e->v), (int)e->len);
+            if (inst >= 0 && (f->in[inst].mesh & 1)) {
+                GROW(f->g, f->ng, f->cg, 1);
+                f->g[f->ng++] = (Group){ RAW_KEY | (e->v >> 32), (uint32_t)i, e->len, strip, ord++, 0 };
+                f->in[inst].ng++;
+                f->new_group = 1;
+            }
+            gs_draw_raw((unsigned int)(e->v >> 32), raw_verts(f, (uint32_t)i), (int)e->len);
             break;
         case EV_REG:
             if (e->reg == 0x02) last_st = (uint32_t)i;
@@ -714,6 +723,10 @@ static void frame_spos(const Frame* cf)
 }
 static uint64_t gpos(const Frame* f, const Group* g, uint32_t v)
 {
+    if (g->key0 & RAW_KEY) {
+        const NativeRawVertex* rv = &raw_verts(f, g->v0)[v];
+        return rv->x | (uint64_t)rv->y << 16;
+    }
     return g->key0 & NATIVE_KEY ? f->spos[g->sp + v] : vtx(f, g->v0 + v);
 }
 
@@ -777,6 +790,19 @@ static long inst_pair(const Frame* p, const Inst* a, const Frame* c, const Inst*
     if (!native) return n * 2 >= total && near * 2 >= total && n ? (long)(sum / n) : -1;   /* GS path: half of all */
     if (!n) return 2 * JUMP;   /* no vertex in front of both cameras to judge it by: paired by its tags alone, last choice */
     return near * 2 >= n ? (long)(sum / n) : -1;
+}
+
+/* A single polygon can have respawned even when the rest of its effect still matches. */
+static int fx_jumped(const Frame* p, const Group* h, const Frame* c, const Group* g)
+{
+    uint32_t n = 0, near = 0;
+    for (uint32_t v = 0; v < g->nv; v++) {
+        uint64_t a = gpos(p, h, v), b = gpos(c, g, v);
+        if (a == NO_POS || b == NO_POS) continue;
+        n++;
+        near += moved(a, b) <= JUMP;
+    }
+    return near * 2 < n;
 }
 
 static int interp_stats(void)
@@ -995,6 +1021,7 @@ int stream_match(const Frame* p, const Frame* c)
 {
     static uint32_t* order; static uint8_t* used; static size_t cap_order;
     size_t tagged[2] = { 0, 0 }, matched[2] = { 0, 0 }, no_inst = 0, unpaired = 0, with_cam = 0;   /* [1]: effects (odd tags, pc_effect_tag) */
+    unsigned int raw_tagged = 0, raw_blended = 0;
     int moving;
     matched_for = NULL;
     if (!p || !c || c->continuation || p->partial || (!c->nvx && !c->nin)) return 0;
@@ -1041,7 +1068,11 @@ int stream_match(const Frame* p, const Frame* c)
         int fx = b->mesh & 1;
         if (!b->ng) continue;
         if (b->ng > cap_pair) { cap_pair = b->ng * 2; pair = xrealloc(pair, cap_pair * sizeof(*pair)); }
-        for (uint32_t k = 0; k < b->ng; k++) tagged[fx] += c->g[b->g0 + k].nv;
+        for (uint32_t k = 0; k < b->ng; k++) {
+            const Group* g = &c->g[b->g0 + k];
+            tagged[fx] += g->nv;
+            if (g->key0 & RAW_KEY) raw_tagged += g->nv;
+        }
         while (lo < hi) {   /* first instance of this mesh in p */
             size_t m = (lo + hi) / 2;
             if (p->in[order[m]].mesh < b->mesh) lo = m + 1; else hi = m;
@@ -1083,6 +1114,21 @@ int stream_match(const Frame* p, const Frame* c)
                 const Group *g = &c->g[b->g0 + k], *h;
                 if (pair[k] < 0) { unpaired += g->nv; lone += !!(g->key0 & NATIVE_KEY); continue; }
                 h = &p->g[pair[k]];
+                if (fx && (g->key0 & (RAW_KEY | NATIVE_KEY)) && fx_jumped(p, h, c, g)) {
+                    unpaired += g->nv;
+                    continue;
+                }
+                if (g->key0 & RAW_KEY) {
+                    const NativeRawVertex *a = raw_verts(p, h->v0), *b = raw_verts(c, g->v0);
+                    for (uint32_t v = 0; v < g->nv; v++) {
+                        if (a[v].x == b[v].x && a[v].y == b[v].y) continue;
+                        nat_prev[g->v0] = (int32_t)h->v0;
+                        raw_blended += g->nv;
+                        break;
+                    }
+                    matched[fx] += g->nv;
+                    continue;
+                }
                 if (g->key0 & NATIVE_KEY) {   /* native strip: blended vertex for vertex in replay, unless it stands still */
                     if (!nv_same_pos(native_verts(p, h->v0), native_verts(c, g->v0), g->nv)) nat_prev[g->v0] = (int32_t)h->v0;
                     matched[fx] += g->nv;
@@ -1100,8 +1146,9 @@ int stream_match(const Frame* p, const Frame* c)
                     if (pair[k] < 0) with_cam += mark_camera(c, &c->g[b->g0 + k]);
         }
     }
-    {
-        if (interp_stats()) printf("interp: meshes %zu/%zu, vertices %zu/%zu tagged matched, effects %zu/%zu, %zu total; unmatched: %zu no instance, %zu unpaired groups, %zu moved with the camera\n", c->nin, p->nin, matched[0], tagged[0], matched[1], tagged[1], c->nvx, no_inst, unpaired, with_cam);
+    if (interp_stats()) {
+        printf("interp: meshes %zu/%zu, vertices %zu/%zu tagged matched, effects %zu/%zu, %zu total; unmatched: %zu no instance, %zu unpaired groups, %zu moved with the camera\n", c->nin, p->nin, matched[0], tagged[0], matched[1], tagged[1], c->nvx, no_inst, unpaired, with_cam);
+        if (raw_tagged) printf("interp: raw effect vertices blended %u/%u\n", raw_blended, raw_tagged);
     }
     /* most meshes lost or jumping although the camera did not cut: a scene change */
     if (!matched[0] || matched[0] * 2 < tagged[0]) return 0;
@@ -1217,7 +1264,20 @@ void stream_replay(const Frame* r, float t)
         if (e->kind == EV_IMAGE) continue;   /* a replay writes no GS memory: its textures and render-target
                                                   reloads are the executed frame's (gs_gl.c, replay resources) */
         if (e->kind == EV_RAW) {
-            gs_draw_raw((unsigned int)(e->v >> 32), (const NativeRawVertex*)(r->pool + (uint32_t)e->v), (int)e->len);
+            const NativeRawVertex* cur = raw_verts(r, (uint32_t)i);
+            if (nat_prev[i] >= 0) {
+                const NativeRawVertex* prev = raw_verts(nat_prev_frame, (uint32_t)nat_prev[i]);
+                NativeRawVertex blended[64];   /* pc_native_prim_raw emits at most 64 */
+                int n = (int)e->len;
+                for (int k = 0; k < n; k++) {
+                    blended[k] = cur[k];
+                    blended[k].x = (uint16_t)(prev[k].x + ((float)cur[k].x - prev[k].x) * t + 0.5f);
+                    blended[k].y = (uint16_t)(prev[k].y + ((float)cur[k].y - prev[k].y) * t + 0.5f);
+                }
+                gs_draw_raw((unsigned int)(e->v >> 32), blended, n);
+            } else {
+                gs_draw_raw((unsigned int)(e->v >> 32), cur, (int)e->len);
+            }
             continue;
         }
         if (e->kind == EV_NATIVE) {

@@ -69,7 +69,7 @@ struct VU1_STRIP_BUF;
 struct VU1_PRIM_BUF;
 unsigned int pc_native_prim3d(unsigned int prim, const struct VU1_PRIM_BUF* in, int n, int deferred, float* zavg);
 unsigned int pc_native_prim(unsigned int prim, const unsigned int* dp, int n, int clip_3d_on, int deferred, float* last_sz);
-unsigned int pc_native_prim_raw(unsigned int prim, const unsigned int* dp, int n, int clip_3d_on, float* last_sz);
+unsigned int pc_native_prim_raw(unsigned int prim, const unsigned int* dp, int n, int clip_3d_on, int deferred, float* last_sz);
 void  Ps2AddPrim3DExNative(unsigned long long prim, void* dp, unsigned int num, int mode);   /* 0 Ex, 1 Ex1P, 2 ExI */
 #define NATIVE_MARKER_REG 0x7F
 #define NATIVE_PRETEXT 0xFFFFFFFEu   /* NATIVE_MARKER_REG value: the HUD starts here (stream.c native_marker) */
@@ -148,6 +148,7 @@ void  pc_light_forget(int first, int n);   /* per-pixel lighting: vertices witho
 struct VU1_COLOR;
 void  pc_light_ambient_scale(const struct VU1_COLOR* in, struct VU1_COLOR* out);   /* vu1SetAmbient: x the Ambient light option */
 void  pc_effect_tag(const void* op);      /* effect.c: the following output is this effect (O_WRK*, NULL: none) */
+void  pc_effect_part(unsigned int n);     /* the following polygons belong to slot n within the effect */
 unsigned long long pc_effect_poly(void); /* ps2_dummy.c Ps2AddOT: STREAM_TAG_REG value for an effect polygon (0: none) */
 int   pc_no_ink_ribbon(void);                 /* setting: typewriters save without an ink ribbon (host.c) */
 int   pc_battle_unlocked(void);               /* host.c: setting "Battle Game unlocked" (event.c bhCk: every Battle Game character) */

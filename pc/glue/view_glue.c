@@ -65,6 +65,10 @@ void pc_effect_tag(const void* op)
 }
 uint64_t pc_effect_poly(void) { return pc_cur_mesh & 1 ? pc_cur_mesh | (uint64_t)pc_cur_strip++ << 32 : 0; }
 
+/* Give each part its own range so a particle or trail slot can appear or disappear
+   without shifting the polygon numbers of the slots that follow it. */
+void pc_effect_part(unsigned int n) { if (pc_cur_mesh & 1) pc_cur_strip = (n & 0xFFFFFu) << 12; }
+
 int pc_is_room_object(const void* obj)
 {
     const NJS_CNK_OBJECT* o = (const NJS_CNK_OBJECT*)obj;

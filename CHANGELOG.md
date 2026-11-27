@@ -8,6 +8,8 @@
 
 ### Changes
 
+- **Smoother effects with Display-rate frames.** Fires, searchlights, sparks, and weather particles
+  can move smoothly between game frames, following aikatore's recvx-enhanced-port.
 - **Faster underwater effects at high internal resolutions.** The renderer reuses capture textures
   and framebuffers, following aikatore's recvx-enhanced-port. At 4× in the Airport Submarine Dock,
   average render-thread time fell from 28.9 ms to 9.9 ms per game frame on the test RTX 5060.

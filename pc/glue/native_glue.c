@@ -287,7 +287,7 @@ uint32_t pc_native_prim(unsigned int prim, const unsigned int* dp, int n, int cl
    registers (XYZF2 after FTOI4, RGBAQ, ST or UV), drawn by the GS vertex kick logic
    (gs_draw_raw). ADC as in the original: in 3D, a vertex off the GS area or with z outside
    1..65535 (and the two after it) or one the caller marked does not draw. */
-uint32_t pc_native_prim_raw(unsigned int prim, const unsigned int* dp, int n, int clip_3d_on, float* last_sz)
+uint32_t pc_native_prim_raw(unsigned int prim, const unsigned int* dp, int n, int clip_3d_on, int deferred, float* last_sz)
 {
     NativeRawVertex v[64];
     unsigned int clip_flag = 0;
@@ -315,5 +315,9 @@ uint32_t pc_native_prim_raw(unsigned int prim, const unsigned int* dp, int n, in
         if ((prim & 7) == 6) for (int i = 0; i + 1 < n; i += 2) clip_sprite(&v[i], &v[i + 1], (prim >> 4) & 1);
         else if ((prim & 7) == 0) for (int i = 0; i < n; i++) v[i].adc |= v[i].x < CLIP_X0 * 16.0f || v[i].x >= CLIP_X1 * 16.0f;
     }
-    return native_defer_raw(prim, v, n);
+    if (pc_cur_mesh & 1) {
+        /* The ordering table can emit this after its effect's draw callback has ended. */
+        return native_defer_raw(prim, v, n, deferred ? pc_cur_mesh : 0, pc_cur_strip++);
+    }
+    return native_defer_raw(prim, v, n, 0, NATIVE_NO_STRIP);
 }

@@ -267,8 +267,14 @@ shows in-between images at the display rate:
   the tag after their vertices (`Ps2AddOT` writes it to GS register 0x7E, `STREAM_TAG_REG`). So an
   effect pairs only with itself; its position (and size on screen) is blended like a mesh's,
   its animation frame (texture coordinates) and colour are the current frame's. Effects use the
-  128 px limit and do not count towards the "most meshes matched" test. 2D effects, lines and
-  effects with their own draw function (`ef_fnc`) stay as they are.
+  128 px limit and do not count towards the "most meshes matched" test. Custom effect draw
+  callbacks (`ef_fnc`) also tag their output, including sprites, lines and points.
+  The fire manager tags individual fires, and particle and trail drawers use stable part
+  numbers so a disappearing slot does not shift the matches of later slots. A polygon
+  with fewer than half its vertices within 128 px uses its newest position, as when a
+  raindrop respawns. Raw sprites, lines and points blend their screen position during
+  replay and use the current frame's depth, clipping flags and texture coordinates.
+  Full-screen overlays are drawn through the separate 2D effect lists.
 - **New meshes move with the camera**: a mesh none of whose instances was drawn in the previous
   frame is placed in the previous frame's view as if it stood still in the world and blended
   from there (`stream.c cam_move`/`nv_camera`, with each frame's `cam.mtx` and projection from
