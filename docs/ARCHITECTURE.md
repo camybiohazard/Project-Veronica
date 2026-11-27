@@ -213,8 +213,12 @@ headless.
   capture event instead; the render thread blits the render-target area into a texture that
   becomes a native texture definition, and the TIM2 only receives a 16-byte marker. A stale marker
   falls back to a plain upload. In widescreen the full-screen distortion captures the widened view
-  (`pc_rtex_wide`) and draws it back over the whole view. The other small screen (the Palace
-  monitor, `PS2_Render_Tex_Sub`) is a GS copy into FBP 476 sampled as a texture; a target's drawn
+  (`pc_rtex_wide`) and draws it back over the whole view. Executed captures reuse up to eight
+  texture and framebuffer pairs (`gs_gl.c`), with a fresh allocation if every slot is in use.
+  The pool reclaims each pair at the next frame boundary after its texture definition releases
+  it, once the preceding frame's replays have finished using it. Free pairs expire after
+  120 frames or when internal resolution or widescreen margins change. The other small screen
+  (the Palace monitor, `PS2_Render_Tex_Sub`) is a GS copy into FBP 476 sampled as a texture; a target's drawn
   area is its scissor cut to the vertices of 2D batches, so a CLUT upload in the pages below that
   copy does not make it stale.
 - **HD texture packs** (`gs/hdpack.c`, [HD_PACK.md](HD_PACK.md)): every texture decode computes

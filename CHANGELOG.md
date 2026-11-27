@@ -8,6 +8,9 @@
 
 ### Changes
 
+- **Faster underwater effects at high internal resolutions.** The renderer reuses capture textures
+  and framebuffers, following aikatore's recvx-enhanced-port. At 4× in the Airport Submarine Dock,
+  average render-thread time fell from 28.9 ms to 9.9 ms per game frame on the test RTX 5060.
 - **Fixed: Antarctic Spotter cutscene softlock** (from aikatore's recvx-enhanced-port): the
   pipe corridor scene finishes when Chris is using a swapped model.
 - **Fixed: B.O.W. gas rounds in widescreen** (from aikatore's recvx-enhanced-port): the

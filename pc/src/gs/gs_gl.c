@@ -1105,11 +1105,14 @@ float gs_wanted_scale(void)
     return s < 1.0f ? 1.0f : s > 8.0f ? 8.0f : s;
 }
 
+static void cpool_trim(uint64_t age);
+
 /* change the internal resolution; existing render targets are resampled, not lost */
 void gs_set_scale(float scale)
 {
     if (scale == g_scale) return;
     gs_flush();
+    cpool_trim(0);
     for (int i = 0; i < MAX_RT; i++) {
         RenderTarget* rt = &rts[i];
         GLuint tex, fbo;
@@ -1190,6 +1193,7 @@ void gs_update_widescreen(void)
     }
     if (m == g_margin_x) return;
     gs_flush();
+    cpool_trim(0);
     for (int i = 0; i < MAX_RT; i++)   /* recreated (and reloaded from GS memory) at the new width */
         if (rts[i].used) { glDeleteTextures(1, &rts[i].tex); glDeleteFramebuffers(1, &rts[i].fbo); fb_forget(); rts[i].used = 0; }
     for (int i = 0; i < 8; i++) if (dz[i].tex) { glDeleteTextures(1, &dz[i].tex); dz[i].tex = 0; }
@@ -3302,6 +3306,57 @@ void gs_rt_to_mem(uint32_t bp, uint32_t bw, uint32_t psm, uint32_t x, uint32_t y
     for (uint32_t p = rt->fbp; p < rt->fbp + rt_page_count(rt) && p < 512; p++) page_dirty[p] = 1;
 }
 
+/* StoreRenderTex allocations become reusable at gs_frame_begin, after the last replay
+   that could sample their previous contents. Replay captures have their own storage. */
+typedef struct {
+    GLuint tex, fbo;
+    int w, h, live;
+    uint64_t freed;
+} CaptureSlot;
+static CaptureSlot cpool[8];
+
+static int cpool_release(GLuint tex)
+{
+    for (int i = 0; i < SDL_arraysize(cpool); i++) {
+        if (cpool[i].tex == tex && cpool[i].live) {
+            cpool[i].live = 0;
+            cpool[i].freed = frame_no;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void cpool_trim(uint64_t age)
+{
+    for (int i = 0; i < SDL_arraysize(cpool); i++) {
+        CaptureSlot* slot = &cpool[i];
+        if (slot->tex && !slot->live && frame_no - slot->freed >= age) {
+            glDeleteTextures(1, &slot->tex);
+            glDeleteFramebuffers(1, &slot->fbo);
+            fb_forget();
+            *slot = (CaptureSlot){0};
+        }
+    }
+}
+
+static CaptureSlot* cpool_acquire(int w, int h)
+{
+    CaptureSlot* fallback = NULL;
+    for (int i = 0; i < SDL_arraysize(cpool); i++) {
+        CaptureSlot* slot = &cpool[i];
+        if (slot->live) continue;
+        if (slot->tex && slot->w == w && slot->h == h) return slot;
+        if (!fallback || !slot->tex) fallback = slot;
+    }
+    return fallback;
+}
+
+static float capture_width(uint32_t w, int wide)
+{
+    return wide && g_margin_x ? w * gs_hor_scale() : (float)w;
+}
+
 /* StoreRenderTex on the GPU (RECVX_NATIVE_RTEX): GS pixels (0,0)-(w,h) of a render target
    copied at render resolution (margin and scale as in gs_rt_to_mem) into a new texture, 0 if
    there is no such target (transparent black). wide (hor+): GS x w/2 -+ w/2 * gs_hor_scale(),
@@ -3310,7 +3365,7 @@ void gs_rt_to_mem(uint32_t bp, uint32_t bw, uint32_t psm, uint32_t x, uint32_t y
 static void capture_rt(GLuint* tex, GLuint* fbo, int* cw, int* ch, uint32_t fbp, uint32_t fbw, uint32_t w, uint32_t h, int wide)
 {
     RenderTarget* rt = rt_find(fbp, fbw ? fbw : 1);
-    float gw = wide && g_margin_x ? w * gs_hor_scale() : (float)w;   /* GS pixels captured across */
+    float gw = capture_width(w, wide);   /* GS pixels captured across */
     int pw = (int)(gw * g_scale), ph = (int)(h * g_scale);
     gs_flush();
     rt_touch(rt);
@@ -3329,12 +3384,18 @@ static void capture_rt(GLuint* tex, GLuint* fbo, int* cw, int* ch, uint32_t fbp,
 }
 unsigned int gs_capture_rt(uint32_t fbp, uint32_t fbw, uint32_t w, uint32_t h, int wide)
 {
-    GLuint tex = 0, fbo = 0;
-    int cw = 0, ch = 0;
+    CaptureSlot one = {0};
+    CaptureSlot* slot = cpool_acquire((int)(capture_width(w, wide) * g_scale), (int)(h * g_scale));
+    if (!slot) slot = &one;
     if (wide) ao_src[0].warped = 1;   /* the full-screen distortion (pc_rtex_wide) */
-    capture_rt(&tex, &fbo, &cw, &ch, fbp, fbw, w, h, wide);
-    glDeleteFramebuffers(1, &fbo); fb_forget();
-    return tex;
+    capture_rt(&slot->tex, &slot->fbo, &slot->w, &slot->h, fbp, fbw, w, h, wide);
+    if (slot == &one) {
+        glDeleteFramebuffers(1, &slot->fbo);
+        fb_forget();
+    } else {
+        slot->live = 1;
+    }
+    return slot->tex;
 }
 
 /* an in-between image's StoreRenderTex (rcap) */
@@ -3453,10 +3514,17 @@ void gs_frame_begin(void)
     gt_exec_begin();
     if (++memo_gen == 0) memo_gen = 1;   /* resources of the frame about to execute */
     if (ndoomed) {
-        for (size_t i = 0; i < ndoomed; i++) { hdpack_forget(doomed[i]); if (doomed[i] < ctlev) tlev[doomed[i]] = (TexLevels){ 0, 0 }; }
-        glDeleteTextures((GLsizei)ndoomed, doomed);
+        size_t ndelete = 0;
+        for (size_t i = 0; i < ndoomed; i++) {
+            GLuint tex = doomed[i];
+            hdpack_forget(tex);
+            if (tex < ctlev) tlev[tex] = (TexLevels){0};
+            if (!cpool_release(tex)) doomed[ndelete++] = tex;
+        }
+        if (ndelete) glDeleteTextures((GLsizei)ndelete, doomed);
         ndoomed = 0;
     }
+    cpool_trim(120);
     nreloads = 0;
     mv_tbp = UINT32_MAX;   /* a movie frame binds it again (EV_MOVIE) */
     pretext[0].valid = 0;
