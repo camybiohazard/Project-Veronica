@@ -8,6 +8,8 @@
 
 ### Changes
 
+- **Fixed: B.O.W. gas rounds in widescreen** (from aikatore's recvx-enhanced-port): the
+  grenade launcher's green flash follows **Screen effects**, filling the view with **Stretch to width**.
 - **Fixed: frame drops in busy rooms** (most of all the Antarctic Base cultivation room, facing the webs
   in third person): the renderer no longer has the graphics driver set aside a new 35 MB vertex buffer every few
   frames, a stall of about 11 ms each time. It now reuses three buffers in turn.

@@ -127,8 +127,10 @@ Render targets get GS-pixel margins on both sides. The game's clip matrix
 while the projection is untouched, so 3D fills the margins and 2D drawn at x 0..639 stays 4:3 in
 the middle. Full-screen 2D layers are stretched to the widened view as the DISPLAY settings say
 (`host.c pc_overlay_begin`, `pc_overlay_x`): cutscene bars `PC_OVL_CINEMA`, fades `PC_OVL_FADE`
-(always), screen effects `PC_OVL_EFFECT`, which also covers the scope's lens tint (`screen.c
-bhDrawScope`; the scope's view is hor+ as any other, its reticle stays 4:3 in the middle). Model culling is widened the same way (`fNaViwHalfW`, the joint window of
+(always), and screen effects `PC_OVL_EFFECT`, including the B.O.W. gas round's green flash
+(`effect.c bhDrawNtxEffect2D`) and the scope's lens tint (`screen.c bhDrawScope`; the scope's view
+is hor+ and its reticle stays 4:3 in the middle). Model culling is widened the same way
+(`fNaViwHalfW`, the joint window of
 `bhCheckClipModel`/`bhCheckClipPoint`). The bounding-sphere test of every chunk model
 (`njCnkDrawModelLocal`: room parts, objects, effects) is replaced in widescreen and in third
 person (`view_glue.c pc_model_clip`): the original compares the sphere's on-axis screen radius
