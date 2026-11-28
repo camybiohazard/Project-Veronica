@@ -137,7 +137,7 @@ float pc_overlay_x(float x)
     return overlay_stretch ? 320.0f + (x - 320.0f) * pc_hor_scale() : x;
 }
 
-HostConfig g_config = { .window_w = 1280, .window_h = 960, .fullscreen = 1, .borderless_extra = 1, .vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = 1, .frame_blend = 0, .aspect = 2, .fsr = 1, .fog_glow = 1, .fog_beam = 1, .flash_shadow = 1,
+HostConfig g_config = { .window_w = 1280, .window_h = 960, .fullscreen = 1, .borderless_extra = 1, .vsync = 1, .log_level = 1, .music_volume = 100, .sfx_volume = 100, .rumble = 100, .interpolate = INTERP_OPTIMIZED, .frame_blend = 0, .aspect = 2, .fsr = 1, .fog_glow = 1, .fog_beam = 1, .flash_shadow = 1,
                        .screen_filter = 1, .cinema_bars = 1, .screen_effects = 1, .native_3d = 1, .model_cull = 1, .native_tex = 1, .hd_textures = 1, .hd_textures_ui = 1, .quick_knife = 1, .head_blowoff = 1, .ammo_hud = 1,
                        .skip_doors = 1, .fast_loading = 1, .update_check = 1, .auto_stairs = 1, .skip_intro = 1, .battle_unlocked = 1, .difficulty_select = 1, .contrast = 100, .gamma = 10, .fog_intensity = 100,
                        .light_falloff = 1, .lighting = 1,
@@ -239,7 +239,7 @@ static void usage(void)
         "  --size WxH         start windowed at that size (default: borderless fullscreen; windowed 1280x960)\n"
         "  --fullscreen       start in fullscreen (borderless, or exclusive if chosen in the settings)\n"
         "  --borderless / --exclusive / --windowed   start in that display mode\n"
-        "  --enhanced         display-rate frames (60+ FPS) blended from the 30 FPS game (default)\n"
+        "  --enhanced         display-rate frames with the optimized scheduler (default)\n"
         "  --vanilla          original 30 FPS presentation\n"
         "  --skip-doors       room transitions (doors, stairs, ladders) without their animation (default;\n"
         "                     skip_doors in recvx.ini: 0 played, 1 instant, 2 played until a key is pressed)\n"
@@ -298,8 +298,8 @@ static void parse_args(int argc, char** argv)
         else if (!strcmp(argv[i], "--borderless")) { g_config.fullscreen = 1; g_config.fullscreen_exclusive = 0; }
         else if (!strcmp(argv[i], "--exclusive")) { g_config.fullscreen = 1; g_config.fullscreen_exclusive = 1; }
         else if (!strcmp(argv[i], "--windowed")) g_config.fullscreen = 0;
-        else if (!strcmp(argv[i], "--enhanced")) g_config.interpolate = 1;
-        else if (!strcmp(argv[i], "--vanilla")) g_config.interpolate = 0;
+        else if (!strcmp(argv[i], "--enhanced")) g_config.interpolate = INTERP_OPTIMIZED;
+        else if (!strcmp(argv[i], "--vanilla")) g_config.interpolate = INTERP_OFF;
         else if (!strcmp(argv[i], "--skip-doors")) g_config.skip_doors = 1;
         else if (!strcmp(argv[i], "--skip-intro")) g_config.skip_intro = 1;
         else if (!strcmp(argv[i], "--hd-textures") && i + 1 < argc) { SDL_strlcpy(g_config.hd_textures_dir, argv[++i], sizeof(g_config.hd_textures_dir)); }

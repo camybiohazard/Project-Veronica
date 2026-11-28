@@ -362,6 +362,7 @@ static const char* const onoff_auto[] = { "Auto", "Off", "On" };
 static const char* const display_modes[] = { "Windowed", "Borderless fullscreen", "Exclusive fullscreen" };
 static const char* const modes3[] = { "Original (4:3)", "Stretch to width", "Off" };
 static const char* const fps_limits[] = { "Off (display rate)", "30", "60", "90", "120", "144" };   /* render.c present_hz */
+static const char* const frame_schedulers[] = { "Off", "Optimized scheduler", "Normal scheduler" };
 static const char* const aspects[] = { "4:3 (original)", "Stretch to window", "Widescreen (hor+)" };
 static const char* const save_systems[] = { "Native files", "Memory card (original)" };
 static const char* const atmos_names[] = { "Per cut (original)", "Smooth" };
@@ -393,7 +394,7 @@ const Setting g_settings[] = {
       .help = "SMAA: smooths the jagged edges of the 3D picture (railings, fences, roof lines) at the resolution it is drawn at. Matters most at lower resolutions." },
     { SP_GRAPHICS, "Dithering", V(g_config.dither), 0, 1, 1,
       .help = "Smooths the colour banding of dark gradients (lamplight falloff, fog, the tone curve) with a fine fixed noise too small to see." },
-    { SP_DISPLAY, "Display-rate frames", V(g_config.interpolate), 0, 1, 1, .help = "In-between frames blended from the last two game frames. The game still runs at 30 FPS; half a frame of latency." },
+    { SP_DISPLAY, "Display-rate frames", V(g_config.interpolate), INTERP_OFF, INTERP_NORMAL, 1, frame_schedulers, .help = "Optimized predicts the next refresh and reuses completed frames. Normal uses the original interpolation timing. Off shows the original 30 FPS motion." },
     { SP_DISPLAY, "Frame blend (trail)", V(g_config.frame_blend), -1, 1, 1, onoff_auto, .help = "As on the PS2: each frame mixed over the previous one. Auto: on in vanilla, off with display-rate frames." },
     { SP_DISPLAY, "Cutscene bars", V(g_config.cinema_bars), 0, 2, 1, modes3, .help = "Original keeps them 4:3 in widescreen; fades always fill the screen.", .group = "WIDESCREEN" },
     { SP_DISPLAY, "Camera vignette", V(g_config.screen_filter), 0, 2, 1, modes3, .help = "Original keeps it 4:3 in widescreen." },

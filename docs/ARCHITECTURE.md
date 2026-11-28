@@ -244,7 +244,7 @@ shows in-between images at the display rate:
 - At each display refresh the executed frame's whole GS stream is **replayed** with matched
   vertices blended in homogeneous space (x*w, y*w, w = 1/Q; S/T/Q rescaled so textures keep their
   perspective). For a display rate n times the game's (60/120/240 Hz) t = k/n; otherwise
-  t = time since arrival / frame period. Untagged output (2D, screen filters) is shown as is. A
+  the Optimized scheduler samples a smoothed game-frame timeline at the predicted next refresh and uses the completed frame within half a refresh of its endpoint. The Normal scheduler uses time since arrival divided by the frame period. Untagged output (2D, screen filters) is shown as is. A
   mesh is blended if at least half its vertices moved less than 128 px; single vertices moving
   more than 512 px are not. A native 3D mesh needs only some of its strips in both frames (half
   of those paired within 1024 px): one coming into view beside the third-person camera has most of
@@ -460,7 +460,7 @@ only in front of what is drawn. Cost at 4K (Prison graveyard, fixed camera, beam
 within the measuring noise (about 0.85 ms before the cone cut, when every pixel within the range
 stepped).
 
-Ambient occlusion (`ao`: 0 off, 1 High, 2 Low; `gs_gl.c AO_*`: 60% strength, radius 2% of the screen's height; `ao_pass`) is computed from the depth native 3D
+Ambient occlusion (`ao`: 0 off, 1 High, 2 Low; `gs_gl.c AO_*`: 70% strength, radius 2% of the screen's height; `ao_pass`) is computed from the depth native 3D
 wrote into a full-screen target. Full-screen 2D drawn later (the camera filter, fades) overwrites
 that depth with a flat value, so `gs_flush` copies it (`ao_keep`: at half the size, of the 480
 lines shown, as the AO pass reads it at a spacing of two depth samples anyway) just before a draw that is not
@@ -1219,6 +1219,7 @@ and game frames for game-state aids, as noted.
 | `RECVX_TRACE_PRESENT=file` | one line per present: frame, t, start time, swap duration |
 | `RECVX_MOVIE_TRACE=file` | one line per game frame of a movie: time, vblanks, frame shown, game-thread time, sound position and queue, sound minus picture (ms); at the end decode times and frames shown before they were decoded; when the movie opens, starts and ends a `#` line with its sound (open, rate, seconds queued, paused, gain, RMS at that gain) and the room's (BGM, background SE, playing MIDI ports) |
 | `RECVX_GPU_TIME=1` | every 2 s: frames and in-between images per second, render-thread CPU and GPU time; GL draws, GS-path sprites and other primitives, native triangles per frame and per in-between image |
+| `RECVX_GPU_TIME_DETAIL=1` | also enables GPU timing and samples one in-between replay every 32 replays. Logs GPU ms per sampled replay for draw batches by blend and depth-write state, scene totals by GS framebuffer base pointer (FBP), and framebuffer blits during replay setup and drawing. Display post-processing stays in the coarse `display` timer. |
 | `RECVX_TRACE_NTEX=1` | log native texture binds, misses and render-texture captures |
 | `RECVX_TRACE_DMA=1` | log GIF DMA chain tags |
 | `RECVX_VU_CHECK=1`, `RECVX_VU_INTERP=1` | compare the static and native VU code with the interpreter on every call / use the interpreter |

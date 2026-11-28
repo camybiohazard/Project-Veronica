@@ -79,7 +79,7 @@ static const struct { const char* key; int* val; int lo, hi; } keys[] = {
     { "hd_textures", &g_config.hd_textures, 0, 1 },
     { "hd_textures_font", &g_config.hd_textures_font, 0, 1 },
     { "hd_textures_ui", &g_config.hd_textures_ui, 0, 1 },
-    { "interpolate", &g_config.interpolate, 0, 1 },
+    { "interpolate", &g_config.interpolate, INTERP_OFF, INTERP_NORMAL },
     { "frame_blend", &g_config.frame_blend, -1, 1 },
     { "appear_char", &g_appear_chr, 0, APPEAR_CHR_MAX },   /* "You appear as" */
     { "appear_gender_anim", &g_appear_anim, 0, 1 },

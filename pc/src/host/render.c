@@ -4,8 +4,8 @@
  * Game frames arrive from the game thread as recorded GS streams (gs/stream.c). Each is
  * executed once (the real image) and then presented in step with the display: with
  * interpolation, every display refresh during the following game-frame period shows the
- * frame replayed at t = elapsed / period between the previous and the new frame, so any
- * refresh rate gets evenly spaced in-between images; game logic stays at its original rate.
+ * frame replayed at a pose between the previous and the new frame. The optimized scheduler
+ * estimates the next refresh time; the normal scheduler uses time since frame arrival.
  */
 #include "../ps2_platform.h"
 #include "../gs/gs.h"
@@ -43,6 +43,8 @@ void render_loop(void)
 {
     Frame *prev = NULL, *cur = NULL;
     uint64_t arrived = 0, pace_until = 0;
+    double frame_origin = 0.0;   /* smoothed start of the current game frame, ns */
+    uint64_t last_swap_end = 0;
     double swap_avg = 0.0;   /* how long the buffer swap blocks, smoothed */
     double period = GAME_PERIOD;   /* game frame period, measured below */
     uint64_t frame_start = 0, due = 0;   /* when the frame being shown began executing; when the next is due */
@@ -67,6 +69,10 @@ void render_loop(void)
             stream_exec(f);
             prof_pop();
             if (stream_is_partial(f)) { stream_release(f); continue; }   /* download sync point */
+            double predicted_start = frame_origin + GAME_PERIOD;
+            double timing_error = (double)frame_start - predicted_start;
+            if (!frame_origin || fabs(timing_error) > GAME_PERIOD) frame_origin = (double)frame_start;
+            else frame_origin = predicted_start + 0.10 * timing_error;
             due = frame_start + (uint64_t)GAME_PERIOD;
             frame_start = 0;
             now = SDL_GetTicksNS();
@@ -97,7 +103,7 @@ void render_loop(void)
         {
             /* With a display rate that is a whole multiple of the game's (60/120/240 Hz), step by
                refreshes: t = 1/n, 2/n, ... 1, evenly spaced however the game thread's frame
-               delivery jitters against vsync. Otherwise by time since arrival. */
+               delivery jitters against vsync. */
             double n = period * 1e-9 * present_hz();
             uint64_t tick = (uint64_t)(1e9 / present_hz());
             float t;
@@ -105,7 +111,14 @@ void render_loop(void)
             if (!interp) t = 1.0f;
             else if (fixed_t > 0.0f) t = shown ? 1.0f : fixed_t;
             else if (g_config.vsync && n > 1.5 && fabs(n - floor(n + 0.5)) < 0.1) t = (float)((shown + 1) / floor(n + 0.5));
-            else t = (float)((double)(now - arrived) / period);
+            else if (g_config.interpolate == INTERP_OPTIMIZED && last_swap_end) {
+                /* Sample the motion at the upcoming refresh. Within half a refresh of
+                   the endpoint the completed game frame is the closest pose. */
+                double next_refresh = (double)last_swap_end + tick;
+                if (next_refresh <= now) next_refresh += tick * (1.0 + floor((now - next_refresh) / tick));
+                double phase = (next_refresh - frame_origin) / GAME_PERIOD;
+                t = phase >= 1.0 - 0.5 / n ? 1.0f : (float)fmax(0.0, phase);
+            } else t = (float)((double)(now - arrived) / period);
             /* the next game frame is already waiting (the game runs below its rate): an
                in-between image of this one would only delay it (a whole replay of the scene) */
             if (t < 1.0f && fixed_t <= 0.0f && stream_queued()) continue;
@@ -130,6 +143,7 @@ void render_loop(void)
                 double cost = (double)(SDL_GetTicksNS() - now) - (double)swap;
                 replay_avg += ((cost < GAME_PERIOD ? cost : GAME_PERIOD) - replay_avg) / 8;
             }
+            last_swap_end = SDL_GetTicksNS();
             shown++;
             if (trace) fprintf(trace, "%llu %.3f %llu %llu\n", (unsigned long long)gs_frame_count(), t, (unsigned long long)(now / 1000),
                                (unsigned long long)(swap / 1000));

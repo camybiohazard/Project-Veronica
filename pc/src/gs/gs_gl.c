@@ -309,6 +309,7 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
        with the steps at the fixed cameras' distances) */
     "    float gap = x.z + u_shz.z / (dz * u_shz.x + u_shz.y), bias = 1.0 + 2.0 * x.z * x.z / abs(u_shz.z), th = SH_THICK + bias;\n"
     "    occ = max(occ, smoothstep(bias, 2.0 * bias, gap) * (1.0 - smoothstep(th - 2.0, th, gap)));\n"
+    "    if (occ >= 1.0) return 0.0;\n"   /* no later sample can increase full occlusion */
     "  }\n"
     "  return 1.0 - occ;\n"
     "}\n"
@@ -345,7 +346,7 @@ static const char* fs_src =   /* (after "#version" and the variant's #defines, g
     "      float t = (1.0 - r / fb.w) * 4.0, sp = clamp(1.0 - r / fd.w, 0.0, 1.0);\n"   /* beam, spill */
     "      float beam = smoothstep(fd.y, fd.x, dot(-d * il, fb.xyz)) * min(1.0, fc.w / d2);\n"
     "      if (t < 1.0) beam *= t * t * (3.0 - 2.0 * t);\n"
-    "      if (beam > 0.002 && u_shz.w > 0.0) beam *= flash_shadow(p, fa.xyz);\n"
+    "      if ((f > 0.0 || wet > 0.0) && beam > 0.002 && u_shz.w > 0.0) beam *= flash_shadow(p, fa.xyz);\n"
     "      if (f > 0.0) fl += f * (beam + fd.z * sp * sp) * fc.rgb;\n"
     "      if (wet > 0.0) spec += beam * fc.rgb * shine(nn, d * il, v);\n"
     "    }\n"
@@ -1515,6 +1516,23 @@ static void draw_batch(int afail_pass)
    and per plain present, and the images per second. */
 enum { GT_EXEC0, GT_EXEC1, GT_PRES0, GT_RB, GT_RD, GT_DD, GT_PRES1, GT_N };   /* RB/RD/DD: in-between only */
 #define GT_RING 16
+#define GT_DETAIL_INTERVAL 32
+#define GT_DETAIL_REGIONS 2048
+#define GT_DETAIL_TARGETS 512   /* GS FRAME.FBP is 9 bits */
+enum {
+    GT_DRAW_OTHER = 0, GT_DRAW_DEPTH = 1, GT_DRAW_BLEND = 2,
+    GT_DRAW_BLEND_DEPTH = GT_DRAW_BLEND | GT_DRAW_DEPTH, GT_DRAW_TYPES,
+    GT_COPY_SETUP = GT_DRAW_TYPES, GT_COPY_COLOR, GT_COPY_DEPTH, GT_DETAIL_TYPES
+};
+static struct {
+    int on, active, setup, slot;
+    unsigned int replays;
+    int count, allocated, overflow, samples, skipped;
+    GLuint q[GT_DETAIL_REGIONS * 2];
+    struct { uint16_t type, fbp; } region[GT_DETAIL_REGIONS];
+    double ms[GT_DETAIL_TYPES], target_ms[GT_DETAIL_TARGETS];
+    unsigned int calls[GT_DETAIL_TYPES], target_calls[GT_DETAIL_TARGETS];
+} gt_detail = { .slot = -1 };
 typedef void (GLAPIENTRY *PFN_QueryCounter)(GLuint, GLenum);
 typedef void (GLAPIENTRY *PFN_GetQueryObjectui64v)(GLuint, GLenum, uint64_t*);
 typedef void (GLAPIENTRY *PFN_GetQueryObjectiv)(GLuint, GLenum, GLint*);
@@ -1536,7 +1554,10 @@ static void gt_init(void)
 {
     static int done;
     if (done++) return;
-    gt.on = SDL_getenv("RECVX_GPU_TIME") && SDL_atoi(SDL_getenv("RECVX_GPU_TIME"));
+    const char* detail = SDL_getenv("RECVX_GPU_TIME_DETAIL");
+    const char* time = SDL_getenv("RECVX_GPU_TIME");
+    gt_detail.on = detail && SDL_atoi(detail);
+    gt.on = gt_detail.on || (time && SDL_atoi(time));
     if (!gt.on) return;
     gt.counter = (PFN_QueryCounter)hdr_gl_proc("glQueryCounter");
     gt.get64 = (PFN_GetQueryObjectui64v)hdr_gl_proc("glGetQueryObjectui64v");
@@ -1549,6 +1570,109 @@ static void gt_init(void)
 #define GL_QUERY_RESULT 0x8866
 #define GL_QUERY_RESULT_AVAILABLE 0x8867
 static void gt_mark(int which) { if (gt.on) gt.counter(gt.q[gt.slot][which], GL_TIMESTAMP); }
+
+/* One detailed sample can be in flight, attached to its coarse query ring slot. Allocate
+   query names as needed and only read them after that slot's final timestamp is available. */
+static void gt_detail_start(void)
+{
+    if (!gt.on || !gt_detail.on || gt_detail.replays++ % GT_DETAIL_INTERVAL || gt_detail.slot >= 0) return;
+    gt_detail.slot = gt.slot;
+    gt_detail.active = gt_detail.setup = 1;
+    gt_detail.count = gt_detail.overflow = 0;
+}
+
+static int gt_detail_begin(int type, uint32_t fbp)
+{
+    if (!gt_detail.active) return -1;
+    if (gt_detail.count == GT_DETAIL_REGIONS) { gt_detail.overflow = 1; return -1; }
+    if (gt_detail.count == gt_detail.allocated) {
+        int n = SDL_min(64, GT_DETAIL_REGIONS - gt_detail.allocated);
+        gt.gen(n * 2, &gt_detail.q[gt_detail.allocated * 2]);
+        gt_detail.allocated += n;
+    }
+    int i = gt_detail.count++;
+    gt_detail.region[i].type = (uint16_t)type;
+    gt_detail.region[i].fbp = (uint16_t)fbp;
+    gt.counter(gt_detail.q[i * 2], GL_TIMESTAMP);
+    return i;
+}
+
+static void gt_detail_end(int i)
+{
+    if (i >= 0) gt.counter(gt_detail.q[i * 2 + 1], GL_TIMESTAMP);
+}
+
+static void gt_detail_collect(int slot)
+{
+    if (gt_detail.slot != slot) return;
+    gt_detail.slot = -1;
+    if (gt_detail.overflow) { gt_detail.skipped++; return; }
+    if (gt_detail.setup) return;   /* stream_replay returned before starting */
+    gt_detail.samples++;
+    for (int i = 0; i < gt_detail.count; i++) {
+        uint64_t start, end;
+        int type = gt_detail.region[i].type;
+        gt.get64(gt_detail.q[i * 2], GL_QUERY_RESULT, &start);
+        gt.get64(gt_detail.q[i * 2 + 1], GL_QUERY_RESULT, &end);
+        double ms = (end - start) / 1e6;
+        gt_detail.ms[type] += ms;
+        gt_detail.calls[type]++;
+        if (type < GT_DRAW_TYPES) {
+            uint16_t fbp = gt_detail.region[i].fbp;
+            gt_detail.target_ms[fbp] += ms;
+            gt_detail.target_calls[fbp]++;
+        }
+    }
+}
+
+static void gt_detail_log(void)
+{
+    int n = gt_detail.samples;
+    if (n) {
+        const double* ms = gt_detail.ms;
+        const unsigned int* calls = gt_detail.calls;
+        host_log("gputime detail: %d sampled replays | scene %.2f ms (depth-write %.2f, blend %.2f, blend+depth-write %.2f, other %.2f) | copies %.2f ms (setup %.2f, color %.2f, depth %.2f)\n",
+                 n, (ms[GT_DRAW_DEPTH] + ms[GT_DRAW_BLEND] + ms[GT_DRAW_BLEND_DEPTH] + ms[GT_DRAW_OTHER]) / n,
+                 ms[GT_DRAW_DEPTH] / n, ms[GT_DRAW_BLEND] / n, ms[GT_DRAW_BLEND_DEPTH] / n, ms[GT_DRAW_OTHER] / n,
+                 (ms[GT_COPY_SETUP] + ms[GT_COPY_COLOR] + ms[GT_COPY_DEPTH]) / n,
+                 ms[GT_COPY_SETUP] / n, ms[GT_COPY_COLOR] / n, ms[GT_COPY_DEPTH] / n);
+        host_log("gputime detail: blits per sampled replay setup %.1f, color %.1f, depth %.1f\n",
+                 (double)calls[GT_COPY_SETUP] / n, (double)calls[GT_COPY_COLOR] / n, (double)calls[GT_COPY_DEPTH] / n);
+        for (int fbp = 0; fbp < GT_DETAIL_TARGETS; fbp++) {
+            if (gt_detail.target_calls[fbp])
+                host_log("gputime detail: FBP %d scene %.2f ms, %.1f batches per sampled replay\n",
+                         fbp, gt_detail.target_ms[fbp] / n, (double)gt_detail.target_calls[fbp] / n);
+        }
+        gt_detail.samples = 0;
+        memset(gt_detail.ms, 0, sizeof(gt_detail.ms));
+        memset(gt_detail.calls, 0, sizeof(gt_detail.calls));
+        memset(gt_detail.target_ms, 0, sizeof(gt_detail.target_ms));
+        memset(gt_detail.target_calls, 0, sizeof(gt_detail.target_calls));
+    }
+    if (gt_detail.skipped) {
+        host_log("gputime detail: skipped %d replays exceeding the %d-region query limit\n",
+                 gt_detail.skipped, GT_DETAIL_REGIONS);
+        gt_detail.skipped = 0;
+    }
+}
+
+static void gt_draw_batch(int afail_pass, int writes_depth, int blend)
+{
+    int type = (writes_depth ? GT_DRAW_DEPTH : 0) | (blend ? GT_DRAW_BLEND : 0);
+    int i = gt_detail.active ? gt_detail_begin(type, cur_rt->fbp) : -1;
+    draw_batch(afail_pass);
+    gt_detail_end(i);
+}
+
+static void gt_blit(GLint x0, GLint y0, GLint x1, GLint y1, GLint dx0, GLint dy0, GLint dx1, GLint dy1,
+                    GLbitfield mask, GLenum filter)
+{
+    int type = gt_detail.setup ? GT_COPY_SETUP : (mask & GL_DEPTH_BUFFER_BIT ? GT_COPY_DEPTH : GT_COPY_COLOR);
+    int i = gt_detail_begin(type, 0);
+    glBlitFramebuffer(x0, y0, x1, y1, dx0, dy0, dx1, dy1, mask, filter);
+    gt_detail_end(i);
+}
+
 static void gt_collect(int s, int wait)
 {
     GLint avail = 1;
@@ -1562,6 +1686,7 @@ static void gt_collect(int s, int wait)
     if ((k & 3) == 1) for (int i = 0; i < 4; i++) gt.part[i] += (t[GT_RB + i] - t[GT_PRES0 + i]) / 1e6;
     if (k & 4) { gt.sum_gpu[0] += (t[GT_EXEC1] - t[GT_EXEC0]) / 1e6; gt.n_gpu[0]++; }
     gt.sum_gpu[k & 3] += (t[GT_PRES1] - t[GT_PRES0]) / 1e6; gt.n_gpu[k & 3]++;
+    gt_detail_collect(s);
     gt.kind[s] = 0;
 }
 static void gt_exec_begin(void)
@@ -1615,6 +1740,7 @@ static void gt_present_end(int inbetween)
             host_log("gputime: %s draws %.0f, GS-path sprites %.0f, other GS-path primitives %.0f, native triangles %.0f\n", k ? "per in-between" : "per frame",
                      A(gt.cnt[k][0], gt.n_cpu[k]), A(gt.cnt[k][1], gt.n_cpu[k]), A(gt.cnt[k][2], gt.n_cpu[k]), A(gt.cnt[k][3], gt.n_cpu[k]));
 #undef A
+        if (gt_detail.on) gt_detail_log();
         memset(gt.sum_cpu, 0, sizeof(gt.sum_cpu)); memset(gt.sum_gpu, 0, sizeof(gt.sum_gpu));
         memset(gt.n_cpu, 0, sizeof(gt.n_cpu)); memset(gt.n_gpu, 0, sizeof(gt.n_gpu)); memset(gt.part, 0, sizeof(gt.part));
         memset(gt.cnt, 0, sizeof(gt.cnt));
@@ -1783,7 +1909,7 @@ static void ao_keep(int k)
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, ao_copy[k].fbo);
     glDisable(GL_SCISSOR_TEST);
     glDepthMask(GL_TRUE);
-    glBlitFramebuffer(0, 0, pw * 2, rows, 0, 0, pw, rows / 2, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    gt_blit(0, 0, pw * 2, rows, 0, 0, pw, rows / 2, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
     ao_copy[k].zmax = ao_src[k].zmax;
     ao_copy[k].rows = rows / 2;
     memcpy(ao_copy[k].cam, img_cam, sizeof(img_cam));
@@ -1811,7 +1937,7 @@ static void sh_take(void)
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, sh.fbo);
     glDisable(GL_SCISSOR_TEST);
     glDepthMask(GL_TRUE);
-    glBlitFramebuffer(0, 0, sh.pw, ao_copy[k].rows, 0, 0, sh.pw, ao_copy[k].rows, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    gt_blit(0, 0, sh.pw, ao_copy[k].rows, 0, 0, sh.pw, ao_copy[k].rows, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
     glBindFramebuffer(GL_FRAMEBUFFER, cur_rt ? cur_rt->fbo : 0);   /* (gs_flush binds its target again anyway) */
     sh.rows = ao_copy[k].rows; sh.zmax = ao_copy[k].zmax; sh.ok = 1;
     memcpy(sh.cam, ao_copy[k].cam, sizeof(sh.cam));
@@ -1847,7 +1973,7 @@ static void blit_area(GLuint src_fbo, GLuint dst_fbo, int x0, int y0, int x1, in
     glBindFramebuffer(GL_READ_FRAMEBUFFER, src_fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst_fbo);
     glDisable(GL_SCISSOR_TEST);
-    glBlitFramebuffer(x0, y0, x1, y1, x0, y0, x1, y1, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    gt_blit(x0, y0, x1, y1, x0, y0, x1, y1, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
 
 /* executed frame: the first draw into rt; COVER if it overwrites an area whatever was there:
@@ -1945,6 +2071,7 @@ void gs_replay_begin(void)
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     gt_mark(GT_RB);
+    if (gt_detail.active) gt_detail.setup = 0;
 }
 
 /* bloom leaves text out (subtitles, messages, item names, the ammo counter): from the first draw
@@ -2041,7 +2168,7 @@ void gs_flush(void)
     const DrawState* st = &batch_state;
     TexMemo *replay_memo = NULL, *record_memo = NULL;
     uint32_t fbp, fbw, fpsm, fbmsk;
-    int premul = 0, tme, afail;
+    int premul = 0, tme, afail, blend, writes_depth;
     if (gs_flush_blocked) return;
     uint64_t test;
     if (!batch_valid || icount == 0) { vcount = icount = 0; nsruns = 0; batch_native3d = 0; return; }
@@ -2148,6 +2275,7 @@ void gs_flush(void)
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(zte ? zf[ztst] : GL_ALWAYS);
         glDepthMask(zmsk ? GL_FALSE : GL_TRUE);
+        writes_depth = !zmsk;
         if ((g_config.ao > 0 || sh_on()) && !(g_config.ao == AO_LOW && gs_replaying && !sh_on()) && zte && !zmsk && cur_rt->vw >= 640 && cur_rt->vh >= 448) {   /* ambient occlusion: the 3D depth (Low: the executed frame's only; every image's for the flashlight shadows) */
             int k = gs_replaying ? 1 : 0;
             if (nsruns || (vcount && vbuf[0].w != 1.0f)) {   /* native 3D (homogeneous positions) */
@@ -2167,6 +2295,7 @@ void gs_flush(void)
                 ((fbmsk >> 24) != 0xFF) && fpsm != PSMCT24);
 
     apply_blend(st, &premul);
+    blend = (st->prim >> 6) & 1;
     uni1i(pcur->premul, premul);
 
     /* texture */
@@ -2174,7 +2303,7 @@ void gs_flush(void)
     {
         static int notex = -1;   /* read once: an environment lookup per draw */
         if (notex < 0) notex = SDL_getenv("RECVX_DBG_NOTEX") != NULL;
-        if (notex) { tme = 0; glDisable(GL_BLEND); }
+        if (notex) { tme = 0; blend = 0; glDisable(GL_BLEND); }
     }
     uni1i(pcur->tme, tme);
     {   /* the texture's material (materials.c) and the picker's highlight */
@@ -2286,14 +2415,14 @@ void gs_flush(void)
     afail = (test >> 12) & 3;
     if (two_pass(test)) {
         /* alpha-test fail still writes some buffers: second pass for failing pixels */
-        draw_batch(0);
+        gt_draw_batch(0, writes_depth, blend);
         glDepthMask(GL_FALSE);
         if (afail == 2) glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
         if (afail == 3) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
         if (afail == 2) glDepthMask(GL_TRUE);
-        draw_batch(1);
+        gt_draw_batch(1, afail == 2, blend && afail != 2);
     } else {
-        draw_batch(0);
+        gt_draw_batch(0, writes_depth, blend);
     }
     vcount = icount = 0;
     nsruns = 0;
@@ -2619,7 +2748,7 @@ static void ensure_target(GLuint* tex, GLuint* fbo, int* cw, int* ch, int w, int
    from its depth, which its in-between images show as it is: a moving edge's shading trails by up
    to a game frame, for about a quarter of the cost at 144 Hz): strength %, radius % of the screen's height (ao_pass) */
 
-#define AO_STRENGTH 60
+#define AO_STRENGTH 70
 #define AO_RADIUS 2
 static GLuint bloom_tex[BLOOM_LEVELS], bloom_fbo[BLOOM_LEVELS], bloom_pre, bloom_down, bloom_up;
 static int bloom_w[BLOOM_LEVELS], bloom_h[BLOOM_LEVELS], post_movie;
@@ -3157,7 +3286,7 @@ static void blit_color(GLuint src_fbo, GLuint dst_fbo, int w, int h)
     glBindFramebuffer(GL_READ_FRAMEBUFFER, src_fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst_fbo);
     glDisable(GL_SCISSOR_TEST);
-    glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    gt_blit(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
 
 static void ensure_target_fmt(GLuint* tex, GLuint* fbo, int* cw, int* ch, int w, int h, GLenum fmt)
@@ -3378,7 +3507,7 @@ static void capture_rt(GLuint* tex, GLuint* fbo, int* cw, int* ch, uint32_t fbp,
     if (rt) {
         int sx = (int)((g_margin_x + (w - gw) / 2) * g_scale), sw = pw < rt->pw - sx ? pw : rt->pw - sx, sh = ph < rt->ph ? ph : rt->ph;
         glBindFramebuffer(GL_READ_FRAMEBUFFER, rt->fbo);
-        glBlitFramebuffer(sx, 0, sx + sw, sh, 0, 0, sw, sh, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        gt_blit(sx, 0, sx + sw, sh, 0, 0, sw, sh, GL_COLOR_BUFFER_BIT, GL_NEAREST);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -3672,7 +3801,9 @@ uint64_t gs_present(const struct Frame* cur, float t)
     SDL_GetWindowSizeInPixels(g_window, &ww, &wh);
     if (inbetween) {
         RenderTarget* rt;
+        gt_detail_start();
         stream_replay(cur, t);
+        gt_detail.active = 0;
         gt_mark(GT_RD);
         rt = rt_find(gs.disp_fbp, gs.disp_fbw ? gs.disp_fbw : 10);
         draw_display(rt ? rt->tex : 0, rt ? rt->vw : 640, rt ? rt->vh : 512, rt ? pretext_for(1, rt->pw, rt->ph) : 0, 1);

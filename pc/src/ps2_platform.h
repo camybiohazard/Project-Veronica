@@ -12,6 +12,7 @@ extern "C" {
 
 /* host (pc/src/host) */
 enum { ASPECT_4_3, ASPECT_STRETCH, ASPECT_WIDE };
+enum { INTERP_OFF = 0, INTERP_OPTIMIZED = 1, INTERP_NORMAL = 2 }; /* recvx.ini values */
 typedef struct {
     char iso_path[1024];
     char save_dir[1024];

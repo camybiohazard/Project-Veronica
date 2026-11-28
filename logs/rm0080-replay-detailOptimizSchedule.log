@@ -1,0 +1,2502 @@
+[    0.001] log: writing ../../logs/rm0080-replay-detailOptimizSchedule.log
+[    0.001] cvx-port 1.1.1 (1.1.1-2-g106b1e7-dirty)
+[    0.273] pci id for fd 25: 10de:2d05, driver (null)
+[    0.275] pci id for fd 31: 10de:2d05, driver (null)
+[    0.276] pci id for fd 33: 10de:2d05, driver (null)
+[    0.278] pci id for fd 31: 10de:2d05, driver (null)
+[    0.279] pci id for fd 33: 10de:2d05, driver (null)
+[    0.289] pci id for fd 25: 10de:2d05, driver (null)
+[    0.290] pci id for fd 31: 10de:2d05, driver (null)
+[    0.291] pci id for fd 33: 10de:2d05, driver (null)
+[    0.293] pci id for fd 31: 10de:2d05, driver (null)
+[    0.294] pci id for fd 33: 10de:2d05, driver (null)
+[    0.305] display: no OpenGL window under Wayland (unable to create an EGL window surface (call to eglCreateWindowSurface failed, reporting an error of EGL_SUCCESS)), using X11
+[    0.423] display: borderless fullscreen, window 1347,632 1280 x 960
+[    0.434] gl: NVIDIA GeForce RTX 5060/PCIe/SSE2 / 4.6.0 NVIDIA 595.99.02
+[    0.461] gs: 24 shader variants compiled in 27 ms
+[    0.589] sif: load module cdrom0:\PS2_DATA\MODULES\SIO2MAN.IRX;1
+[    0.589] sif: load module cdrom0:\PS2_DATA\MODULES\PADMAN.IRX;1
+[    0.589] sif: load module cdrom0:\PS2_DATA\MODULES\MCMAN.IRX;1
+[    0.589] sif: load module cdrom0:\PS2_DATA\MODULES\MCSERV.IRX;1
+[    0.589] sif: load module cdrom0:\PS2_DATA\MODULES\LIBSD.IRX;1
+[    0.589] sif: load module cdrom0:\PS2_DATA\MODULES\MODHSYN.IRX;1
+[    0.589] sif: load module cdrom0:\PS2_DATA\MODULES\MODMIDI.IRX;1
+[    0.589] sif: load module cdrom0:\PS2_DATA\MODULES\MODMSIN.IRX;1
+[    0.589] sif: load module cdrom0:\PS2_DATA\MODULES\TSNDDRV.IRX;1
+[    0.615] TICK = 786
+[    0.616] IOP memory 0x00020000(size:12288) is allocated
+[    0.616] IOP memory 0x00023000(size:2048) is allocated
+[    0.616] IOP memory 0x00023800(size:327696) is allocated
+[    0.616] sdGddaSetPan NOT USED!
+[    0.616] Setup host file system.
+[    0.617] malloc area = 34fb83a0
+[    0.648] TICK = 524
+[    0.649] malloc area = 350c4ddc
+[    0.692] gs: new render target FBP=150 FBW=10 PSM=0 (3416x2048)
+[    0.748] gs: new render target FBP=0 FBW=10 PSM=0 (3416x2048)
+[    0.858] TICK = 524
+[    0.903] TICK = 524
+[    0.903] RGB565
+[    0.904] ARGB4444
+[    0.904] ARGB4444
+[    0.905] ARGB4444
+[    0.905] ARGB1555
+[    0.905] RGB565
+[    0.905] RGB565
+[    0.905] RGB565
+[    0.905] RGB565
+[    0.905] ARGB4444
+[    0.906] ARGB4444
+[    0.906] ARGB4444
+[    0.906] ARGB4444
+[    0.906] ARGB4444
+[    0.906] ARGB4444
+[    0.906] ARGB4444
+[    0.906] ARGB4444
+[    0.906] RGB565
+[    0.906] ARGB4444
+[    0.906] ARGB4444
+[    0.906] ARGB1555
+[    0.906] ARGB1555
+[    0.906] ARGB4444
+[    0.906] ARGB4444
+[    0.907] ARGB4444
+[    0.907] ARGB4444
+[    0.907] ARGB4444
+[    0.907] malloc area = 3507aa80
+[    0.912] TICK = 524
+[    0.942] TICK = 524
+[    0.942] ARGB8888
+[    0.942] ARGB8888
+[    0.975] TICK = 524
+[    1.009] TICK = 524
+[    1.042] TICK = 524
+[    1.042] sdGddaSetPan NOT USED!
+[    1.075] TICK = 524
+[    1.109] TICK = 524
+[    1.142] TICK = 524
+[    1.142] malloc area = 350d9860
+[    1.175] TICK = 524
+[    1.209] TICK = 524
+[    1.209] ARGB8888
+[    1.209] ARGB8888
+[    1.212] malloc area = 34fb8400
+[    1.242] TICK = 524
+[    1.276] TICK = 524
+[    1.315] TICK = 524
+[    1.342] TICK = 524
+[    1.376] TICK = 524
+[    1.409] TICK = 524
+[    1.442] TICK = 524
+[    1.476] TICK = 524
+[    1.509] TICK = 524
+[    1.542] TICK = 524
+[    1.576] TICK = 524
+[    1.609] TICK = 524
+[    1.643] TICK = 524
+[    1.676] TICK = 524
+[    1.709] TICK = 524
+[    1.743] TICK = 524
+[    1.776] TICK = 524
+[    1.809] TICK = 524
+[    1.843] TICK = 524
+[    1.876] TICK = 524
+[    1.910] TICK = 524
+[    1.943] TICK = 524
+[    1.976] TICK = 524
+[    2.010] TICK = 524
+[    2.043] TICK = 524
+[    2.076] TICK = 524
+[    2.110] TICK = 524
+[    2.143] TICK = 524
+[    2.176] TICK = 524
+[    2.210] TICK = 524
+[    2.243] TICK = 524
+[    2.277] TICK = 524
+[    2.310] TICK = 524
+[    2.343] TICK = 524
+[    2.377] TICK = 524
+[    2.410] TICK = 524
+[    2.443] TICK = 524
+[    2.477] TICK = 524
+[    2.510] TICK = 524
+[    2.543] TICK = 524
+[    2.577] TICK = 524
+[    2.610] TICK = 524
+[    2.644] TICK = 524
+[    2.677] TICK = 524
+[    2.710] TICK = 524
+[    2.744] TICK = 524
+[    2.777] TICK = 524
+[    2.810] TICK = 524
+[    2.844] TICK = 524
+[    2.861] gputime: exec 31.4/s cpu 4.82 gpu 4.02 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 139.3/s cpu 1.03 gpu 1.41 ms
+[    2.861] gputime: per frame draws 7, GS-path sprites 8, other GS-path primitives 0, native triangles 3
+[    2.861] gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+[    2.877] TICK = 524
+[    2.911] TICK = 524
+[    2.944] TICK = 524
+[    2.977] TICK = 524
+[    3.011] TICK = 524
+[    3.044] TICK = 524
+[    3.077] TICK = 524
+[    3.111] TICK = 524
+[    3.144] TICK = 524
+[    3.177] TICK = 524
+[    3.211] TICK = 524
+[    3.244] TICK = 524
+[    3.277] TICK = 524
+[    3.311] TICK = 524
+[    3.344] TICK = 524
+[    3.378] TICK = 524
+[    3.411] TICK = 524
+[    3.444] TICK = 524
+[    3.478] TICK = 524
+[    3.511] TICK = 524
+[    3.545] TICK = 524
+[    3.578] TICK = 524
+[    3.611] TICK = 524
+[    3.645] TICK = 524
+[    3.678] TICK = 524
+[    3.711] TICK = 524
+[    3.745] TICK = 524
+[    3.778] TICK = 524
+[    3.811] TICK = 524
+[    3.845] TICK = 524
+[    3.878] TICK = 524
+[    3.912] TICK = 524
+[    3.945] TICK = 524
+[    3.978] TICK = 524
+[    4.012] TICK = 524
+[    4.045] TICK = 524
+[    4.078] TICK = 524
+[    4.112] TICK = 524
+[    4.145] TICK = 524
+[    4.178] TICK = 524
+[    4.212] TICK = 524
+[    4.245] TICK = 524
+[    4.279] TICK = 524
+[    4.312] TICK = 524
+[    4.345] TICK = 524
+[    4.379] TICK = 524
+[    4.412] TICK = 524
+[    4.445] TICK = 524
+[    4.479] TICK = 524
+[    4.512] TICK = 524
+[    4.545] TICK = 524
+[    4.579] TICK = 524
+[    4.612] TICK = 524
+[    4.646] TICK = 524
+[    4.679] TICK = 524
+[    4.712] TICK = 524
+[    4.746] TICK = 524
+[    4.779] TICK = 524
+[    4.812] TICK = 524
+[    4.846] TICK = 524
+[    4.861] gputime: exec 30.0/s cpu 0.82 gpu 0.88 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 144.0/s cpu 0.81 gpu 1.51 ms
+[    4.861] gputime: per frame draws 9, GS-path sprites 23, other GS-path primitives 0, native triangles 2
+[    4.861] gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+[    4.879] TICK = 524
+[    4.913] TICK = 524
+[    4.946] TICK = 524
+[    4.979] TICK = 524
+[    5.013] TICK = 524
+[    5.046] TICK = 524
+[    5.079] TICK = 524
+[    5.113] TICK = 524
+[    5.146] TICK = 524
+[    5.179] TICK = 524
+[    5.213] TICK = 524
+[    5.246] TICK = 524
+[    5.280] TICK = 524
+[    5.313] TICK = 524
+[    5.346] TICK = 524
+[    5.380] TICK = 524
+[    5.413] TICK = 524
+[    5.446] TICK = 524
+[    5.480] TICK = 524
+[    5.513] TICK = 524
+[    5.546] TICK = 524
+[    5.580] TICK = 524
+[    5.580] malloc area = 350c4ddc
+[    5.613] TICK = 524
+[    5.647] TICK = 524
+[    5.647] RGB565
+[    5.649] ARGB4444
+[    5.651] ARGB4444
+[    5.654] ARGB4444
+[    5.656] ARGB1555
+[    5.656] RGB565
+[    5.656] RGB565
+[    5.656] RGB565
+[    5.656] RGB565
+[    5.656] ARGB4444
+[    5.657] ARGB4444
+[    5.658] ARGB4444
+[    5.658] ARGB4444
+[    5.658] ARGB4444
+[    5.658] ARGB4444
+[    5.658] ARGB4444
+[    5.658] ARGB4444
+[    5.659] RGB565
+[    5.659] ARGB4444
+[    5.659] ARGB4444
+[    5.659] ARGB1555
+[    5.660] ARGB1555
+[    5.660] ARGB4444
+[    5.661] ARGB4444
+[    5.662] ARGB4444
+[    5.662] ARGB4444
+[    5.662] ARGB4444
+[    5.680] TICK = 524
+[    5.680] malloc area = 3507b3c0
+[    5.713] TICK = 524
+[    5.747] TICK = 524
+[    5.747] ARGB8888
+[    5.747] ARGB8888
+[    5.748] ARGB8888
+[    5.780] TICK = 524
+[    5.813] TICK = 524
+[    5.855] TICK = 524
+[    5.880] TICK = 524
+[    5.913] TICK = 524
+[    5.947] TICK = 524
+[    5.980] TICK = 524
+[    6.014] TICK = 524
+[    6.047] TICK = 524
+[    6.080] TICK = 524
+[    6.114] TICK = 524
+[    6.147] TICK = 524
+[    6.180] TICK = 524
+[    6.214] TICK = 524
+[    6.247] TICK = 524
+[    6.281] TICK = 524
+[    6.314] TICK = 524
+[    6.347] TICK = 524
+[    6.381] TICK = 524
+[    6.414] TICK = 524
+[    6.447] TICK = 524
+[    6.481] TICK = 524
+[    6.514] TICK = 524
+[    6.547] TICK = 524
+[    6.581] TICK = 524
+[    6.614] TICK = 524
+[    6.648] TICK = 524
+[    6.681] TICK = 524
+[    6.714] TICK = 524
+[    6.748] TICK = 524
+[    6.781] TICK = 524
+[    6.814] TICK = 524
+[    6.848] TICK = 524
+[    6.867] gputime: exec 29.9/s cpu 1.53 gpu 1.33 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 140.1/s cpu 0.81 gpu 1.20 ms
+[    6.867] gputime: per frame draws 8, GS-path sprites 40, other GS-path primitives 0, native triangles 3
+[    6.867] gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+[    6.881] TICK = 524
+[    6.914] TICK = 524
+[    6.948] TICK = 524
+[    6.981] TICK = 524
+[    7.015] TICK = 524
+[    7.048] TICK = 524
+[    7.081] TICK = 524
+[    7.115] TICK = 524
+[    7.148] TICK = 524
+[    7.181] TICK = 524
+[    7.215] TICK = 524
+[    7.248] TICK = 524
+[    7.282] TICK = 524
+[    7.315] TICK = 524
+[    7.348] TICK = 524
+[    7.382] TICK = 524
+[    7.415] TICK = 524
+[    7.448] TICK = 524
+[    7.482] TICK = 524
+[    7.515] TICK = 524
+[    7.548] TICK = 524
+[    7.582] TICK = 524
+[    7.615] TICK = 524
+[    7.649] TICK = 524
+[    7.682] TICK = 524
+[    7.715] TICK = 524
+[    7.749] TICK = 524
+[    7.782] TICK = 524
+[    7.815] TICK = 524
+[    7.849] TICK = 524
+[    7.882] TICK = 524
+[    7.916] TICK = 524
+[    7.949] TICK = 524
+[    7.982] TICK = 524
+[    8.016] TICK = 524
+[    8.049] TICK = 524
+[    8.082] TICK = 524
+[    8.116] TICK = 524
+[    8.149] TICK = 524
+[    8.182] TICK = 524
+[    8.216] TICK = 524
+[    8.249] TICK = 524
+[    8.283] TICK = 524
+[    8.316] TICK = 524
+[    8.349] TICK = 524
+[    8.383] TICK = 524
+[    8.416] TICK = 524
+[    8.449] TICK = 524
+[    8.483] TICK = 524
+[    8.516] TICK = 524
+[    8.549] TICK = 524
+[    8.583] TICK = 524
+[    8.616] TICK = 524
+[    8.650] TICK = 524
+[    8.686] TICK = 524
+[    8.716] TICK = 524
+[    8.750] TICK = 524
+[    8.783] TICK = 524
+[    8.816] TICK = 524
+[    8.850] TICK = 524
+[    8.868] gputime: exec 30.0/s cpu 2.25 gpu 1.17 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 140.4/s cpu 0.77 gpu 1.29 ms
+[    8.868] gputime: per frame draws 134, GS-path sprites 57, other GS-path primitives 0, native triangles 130
+[    8.868] gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+[    8.883] TICK = 524
+[    8.916] TICK = 524
+[    8.950] TICK = 524
+[    8.983] TICK = 524
+[    9.016] TICK = 524
+[    9.050] TICK = 524
+[    9.083] TICK = 524
+[    9.117] TICK = 524
+[    9.150] TICK = 524
+[    9.183] TICK = 524
+[    9.217] TICK = 524
+[    9.250] TICK = 524
+[    9.283] TICK = 524
+[    9.317] TICK = 524
+[    9.350] TICK = 524
+[    9.384] TICK = 524
+[    9.417] TICK = 524
+[    9.450] TICK = 524
+[    9.484] TICK = 524
+[    9.517] TICK = 524
+[    9.550] TICK = 524
+[    9.584] TICK = 524
+[    9.617] TICK = 524
+[    9.651] TICK = 524
+[    9.684] TICK = 524
+[    9.717] TICK = 524
+[    9.751] TICK = 524
+[    9.784] TICK = 524
+[    9.817] TICK = 524
+[    9.851] TICK = 524
+[    9.884] TICK = 524
+[    9.917] TICK = 524
+[    9.951] TICK = 524
+[    9.984] TICK = 524
+[   10.017] TICK = 524
+[   10.051] TICK = 524
+[   10.084] TICK = 524
+[   10.118] TICK = 524
+[   10.151] TICK = 524
+[   10.184] TICK = 524
+[   10.218] TICK = 524
+[   10.251] TICK = 524
+[   10.284] TICK = 524
+[   10.318] TICK = 524
+[   10.351] TICK = 524
+[   10.385] TICK = 524
+[   10.418] TICK = 524
+[   10.451] TICK = 524
+[   10.485] TICK = 524
+[   10.518] TICK = 524
+[   10.551] TICK = 524
+[   10.585] TICK = 524
+[   10.618] TICK = 524
+[   10.652] TICK = 524
+[   10.685] TICK = 524
+[   10.718] TICK = 524
+[   10.752] TICK = 524
+[   10.785] TICK = 524
+[   10.818] TICK = 524
+[   10.852] TICK = 524
+[   10.869] gputime: exec 30.0/s cpu 11.72 gpu 5.53 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 118.9/s cpu 0.56 gpu 1.40 ms
+[   10.869] gputime: per frame draws 983, GS-path sprites 29, other GS-path primitives 0, native triangles 999
+[   10.869] gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+[   10.885] TICK = 524
+[   10.918] TICK = 524
+[   10.952] TICK = 524
+[   10.985] TICK = 524
+[   11.019] TICK = 524
+[   11.052] TICK = 524
+[   11.085] TICK = 524
+[   11.119] TICK = 524
+[   11.152] TICK = 524
+[   11.185] TICK = 524
+[   11.219] TICK = 524
+[   11.252] TICK = 524
+[   11.286] TICK = 524
+[   11.319] TICK = 524
+[   11.352] TICK = 524
+[   11.386] TICK = 524
+[   11.419] TICK = 524
+[   11.452] TICK = 524
+[   11.486] TICK = 524
+[   11.519] TICK = 524
+[   11.552] TICK = 524
+[   11.586] TICK = 524
+[   11.619] TICK = 524
+[   11.653] TICK = 524
+[   11.686] TICK = 524
+[   11.719] TICK = 524
+[   11.753] TICK = 524
+[   11.786] TICK = 524
+[   11.819] TICK = 524
+[   11.853] TICK = 524
+[   11.886] TICK = 524
+[   11.919] TICK = 524
+[   11.953] TICK = 524
+[   11.986] TICK = 524
+[   12.020] TICK = 524
+[   12.053] TICK = 524
+[   12.086] TICK = 524
+[   12.120] TICK = 524
+[   12.153] TICK = 524
+[   12.186] TICK = 524
+[   12.220] TICK = 524
+[   12.253] TICK = 524
+[   12.286] TICK = 524
+[   12.320] TICK = 524
+[   12.353] TICK = 524
+[   12.387] TICK = 524
+[   12.420] TICK = 524
+[   12.453] TICK = 524
+[   12.487] TICK = 524
+[   12.520] TICK = 524
+[   12.553] TICK = 524
+[   12.587] TICK = 524
+[   12.620] TICK = 524
+[   12.653] TICK = 524
+[   12.687] TICK = 524
+[   12.720] TICK = 524
+[   12.754] TICK = 524
+[   12.787] TICK = 524
+[   12.820] TICK = 524
+[   12.854] TICK = 524
+[   12.871] gputime: exec 30.0/s cpu 11.29 gpu 4.25 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 115.9/s cpu 0.50 gpu 1.39 ms
+[   12.871] gputime: per frame draws 1098, GS-path sprites 29, other GS-path primitives 0, native triangles 1117
+[   12.871] gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+[   12.887] TICK = 524
+[   12.920] TICK = 524
+[   12.954] TICK = 524
+[   12.987] TICK = 524
+[   13.021] TICK = 524
+[   13.054] TICK = 524
+[   13.087] TICK = 524
+[   13.121] TICK = 524
+[   13.154] TICK = 524
+[   13.187] TICK = 524
+[   13.221] TICK = 524
+[   13.254] TICK = 524
+[   13.288] TICK = 524
+[   13.321] TICK = 524
+[   13.354] TICK = 524
+[   13.388] TICK = 524
+[   13.421] TICK = 524
+[   13.454] TICK = 524
+[   13.488] TICK = 524
+[   13.521] TICK = 524
+[   13.554] TICK = 524
+[   13.588] TICK = 524
+[   13.621] TICK = 524
+[   13.655] TICK = 524
+[   13.688] TICK = 524
+[   13.721] TICK = 524
+[   13.755] TICK = 524
+[   13.788] TICK = 524
+[   13.821] TICK = 524
+[   13.855] TICK = 524
+[   13.888] TICK = 524
+[   13.921] TICK = 524
+[   13.955] TICK = 524
+[   13.988] TICK = 524
+[   14.022] TICK = 524
+[   14.055] TICK = 524
+[   14.088] TICK = 524
+[   14.122] TICK = 524
+[   14.155] TICK = 524
+[   14.188] TICK = 524
+[   14.189] malloc area = 350d9860
+[   14.222] TICK = 524
+[   14.255] TICK = 524
+[   14.255] ARGB8888
+[   14.255] ARGB8888
+[   14.259] malloc area = 34fb8400
+[   14.289] TICK = 524
+[   14.322] TICK = 524
+[   14.363] TICK = 524
+[   14.389] TICK = 524
+[   14.422] TICK = 524
+[   14.455] TICK = 524
+[   14.489] TICK = 524
+[   14.522] TICK = 524
+[   14.556] TICK = 524
+[   14.589] TICK = 524
+[   14.622] TICK = 524
+[   14.656] TICK = 524
+[   14.689] TICK = 524
+[   14.722] TICK = 524
+[   14.756] TICK = 524
+[   14.789] TICK = 524
+[   14.822] TICK = 524
+[   14.856] TICK = 524
+[   14.875] gputime: exec 29.9/s cpu 2.79 gpu 1.55 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 140.2/s cpu 0.73 gpu 1.13 ms
+[   14.875] gputime: per frame draws 151, GS-path sprites 22, other GS-path primitives 0, native triangles 152
+[   14.875] gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+[   14.889] TICK = 524
+[   14.923] TICK = 524
+[   14.956] TICK = 524
+[   14.989] TICK = 524
+[   15.023] TICK = 524
+[   15.056] TICK = 524
+[   15.089] TICK = 524
+[   15.123] TICK = 524
+[   15.156] TICK = 524
+[   15.189] TICK = 524
+[   15.223] TICK = 524
+[   15.256] TICK = 524
+[   15.289] TICK = 524
+[   15.323] TICK = 524
+[   15.356] TICK = 524
+[   15.390] TICK = 524
+[   15.423] TICK = 524
+[   15.456] TICK = 524
+[   15.490] TICK = 524
+[   15.523] TICK = 524
+[   15.556] TICK = 524
+[   15.590] TICK = 524
+[   15.623] TICK = 524
+[   15.657] TICK = 524
+[   15.690] TICK = 524
+[   15.723] TICK = 524
+[   15.757] TICK = 524
+[   15.790] TICK = 524
+[   15.823] TICK = 524
+[   15.857] TICK = 524
+[   15.890] TICK = 524
+[   15.923] TICK = 524
+[   15.957] TICK = 524
+[   15.990] TICK = 524
+[   16.024] TICK = 524
+[   16.057] TICK = 524
+[   16.090] TICK = 524
+[   16.124] TICK = 524
+[   16.157] TICK = 524
+[   16.190] TICK = 524
+[   16.224] TICK = 524
+[   16.257] TICK = 524
+[   16.291] TICK = 524
+[   16.324] TICK = 524
+[   16.357] TICK = 524
+[   16.391] TICK = 524
+[   16.424] TICK = 524
+[   16.458] TICK = 524
+[   16.491] TICK = 524
+[   16.524] TICK = 524
+[   16.557] TICK = 524
+[   16.591] TICK = 524
+[   16.624] TICK = 524
+[   16.658] TICK = 524
+[   16.691] TICK = 524
+[   16.724] TICK = 524
+[   16.758] TICK = 524
+[   16.791] TICK = 524
+[   16.824] TICK = 524
+[   16.858] TICK = 524
+[   16.876] gputime: exec 30.0/s cpu 0.84 gpu 0.86 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 144.0/s cpu 0.85 gpu 1.30 ms
+[   16.876] gputime: per frame draws 9, GS-path sprites 21, other GS-path primitives 0, native triangles 2
+[   16.876] gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+[   16.891] TICK = 524
+[   16.924] TICK = 524
+[   16.958] TICK = 524
+[   16.991] TICK = 524
+[   17.025] TICK = 524
+[   17.058] TICK = 524
+[   17.091] TICK = 524
+[   17.125] TICK = 524
+[   17.158] TICK = 524
+[   17.192] TICK = 524
+[   17.225] TICK = 524
+[   17.258] TICK = 524
+[   17.292] TICK = 524
+[   17.325] TICK = 524
+[   17.358] TICK = 524
+[   17.392] TICK = 524
+[   17.425] TICK = 524
+[   17.458] TICK = 524
+[   17.492] TICK = 524
+[   17.525] TICK = 524
+[   17.558] TICK = 524
+[   17.592] TICK = 524
+[   17.625] TICK = 524
+[   17.659] TICK = 524
+[   17.692] TICK = 524
+[   17.725] TICK = 524
+[   17.759] TICK = 524
+[   17.792] TICK = 524
+[   17.825] TICK = 524
+[   17.826] adxt: start 3/3 (48000 Hz, 2 ch, 204272 samples, loop 0) voice 0
+[   17.859] TICK = 524
+[   17.892] TICK = 524
+[   17.926] TICK = 524
+[   17.959] TICK = 524
+[   17.992] TICK = 524
+[   18.026] TICK = 524
+[   18.059] TICK = 524
+[   18.092] TICK = 524
+[   18.126] TICK = 524
+[   18.159] TICK = 524
+[   18.192] TICK = 524
+[   18.226] TICK = 524
+[   18.259] TICK = 524
+[   18.292] TICK = 524
+[   18.326] TICK = 524
+[   18.359] TICK = 524
+[   18.393] TICK = 524
+[   18.426] TICK = 524
+[   18.459] TICK = 524
+[   18.493] TICK = 524
+[   18.526] TICK = 524
+[   18.559] TICK = 524
+[   18.593] TICK = 524
+[   18.626] TICK = 524
+[   18.660] TICK = 524
+[   18.693] TICK = 524
+[   18.726] TICK = 524
+[   18.760] TICK = 524
+[   18.793] TICK = 524
+[   18.826] TICK = 524
+[   18.860] TICK = 524
+[   18.883] gputime: exec 29.9/s cpu 0.78 gpu 0.92 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 144.0/s cpu 0.82 gpu 1.28 ms
+[   18.883] gputime: per frame draws 8, GS-path sprites 11, other GS-path primitives 0, native triangles 4
+[   18.883] gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+[   18.893] TICK = 524
+[   18.926] TICK = 524
+[   18.960] TICK = 524
+[   18.993] TICK = 524
+[   19.027] TICK = 524
+[   19.060] TICK = 524
+[   19.093] TICK = 524
+[   19.127] TICK = 524
+[   19.160] TICK = 524
+[   19.193] TICK = 524
+[   19.227] TICK = 524
+[   19.260] TICK = 524
+[   19.294] TICK = 524
+[   19.327] TICK = 524
+[   19.360] TICK = 524
+[   19.394] TICK = 524
+[   19.427] TICK = 524
+[   19.460] TICK = 524
+[   19.494] TICK = 524
+[   19.527] TICK = 524
+[   19.560] TICK = 524
+[   19.594] TICK = 524
+[   19.627] TICK = 524
+[   19.661] TICK = 524
+[   19.694] TICK = 524
+[   19.727] TICK = 524
+[   19.761] TICK = 524
+[   19.794] TICK = 524
+[   19.827] TICK = 524
+[   19.861] TICK = 524
+[   19.894] TICK = 524
+[   19.927] TICK = 524
+[   19.961] TICK = 524
+[   19.994] TICK = 524
+[   20.028] TICK = 524
+[   20.061] TICK = 524
+[   20.094] TICK = 524
+[   20.128] TICK = 524
+[   20.161] TICK = 524
+[   20.194] TICK = 524
+[   20.228] TICK = 524
+[   20.261] TICK = 524
+[   20.295] TICK = 524
+[   20.328] TICK = 524
+[   20.361] TICK = 524
+[   20.395] TICK = 524
+[   20.428] TICK = 524
+[   20.461] TICK = 524
+[   20.495] TICK = 524
+[   20.528] TICK = 524
+[   20.561] TICK = 524
+[   20.595] TICK = 524
+[   20.628] TICK = 524
+[   20.662] TICK = 524
+[   20.695] TICK = 524
+[   20.728] TICK = 524
+[   20.762] TICK = 524
+[   20.795] TICK = 524
+[   20.828] TICK = 524
+[   20.862] TICK = 524
+[   20.889] gputime: exec 29.9/s cpu 0.72 gpu 0.94 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 142.5/s cpu 0.77 gpu 1.22 ms
+[   20.890] gputime: per frame draws 7, GS-path sprites 7, other GS-path primitives 0, native triangles 5
+[   20.890] gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+[   20.895] TICK = 524
+[   20.928] TICK = 524
+[   20.962] TICK = 524
+[   20.995] TICK = 524
+[   21.029] TICK = 524
+[   21.062] TICK = 524
+[   21.095] TICK = 524
+[   21.129] TICK = 524
+[   21.162] TICK = 524
+[   21.195] TICK = 524
+[   21.229] TICK = 524
+[   21.262] TICK = 524
+[   21.296] TICK = 524
+[   21.329] TICK = 524
+[   21.362] TICK = 524
+[   21.396] TICK = 524
+[   21.429] TICK = 524
+[   21.462] TICK = 524
+[   21.496] TICK = 524
+[   21.529] TICK = 524
+[   21.562] TICK = 524
+[   21.596] TICK = 524
+[   21.629] TICK = 524
+[   21.663] TICK = 524
+[   21.696] TICK = 524
+[   21.729] TICK = 524
+[   21.763] TICK = 524
+[   21.796] TICK = 524
+[   21.829] TICK = 524
+[   21.863] TICK = 524
+[   21.896] TICK = 524
+[   21.929] TICK = 524
+[   21.963] TICK = 524
+[   21.996] TICK = 524
+[   22.030] TICK = 524
+[   22.063] TICK = 524
+[   22.096] TICK = 524
+[   22.130] TICK = 524
+[   22.163] TICK = 524
+[   22.196] TICK = 524
+[   22.230] TICK = 524
+[   22.263] TICK = 524
+[   22.297] TICK = 524
+[   22.330] TICK = 524
+[   22.363] TICK = 524
+[   22.397] TICK = 524
+[   22.430] TICK = 524
+[   22.463] TICK = 524
+[   22.463] malloc area = 34fc1fc0
+[   22.463] malloc area = 34fcbbc0
+[   22.497] TICK = 524
+[   22.497] malloc area = 3500b7c0
+[   22.530] TICK = 524
+[   22.564] TICK = 524
+[   22.597] TICK = 524
+[   22.598] RGB565
+[   22.601] ARGB4444
+[   22.603] ARGB4444
+[   22.605] ARGB4444
+[   22.608] ARGB1555
+[   22.608] RGB565
+[   22.608] RGB565
+[   22.608] RGB565
+[   22.608] RGB565
+[   22.608] ARGB4444
+[   22.609] ARGB4444
+[   22.609] ARGB4444
+[   22.610] ARGB4444
+[   22.610] ARGB4444
+[   22.610] ARGB4444
+[   22.610] ARGB4444
+[   22.610] ARGB4444
+[   22.611] RGB565
+[   22.611] ARGB4444
+[   22.611] ARGB4444
+[   22.611] ARGB1555
+[   22.612] ARGB1555
+[   22.612] ARGB4444
+[   22.613] ARGB4444
+[   22.613] ARGB4444
+[   22.613] ARGB4444
+[   22.614] ARGB4444
+[   22.615] malloc area = 3502dbc0
+[   22.615] malloc area = 35035bc0
+[   22.615] malloc area = 3503dbc0
+[   22.615] malloc area = 35045bc0
+[   22.615] malloc area = 35048bc0
+[   22.615] malloc area = 350a8bc0
+[   22.615] malloc area = 350b8bc0
+[   22.615] malloc area = 350babc0
+[   22.615] malloc area = 350bac3c
+[   22.615] malloc area = 350bacbc
+[   22.615] malloc area = 350c2cc0
+[   22.630] TICK = 524
+[   22.664] TICK = 524
+[   22.697] TICK = 524
+[   22.699] RGB565
+[   22.700] RGB565
+[   22.700] RGB565
+[   22.700] RGB565
+[   22.701] RGB565
+[   22.701] RGB565
+[   22.701] RGB565
+[   22.702] RGB565
+[   22.702] RGB565
+[   22.702] RGB565
+[   22.702] RGB565
+[   22.702] RGB565
+[   22.703] RGB565
+[   22.703] RGB565
+[   22.703] RGB565
+[   22.703] RGB565
+[   22.704] RGB565
+[   22.704] RGB565
+[   22.704] RGB565
+[   22.704] malloc area = 3501b5e0
+[   22.704] malloc area = 3501b600
+[   22.704] malloc area = 3501b600
+[   22.704] malloc area = 3501bce0
+[   22.704] malloc area = 3501be40
+[   22.704] malloc area = 3501be90
+[   22.704] malloc area = 3501bf60
+[   22.704] malloc area = 3501c110
+[   22.730] TICK = 524
+[   22.764] TICK = 524
+[   22.764] RGB565
+[   22.764] RGB565
+[   22.797] TICK = 524
+[   22.830] TICK = 524
+[   22.832] read file = RM_0000.RDX
+[   22.864] TICK = 524
+[   22.892] gputime: exec 30.0/s cpu 0.75 gpu 0.89 ms | in-between 0.0/s cpu 0.00 gpu 0.00 ms (start 0.00 draw 0.00 display 0.00 restore 0.00) | frame image 144.3/s cpu 0.79 gpu 1.08 ms
+[   22.892] gputime: per frame draws 6, GS-path sprites 6, other GS-path primitives 0, native triangles 3
+[   22.892] gputime: per in-between draws 0, GS-path sprites 0, other GS-path primitives 0, native triangles 0
+[   22.910] room: RM_0000 5265 KB expanded, 71169 KB of the room arena left
+[   22.910] TICK = 524
+[   22.910] ARGB4444
+[   22.910] ARGB4444
+[   22.910] ARGB4444
+[   22.910] ARGB4444
+[   22.911] ARGB4444
+[   22.911] ARGB4444
+[   22.912] ARGB4444
+[   22.913] ARGB4444
+[   22.930] TICK = 524
+[   22.930] RGB565
+[   22.931] ARGB4444
+[   22.931] ARGB4444
+[   22.931] ARGB4444
+[   22.931] ARGB4444
+[   22.931] ARGB4444
+[   22.931] ARGB4444
+[   22.931] RGB565
+[   22.931] RGB565
+[   22.932] RGB565
+[   22.932] RGB565
+[   22.932] RGB565
+[   22.933] RGB565
+[   22.933] RGB565
+[   22.933] RGB565
+[   22.933] RGB565
+[   22.933] RGB565
+[   22.933] RGB565
+[   22.933] ARGB4444
+[   22.933] RGB565
+[   22.933] RGB565
+[   22.933] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] ARGB4444
+[   22.934] ARGB4444
+[   22.934] ARGB4444
+[   22.934] ARGB4444
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] ARGB4444
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] ARGB4444
+[   22.934] ARGB4444
+[   22.934] ARGB4444
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.934] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] ARGB4444
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] ARGB4444
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.935] RGB565
+[   22.936] RGB565
+[   22.936] RGB565
+[   22.936] RGB565
+[   22.936] RGB565
+[   22.936] RGB565
+[   22.936] RGB565
+[   22.936] ARGB1555
+[   22.936] RGB565
+[   22.964] TICK = 524
+[   22.964] malloc area = 3525b244
+[   22.964] malloc area = 3525b9c0
+[   22.964] malloc area = 3525b9d0
+[   22.964] malloc area = 3525ba18
+[   22.964] malloc area = 352680a0
+[   22.964] malloc area = 352680d8
+[   22.964] malloc area = 352685e0
+[   22.964] malloc area = 35268c4c
+[   22.964] malloc area = 35269630
+[   22.964] malloc area = 3526a304
+[   22.964] malloc area = 3526aa80
+[   22.964] malloc area = 3526aa90
+[   22.964] malloc area = 3526aad8
+[   22.964] malloc area = 352766c0
+[   22.964] malloc area = 352766d8
+[   22.964] malloc area = 35276be0
+[   22.964] malloc area = 3527724c
+[   22.964] malloc area = 35277c30
+[   22.997] TICK = 524
+[   22.998] malloc area = 35333900
+[   23.002] malloc area = 35286100
+[   23.031] TICK = 524
+[   23.064] TICK = 524
+[   23.064] room: RM_0000 ready 18 frames after the game start
+[   23.097] TICK = 524
+[   23.098] malloc area = 35278fb0
+[   23.118] adxt: start 0/114 (48000 Hz, 2 ch, 2435916 samples, loop 1) voice 0
+[   23.131] test: teleport to 0/8/0 at game frame 1
+[   23.131] TICK = 524
+[   23.133] door: to 0/8 entry 0, animation 255 skipped (load screen)
+[   23.223] gs: new render target FBP=380 FBW=10 PSM=10 (3416x2048)
+[   23.277] TICK = 524
+[   23.297] TICK = 1572
+[   23.385] TICK = 524
+[   23.387] TICK = 1310
+[   23.414] TICK = 524
+[   23.448] TICK = 524
+[   23.481] TICK = 524
+[   23.514] TICK = 524
+[   23.548] TICK = 524
+[   23.581] TICK = 524
+[   23.614] TICK = 524
+[   23.648] TICK = 524
+[   23.681] TICK = 524
+[   23.715] TICK = 524
+[   23.748] TICK = 524
+[   23.781] TICK = 524
+[   23.815] TICK = 524
+[   23.848] TICK = 524
+[   23.881] TICK = 524
+[   23.915] TICK = 524
+[   23.948] TICK = 524
+[   23.981] TICK = 524
+[   24.015] TICK = 524
+[   24.048] TICK = 524
+[   24.082] TICK = 524
+[   24.115] TICK = 524
+[   24.148] TICK = 524
+[   24.182] TICK = 524
+[   24.215] TICK = 524
+[   24.248] TICK = 524
+[   24.282] TICK = 524
+[   24.315] TICK = 524
+[   24.349] TICK = 524
+[   24.382] TICK = 524
+[   24.415] TICK = 524
+[   24.449] TICK = 524
+[   24.482] TICK = 524
+[   24.515] TICK = 524
+[   24.549] TICK = 524
+[   24.582] TICK = 524
+[   24.615] TICK = 524
+[   24.649] TICK = 524
+[   24.682] TICK = 524
+[   24.716] TICK = 524
+[   24.749] TICK = 524
+[   24.782] TICK = 524
+[   24.816] TICK = 524
+[   24.849] TICK = 524
+[   24.882] TICK = 524
+[   24.893] gputime: exec 28.5/s cpu 6.41 gpu 6.93 ms | in-between 92.9/s cpu 2.01 gpu 2.28 ms (start 0.09 draw 0.87 display 1.31 restore 0.00) | frame image 33.0/s cpu 1.47 gpu 1.19 ms
+[   24.893] gputime: per frame draws 27, GS-path sprites 3, other GS-path primitives 1, native triangles 2764
+[   24.893] gputime: per in-between draws 79, GS-path sprites 3, other GS-path primitives 0, native triangles 3007
+[   24.893] gputime detail: 6 sampled replays | scene 0.59 ms (depth-write 0.12, blend 0.15, blend+depth-write 0.23, other 0.10) | copies 0.22 ms (setup 0.10, color 0.00, depth 0.12)
+[   24.893] gputime detail: blits per sampled replay setup 13.0, color 0.0, depth 1.0
+[   24.893] gputime detail: FBP 0 scene 0.38 ms, 26.7 batches per sampled replay
+[   24.893] gputime detail: FBP 150 scene 0.11 ms, 1.0 batches per sampled replay
+[   24.893] gputime detail: FBP 380 scene 0.10 ms, 1.0 batches per sampled replay
+[   24.916] TICK = 524
+[   24.949] TICK = 524
+[   24.982] TICK = 524
+[   25.016] TICK = 524
+[   25.049] TICK = 524
+[   25.083] TICK = 524
+[   25.116] TICK = 524
+[   25.149] TICK = 524
+[   25.183] TICK = 524
+[   25.216] TICK = 524
+[   25.249] TICK = 524
+[   25.283] TICK = 524
+[   25.316] TICK = 524
+[   25.350] TICK = 524
+[   25.383] TICK = 524
+[   25.416] TICK = 524
+[   25.417] read file = RM_0080.RDX
+[   25.450] TICK = 524
+[   25.503] room: RM_0080 7356 KB expanded, 69078 KB of the room arena left
+[   25.503] TICK = 786
+[   25.503] ARGB4444
+[   25.503] ARGB4444
+[   25.504] ARGB4444
+[   25.533] TICK = 524
+[   25.533] RGB565
+[   25.533] RGB565
+[   25.533] RGB565
+[   25.533] RGB565
+[   25.533] RGB565
+[   25.533] RGB565
+[   25.534] RGB565
+[   25.534] RGB565
+[   25.534] RGB565
+[   25.534] RGB565
+[   25.534] ARGB1555
+[   25.534] RGB565
+[   25.534] ARGB4444
+[   25.534] RGB565
+[   25.534] RGB565
+[   25.534] ARGB1555
+[   25.534] RGB565
+[   25.534] RGB565
+[   25.534] RGB565
+[   25.534] RGB565
+[   25.534] RGB565
+[   25.535] RGB565
+[   25.535] RGB565
+[   25.535] RGB565
+[   25.535] RGB565
+[   25.535] RGB565
+[   25.535] RGB565
+[   25.535] RGB565
+[   25.535] RGB565
+[   25.535] RGB565
+[   25.535] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.536] RGB565
+[   25.537] RGB565
+[   25.537] RGB565
+[   25.537] RGB565
+[   25.537] RGB565
+[   25.537] RGB565
+[   25.537] ARGB4444
+[   25.537] ARGB4444
+[   25.537] RGB565
+[   25.537] RGB565
+[   25.537] RGB565
+[   25.537] RGB565
+[   25.537] RGB565
+[   25.537] RGB565
+[   25.537] RGB565
+[   25.537] RGB565
+[   25.538] RGB565
+[   25.538] RGB565
+[   25.538] RGB565
+[   25.538] RGB565
+[   25.538] RGB565
+[   25.538] RGB565
+[   25.538] RGB565
+[   25.538] RGB565
+[   25.538] RGB565
+[   25.538] RGB565
+[   25.539] RGB565
+[   25.539] RGB565
+[   25.539] RGB565
+[   25.539] RGB565
+[   25.539] RGB565
+[   25.539] ARGB1555
+[   25.539] ARGB1555
+[   25.539] ARGB1555
+[   25.539] ARGB1555
+[   25.539] ARGB1555
+[   25.539] ARGB1555
+[   25.539] ARGB1555
+[   25.539] ARGB1555
+[   25.539] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.540] ARGB1555
+[   25.541] RGB565
+[   25.541] ARGB4444
+[   25.541] RGB565
+[   25.541] RGB565
+[   25.541] RGB565
+[   25.541] ARGB4444
+[   25.541] RGB565
+[   25.541] RGB565
+[   25.541] RGB565
+[   25.541] ARGB1555
+[   25.541] RGB565
+[   25.541] RGB565
+[   25.566] TICK = 524
+[   25.566] malloc area = 35284430
+[   25.600] TICK = 524
+[   25.600] malloc area = 353dc700
+[   25.633] TICK = 524
+[   25.667] TICK = 524
+[   25.668] room: RM_0080 ready 72 frames after the door
+[   25.700] TICK = 524
+[   25.733] TICK = 524
+[   25.813] TICK = 524
+[   25.819] TICK = 524
+[   25.833] TICK = 524
+[   25.867] TICK = 524
+[   25.900] TICK = 524
+[   25.933] TICK = 524
+[   25.967] TICK = 524
+[   26.000] TICK = 524
+[   26.034] TICK = 524
+[   26.067] TICK = 524
+[   26.100] TICK = 524
+[   26.134] TICK = 524
+[   26.167] TICK = 524
+[   26.200] TICK = 524
+[   26.234] TICK = 524
+[   26.267] TICK = 524
+[   26.300] TICK = 524
+[   26.334] TICK = 524
+[   26.367] TICK = 524
+[   26.400] TICK = 524
+[   26.434] TICK = 524
+[   26.467] TICK = 524
+[   26.501] TICK = 524
+[   26.534] TICK = 524
+[   26.567] TICK = 524
+[   26.601] TICK = 524
+[   26.634] TICK = 524
+[   26.667] TICK = 524
+[   26.701] TICK = 524
+[   26.734] TICK = 524
+[   26.768] TICK = 524
+[   26.801] TICK = 524
+[   26.834] TICK = 524
+[   26.868] TICK = 524
+[   26.896] gputime: exec 29.5/s cpu 5.91 gpu 5.84 ms | in-between 81.9/s cpu 2.65 gpu 4.87 ms (start 0.09 draw 3.41 display 1.36 restore 0.00) | frame image 47.9/s cpu 0.61 gpu 1.12 ms
+[   26.896] gputime: per frame draws 184, GS-path sprites 7, other GS-path primitives 168, native triangles 6570
+[   26.896] gputime: per in-between draws 274, GS-path sprites 7, other GS-path primitives 196, native triangles 7782
+[   26.896] gputime detail: 5 sampled replays | scene 2.31 ms (depth-write 1.60, blend 0.14, blend+depth-write 0.47, other 0.10) | copies 0.50 ms (setup 0.10, color 0.00, depth 0.40)
+[   26.896] gputime detail: blits per sampled replay setup 13.0, color 0.0, depth 9.4
+[   26.896] gputime detail: FBP 0 scene 2.06 ms, 176.2 batches per sampled replay
+[   26.896] gputime detail: FBP 150 scene 0.14 ms, 1.0 batches per sampled replay
+[   26.896] gputime detail: FBP 380 scene 0.11 ms, 10.2 batches per sampled replay
+[   26.901] TICK = 524
+[   26.934] TICK = 524
+[   26.968] TICK = 524
+[   27.001] TICK = 524
+[   27.034] TICK = 524
+[   27.068] TICK = 524
+[   27.101] TICK = 524
+[   27.135] TICK = 524
+[   27.168] TICK = 524
+[   27.201] TICK = 524
+[   27.235] TICK = 524
+[   27.268] TICK = 524
+[   27.301] TICK = 524
+[   27.335] TICK = 524
+[   27.368] TICK = 524
+[   27.401] TICK = 524
+[   27.435] TICK = 524
+[   27.468] TICK = 524
+[   27.502] TICK = 524
+[   27.535] TICK = 524
+[   27.568] TICK = 524
+[   27.602] TICK = 524
+[   27.602] knife: drawn from the always-there entry 15 (before: slot 0, item 0, count 0)
+[   27.635] TICK = 524
+[   27.639] RGB565
+[   27.639] RGB565
+[   27.640] RGB565
+[   27.668] TICK = 524
+[   27.668] malloc area = 35291700
+[   27.702] TICK = 524
+[   27.735] TICK = 524
+[   27.769] TICK = 524
+[   27.802] TICK = 524
+[   27.835] TICK = 524
+[   27.869] TICK = 524
+[   27.902] TICK = 524
+[   27.935] TICK = 524
+[   27.969] TICK = 524
+[   28.002] TICK = 524
+[   28.036] TICK = 524
+[   28.069] TICK = 524
+[   28.105] TICK = 524
+[   28.136] TICK = 524
+[   28.169] TICK = 524
+[   28.202] TICK = 524
+[   28.236] TICK = 524
+[   28.269] TICK = 524
+[   28.302] TICK = 524
+[   28.336] TICK = 524
+[   28.369] TICK = 524
+[   28.403] TICK = 524
+[   28.436] TICK = 524
+[   28.469] TICK = 524
+[   28.503] TICK = 524
+[   28.536] TICK = 524
+[   28.569] TICK = 524
+[   28.603] TICK = 524
+[   28.636] TICK = 524
+[   28.670] TICK = 524
+[   28.710] TICK = 524
+[   28.736] TICK = 524
+[   28.770] TICK = 524
+[   28.803] TICK = 524
+[   28.836] TICK = 524
+[   28.870] TICK = 524
+[   28.899] gputime: exec 30.0/s cpu 9.81 gpu 10.83 ms | in-between 62.4/s cpu 3.73 gpu 9.57 ms (start 0.10 draw 7.99 display 1.48 restore 0.00) | frame image 14.0/s cpu 0.28 gpu 1.57 ms
+[   28.899] gputime: per frame draws 385, GS-path sprites 11, other GS-path primitives 279, native triangles 12684
+[   28.899] gputime: per in-between draws 394, GS-path sprites 11, other GS-path primitives 279, native triangles 12680
+[   28.899] gputime detail: 4 sampled replays | scene 5.94 ms (depth-write 4.63, blend 0.30, blend+depth-write 0.90, other 0.11) | copies 1.71 ms (setup 0.10, color 0.04, depth 1.57)
+[   28.899] gputime detail: blits per sampled replay setup 13.0, color 0.2, depth 32.5
+[   28.899] gputime detail: FBP 0 scene 5.63 ms, 369.2 batches per sampled replay
+[   28.899] gputime detail: FBP 150 scene 0.18 ms, 1.0 batches per sampled replay
+[   28.899] gputime detail: FBP 380 scene 0.14 ms, 17.0 batches per sampled replay
+[   28.903] TICK = 524
+[   28.936] TICK = 524
+[   28.970] TICK = 524
+[   29.003] TICK = 524
+[   29.036] TICK = 524
+[   29.070] TICK = 524
+[   29.103] TICK = 524
+[   29.137] TICK = 524
+[   29.170] TICK = 524
+[   29.203] TICK = 524
+[   29.237] TICK = 524
+[   29.270] TICK = 524
+[   29.303] TICK = 524
+[   29.337] TICK = 524
+[   29.370] TICK = 524
+[   29.404] TICK = 524
+[   29.437] TICK = 524
+[   29.470] TICK = 524
+[   29.504] TICK = 524
+[   29.537] TICK = 524
+[   29.570] TICK = 524
+[   29.604] TICK = 524
+[   29.637] TICK = 524
+[   29.670] TICK = 524
+[   29.704] TICK = 524
+[   29.737] TICK = 524
+[   29.771] TICK = 524
+[   29.804] TICK = 524
+[   29.837] TICK = 524
+[   29.871] TICK = 524
+[   29.904] TICK = 524
+[   29.937] TICK = 524
+[   29.971] TICK = 524
+[   30.004] TICK = 524
+[   30.037] TICK = 524
+[   30.071] TICK = 524
+[   30.104] TICK = 524
+[   30.138] TICK = 524
+[   30.171] TICK = 524
+[   30.204] TICK = 524
+[   30.238] TICK = 524
+[   30.271] TICK = 524
+[   30.304] TICK = 524
+[   30.338] TICK = 524
+[   30.371] TICK = 524
+[   30.404] TICK = 524
+[   30.438] TICK = 524
+[   30.471] TICK = 524
+[   30.505] TICK = 524
+[   30.538] TICK = 524
+[   30.571] TICK = 524
+[   30.605] TICK = 524
+[   30.638] TICK = 524
+[   30.672] TICK = 524
+[   30.705] TICK = 524
+[   30.738] TICK = 524
+[   30.772] TICK = 524
+[   30.805] TICK = 524
+[   30.838] TICK = 524
+[   30.872] TICK = 524
+[   30.905] gputime: exec 29.9/s cpu 9.77 gpu 11.20 ms | in-between 52.9/s cpu 3.70 gpu 11.75 ms (start 0.10 draw 10.07 display 1.58 restore 0.00) | frame image 6.0/s cpu 0.26 gpu 1.64 ms
+[   30.905] gputime: per frame draws 448, GS-path sprites 93, other GS-path primitives 289, native triangles 12626
+[   30.905] gputime: per in-between draws 456, GS-path sprites 93, other GS-path primitives 289, native triangles 12625
+[   30.905] gputime detail: 3 sampled replays | scene 8.14 ms (depth-write 6.57, blend 0.42, blend+depth-write 1.04, other 0.11) | copies 1.16 ms (setup 0.10, color 0.16, depth 0.90)
+[   30.905] gputime detail: blits per sampled replay setup 13.0, color 1.0, depth 34.0
+[   30.905] gputime detail: FBP 0 scene 7.82 ms, 417.7 batches per sampled replay
+[   30.905] gputime detail: FBP 150 scene 0.19 ms, 1.0 batches per sampled replay
+[   30.905] gputime detail: FBP 380 scene 0.13 ms, 17.0 batches per sampled replay
+[   30.905] TICK = 524
+[   30.938] TICK = 524
+[   30.972] TICK = 524
+[   31.005] TICK = 524
+[   31.005] knife: released in mode 1/65
+[   31.038] TICK = 524
+[   31.072] TICK = 524
+[   31.105] TICK = 524
+[   31.139] TICK = 524
+[   31.172] TICK = 524
+[   31.205] TICK = 524
+[   31.239] TICK = 524
+[   31.239] knife: back to no weapon (slot 15, item 0, count 0)
+[   31.272] TICK = 524
+[   31.276] RGB565
+[   31.276] RGB565
+[   31.305] TICK = 524
+[   31.339] TICK = 524
+[   31.372] TICK = 524
+[   31.406] TICK = 524
+[   31.439] TICK = 524
+[   31.472] TICK = 524
+[   31.506] TICK = 524
+[   31.539] TICK = 524
+[   31.572] TICK = 524
+[   31.572] knife: drawn from the always-there entry 15 (before: slot 0, item 0, count 0)
+[   31.606] TICK = 524
+[   31.610] RGB565
+[   31.610] RGB565
+[   31.610] RGB565
+[   31.639] TICK = 524
+[   31.639] malloc area = 35291700
+[   31.672] TICK = 524
+[   31.706] TICK = 524
+[   31.739] TICK = 524
+[   31.773] TICK = 524
+[   31.806] TICK = 524
+[   31.846] TICK = 524
+[   31.873] TICK = 524
+[   31.906] TICK = 524
+[   31.939] TICK = 524
+[   31.973] TICK = 524
+[   32.006] TICK = 524
+[   32.039] TICK = 524
+[   32.073] TICK = 524
+[   32.106] TICK = 524
+[   32.140] TICK = 524
+[   32.173] TICK = 524
+[   32.206] TICK = 524
+[   32.240] TICK = 524
+[   32.273] TICK = 524
+[   32.306] TICK = 524
+[   32.340] TICK = 524
+[   32.373] TICK = 524
+[   32.407] TICK = 524
+[   32.440] TICK = 524
+[   32.473] TICK = 524
+[   32.507] TICK = 524
+[   32.540] TICK = 524
+[   32.573] TICK = 524
+[   32.607] TICK = 524
+[   32.640] TICK = 524
+[   32.673] TICK = 524
+[   32.707] TICK = 524
+[   32.740] TICK = 524
+[   32.774] TICK = 524
+[   32.807] TICK = 524
+[   32.840] TICK = 524
+[   32.840] knife: released in mode 0/0
+[   32.874] TICK = 524
+[   32.906] gputime: exec 30.0/s cpu 7.70 gpu 9.21 ms | in-between 72.0/s cpu 3.32 gpu 9.20 ms (start 0.10 draw 7.60 display 1.51 restore 0.00) | frame image 15.0/s cpu 0.32 gpu 1.59 ms
+[   32.906] gputime: per frame draws 413, GS-path sprites 35, other GS-path primitives 280, native triangles 12188
+[   32.906] gputime: per in-between draws 566, GS-path sprites 29, other GS-path primitives 279, native triangles 12169
+[   32.906] gputime detail: 5 sampled replays | scene 5.90 ms (depth-write 4.54, blend 0.39, blend+depth-write 0.86, other 0.11) | copies 1.11 ms (setup 0.10, color 0.13, depth 0.88)
+[   32.906] gputime detail: blits per sampled replay setup 13.0, color 0.8, depth 33.4
+[   32.906] gputime detail: FBP 0 scene 5.59 ms, 403.6 batches per sampled replay
+[   32.906] gputime detail: FBP 150 scene 0.19 ms, 1.0 batches per sampled replay
+[   32.906] gputime detail: FBP 380 scene 0.13 ms, 16.8 batches per sampled replay
+[   32.907] TICK = 524
+[   32.940] TICK = 524
+[   32.974] TICK = 524
+[   33.007] TICK = 524
+[   33.040] TICK = 524
+[   33.074] TICK = 524
+[   33.107] TICK = 524
+[   33.141] TICK = 524
+[   33.174] TICK = 524
+[   33.207] TICK = 524
+[   33.241] TICK = 524
+[   33.274] TICK = 524
+[   33.307] TICK = 524
+[   33.341] TICK = 524
+[   33.374] TICK = 524
+[   33.408] TICK = 524
+[   33.441] TICK = 524
+[   33.474] TICK = 524
+[   33.508] TICK = 524
+[   33.541] TICK = 524
+[   33.574] TICK = 524
+[   33.608] TICK = 524
+[   33.641] TICK = 524
+[   33.675] TICK = 524
+[   33.708] TICK = 524
+[   33.741] TICK = 524
+[   33.775] TICK = 524
+[   33.808] TICK = 524
+[   33.841] TICK = 524
+[   33.875] TICK = 524
+[   33.908] TICK = 524
+[   33.941] TICK = 524
+[   33.975] TICK = 524
+[   34.008] TICK = 524
+[   34.041] TICK = 524
+[   34.075] TICK = 524
+[   34.108] TICK = 524
+[   34.142] TICK = 524
+[   34.175] TICK = 524
+[   34.208] TICK = 524
+[   34.242] TICK = 524
+[   34.275] TICK = 524
+[   34.308] TICK = 524
+[   34.342] TICK = 524
+[   34.375] TICK = 524
+[   34.409] TICK = 524
+[   34.442] TICK = 524
+[   34.475] TICK = 524
+[   34.509] TICK = 524
+[   34.542] TICK = 524
+[   34.575] TICK = 524
+[   34.575] knife: back to no weapon (slot 15, item 0, count 0)
+[   34.609] TICK = 524
+[   34.613] RGB565
+[   34.613] RGB565
+[   34.642] TICK = 524
+[   34.675] TICK = 524
+[   34.709] TICK = 524
+[   34.742] TICK = 524
+[   34.776] TICK = 524
+[   34.809] TICK = 524
+[   34.842] TICK = 524
+[   34.876] TICK = 524
+[   34.906] gputime: exec 30.0/s cpu 7.65 gpu 8.96 ms | in-between 77.5/s cpu 3.47 gpu 8.41 ms (start 0.10 draw 6.81 display 1.50 restore 0.00) | frame image 23.0/s cpu 0.26 gpu 1.58 ms
+[   34.906] gputime: per frame draws 415, GS-path sprites 38, other GS-path primitives 285, native triangles 12277
+[   34.906] gputime: per in-between draws 691, GS-path sprites 39, other GS-path primitives 285, native triangles 12269
+[   34.906] gputime detail: 5 sampled replays | scene 4.95 ms (depth-write 3.60, blend 0.39, blend+depth-write 0.85, other 0.11) | copies 1.20 ms (setup 0.10, color 0.17, depth 0.93)
+[   34.906] gputime detail: blits per sampled replay setup 13.0, color 1.0, depth 35.6
+[   34.906] gputime detail: FBP 0 scene 4.63 ms, 396.2 batches per sampled replay
+[   34.906] gputime detail: FBP 150 scene 0.19 ms, 1.0 batches per sampled replay
+[   34.906] gputime detail: FBP 380 scene 0.12 ms, 16.2 batches per sampled replay
+[   34.909] TICK = 524
+[   34.942] TICK = 524
+[   34.976] TICK = 524
+[   35.009] TICK = 524
+[   35.042] TICK = 524
+[   35.076] TICK = 524
+[   35.109] TICK = 524
+[   35.143] TICK = 524
+[   35.176] TICK = 524
+[   35.209] TICK = 524
+[   35.243] TICK = 524
+[   35.276] TICK = 524
+[   35.309] TICK = 524
+[   35.343] TICK = 524
+[   35.376] TICK = 524
+[   35.410] TICK = 524
+[   35.443] TICK = 524
+[   35.476] TICK = 524
+[   35.510] TICK = 524
+[   35.543] TICK = 524
+[   35.576] TICK = 524
+[   35.610] TICK = 524
+[   35.643] TICK = 524
+[   35.676] TICK = 524
+[   35.710] TICK = 524
+[   35.743] TICK = 524
+[   35.777] TICK = 524
+[   35.810] TICK = 524
+[   35.843] TICK = 524
+[   35.877] TICK = 524
+[   35.910] TICK = 524
+[   35.943] TICK = 524
+[   35.977] TICK = 524
+[   36.010] TICK = 524
+[   36.044] TICK = 524
+[   36.077] TICK = 524
+[   36.110] TICK = 524
+[   36.144] TICK = 524
+[   36.177] TICK = 524
+[   36.210] TICK = 524
+[   36.244] TICK = 524
+[   36.277] TICK = 524
+[   36.310] TICK = 524
+[   36.344] TICK = 524
+[   36.377] TICK = 524
+[   36.411] TICK = 524
+[   36.444] TICK = 524
+[   36.477] TICK = 524
+[   36.511] TICK = 524
+[   36.544] TICK = 524
+[   36.577] TICK = 524
+[   36.611] TICK = 524
+[   36.644] TICK = 524
+[   36.677] TICK = 524
+[   36.711] TICK = 524
+[   36.744] TICK = 524
+[   36.778] TICK = 524
+[   36.811] TICK = 524
+[   36.844] TICK = 524
+[   36.878] TICK = 524
+[   36.907] gputime: exec 30.0/s cpu 6.54 gpu 7.54 ms | in-between 81.0/s cpu 3.24 gpu 8.67 ms (start 0.10 draw 7.08 display 1.49 restore 0.00) | frame image 19.5/s cpu 0.27 gpu 1.58 ms
+[   36.907] gputime: per frame draws 354, GS-path sprites 10, other GS-path primitives 263, native triangles 8972
+[   36.907] gputime: per in-between draws 366, GS-path sprites 10, other GS-path primitives 263, native triangles 8930
+[   36.907] gputime detail: 5 sampled replays | scene 5.09 ms (depth-write 3.29, blend 0.58, blend+depth-write 1.11, other 0.11) | copies 1.23 ms (setup 0.10, color 0.17, depth 0.96)
+[   36.907] gputime detail: blits per sampled replay setup 13.0, color 1.0, depth 37.0
+[   36.907] gputime detail: FBP 0 scene 4.77 ms, 338.2 batches per sampled replay
+[   36.907] gputime detail: FBP 150 scene 0.19 ms, 1.0 batches per sampled replay
+[   36.907] gputime detail: FBP 380 scene 0.13 ms, 14.8 batches per sampled replay
+[   36.911] TICK = 524
+[   36.944] TICK = 524
+[   36.978] TICK = 524
+[   37.011] TICK = 524
+[   37.045] TICK = 524
+[   37.078] TICK = 524
+[   37.111] TICK = 524
+[   37.145] TICK = 524
+[   37.178] TICK = 524
+[   37.211] TICK = 524
+[   37.245] TICK = 524
+[   37.245] knife: drawn from the always-there entry 15 (before: slot 0, item 0, count 0)
+[   37.278] TICK = 524
+[   37.281] RGB565
+[   37.282] RGB565
+[   37.282] RGB565
+[   37.311] TICK = 524
+[   37.311] malloc area = 35291700
+[   37.345] TICK = 524
+[   37.378] TICK = 524
+[   37.412] TICK = 524
+[   37.445] TICK = 524
+[   37.478] TICK = 524
+[   37.512] TICK = 524
+[   37.545] TICK = 524
+[   37.578] TICK = 524
+[   37.612] TICK = 524
+[   37.645] TICK = 524
+[   37.678] TICK = 524
+[   37.712] TICK = 524
+[   37.745] TICK = 524
+[   37.779] TICK = 524
+[   37.812] TICK = 524
+[   37.845] TICK = 524
+[   37.879] TICK = 524
+[   37.912] TICK = 524
+[   37.945] TICK = 524
+[   37.979] TICK = 524
+[   38.012] TICK = 524
+[   38.046] TICK = 524
+[   38.079] TICK = 524
+[   38.112] TICK = 524
+[   38.146] TICK = 524
+[   38.179] TICK = 524
+[   38.212] TICK = 524
+[   38.246] TICK = 524
+[   38.279] TICK = 524
+[   38.312] TICK = 524
+[   38.346] TICK = 524
+[   38.379] TICK = 524
+[   38.413] TICK = 524
+[   38.446] TICK = 524
+[   38.479] TICK = 524
+[   38.513] TICK = 524
+[   38.546] TICK = 524
+[   38.579] TICK = 524
+[   38.613] TICK = 524
+[   38.646] TICK = 524
+[   38.679] TICK = 524
+[   38.713] TICK = 524
+[   38.746] TICK = 524
+[   38.780] TICK = 524
+[   38.813] TICK = 524
+[   38.846] TICK = 524
+[   38.880] TICK = 524
+[   38.911] gputime: exec 29.9/s cpu 5.98 gpu 6.33 ms | in-between 99.3/s cpu 2.88 gpu 6.94 ms (start 0.10 draw 5.38 display 1.46 restore 0.00) | frame image 25.0/s cpu 0.29 gpu 1.48 ms
+[   38.911] gputime: per frame draws 309, GS-path sprites 11, other GS-path primitives 262, native triangles 8075
+[   38.911] gputime: per in-between draws 319, GS-path sprites 11, other GS-path primitives 262, native triangles 8067
+[   38.911] gputime detail: 6 sampled replays | scene 3.79 ms (depth-write 2.71, blend 0.31, blend+depth-write 0.66, other 0.11) | copies 0.89 ms (setup 0.10, color 0.13, depth 0.66)
+[   38.911] gputime detail: blits per sampled replay setup 13.0, color 0.8, depth 24.8
+[   38.911] gputime detail: FBP 0 scene 3.48 ms, 292.2 batches per sampled replay
+[   38.911] gputime detail: FBP 150 scene 0.18 ms, 1.0 batches per sampled replay
+[   38.911] gputime detail: FBP 380 scene 0.14 ms, 17.0 batches per sampled replay
+[   38.913] TICK = 524
+[   38.946] TICK = 524
+[   38.980] TICK = 524
+[   38.980] knife: released in mode 1/65
+[   39.013] TICK = 524
+[   39.047] TICK = 524
+[   39.080] TICK = 524
+[   39.113] TICK = 524
+[   39.147] TICK = 524
+[   39.180] TICK = 524
+[   39.213] TICK = 524
+[   39.213] knife: back to no weapon (slot 15, item 0, count 0)
+[   39.247] TICK = 524
+[   39.251] RGB565
+[   39.251] RGB565
+[   39.280] TICK = 524
+[   39.313] TICK = 524
+[   39.347] TICK = 524
+[   39.380] TICK = 524
+[   39.414] TICK = 524
+[   39.447] TICK = 524
+[   39.480] TICK = 524
+[   39.514] TICK = 524
+[   39.547] TICK = 524
+[   39.580] TICK = 524
+[   39.614] TICK = 524
+[   39.647] TICK = 524
+[   39.681] TICK = 524
+[   39.714] TICK = 524
+[   39.747] TICK = 524
+[   39.781] TICK = 524
+[   39.814] TICK = 524
+[   39.814] knife: drawn from the always-there entry 15 (before: slot 0, item 0, count 0)
+[   39.847] TICK = 524
+[   39.850] RGB565
+[   39.850] RGB565
+[   39.850] RGB565
+[   39.881] TICK = 524
+[   39.881] malloc area = 35291700
+[   39.914] TICK = 524
+[   39.947] TICK = 524
+[   39.981] TICK = 524
+[   40.014] TICK = 524
+[   40.048] TICK = 524
+[   40.081] TICK = 524
+[   40.114] TICK = 524
+[   40.148] TICK = 524
+[   40.181] TICK = 524
+[   40.214] TICK = 524
+[   40.248] TICK = 524
+[   40.281] TICK = 524
+[   40.314] TICK = 524
+[   40.348] TICK = 524
+[   40.381] TICK = 524
+[   40.415] TICK = 524
+[   40.448] TICK = 524
+[   40.481] TICK = 524
+[   40.515] TICK = 524
+[   40.548] TICK = 524
+[   40.581] TICK = 524
+[   40.615] TICK = 524
+[   40.615] knife: released in mode 0/0
+[   40.648] TICK = 524
+[   40.681] TICK = 524
+[   40.715] TICK = 524
+[   40.748] TICK = 524
+[   40.782] TICK = 524
+[   40.815] TICK = 524
+[   40.848] TICK = 524
+[   40.882] TICK = 524
+[   40.911] gputime: exec 30.0/s cpu 5.65 gpu 6.02 ms | in-between 97.5/s cpu 2.94 gpu 6.99 ms (start 0.10 draw 5.44 display 1.45 restore 0.00) | frame image 27.5/s cpu 0.28 gpu 1.49 ms
+[   40.911] gputime: per frame draws 294, GS-path sprites 12, other GS-path primitives 261, native triangles 7229
+[   40.911] gputime: per in-between draws 310, GS-path sprites 12, other GS-path primitives 260, native triangles 7212
+[   40.911] gputime detail: 6 sampled replays | scene 3.85 ms (depth-write 2.71, blend 0.33, blend+depth-write 0.70, other 0.12) | copies 0.84 ms (setup 0.10, color 0.11, depth 0.63)
+[   40.911] gputime detail: blits per sampled replay setup 13.0, color 0.7, depth 23.8
+[   40.911] gputime detail: FBP 0 scene 3.53 ms, 275.3 batches per sampled replay
+[   40.911] gputime detail: FBP 150 scene 0.19 ms, 1.0 batches per sampled replay
+[   40.911] gputime detail: FBP 380 scene 0.14 ms, 17.2 batches per sampled replay
+[   40.915] TICK = 524
+[   40.949] TICK = 524
+[   40.982] TICK = 524
+[   41.015] TICK = 524
+[   41.049] TICK = 524
+[   41.082] TICK = 524
+[   41.115] TICK = 524
+[   41.149] TICK = 524
+[   41.182] TICK = 524
+[   41.215] TICK = 524
+[   41.249] TICK = 524
+[   41.282] TICK = 524
+[   41.315] TICK = 524
+[   41.349] TICK = 524
+[   41.382] TICK = 524
+[   41.416] TICK = 524
+[   41.449] TICK = 524
+[   41.482] TICK = 524
+[   41.516] TICK = 524
+[   41.549] TICK = 524
+[   41.582] TICK = 524
+[   41.616] TICK = 524
+[   41.649] TICK = 524
+[   41.682] TICK = 524
+[   41.716] TICK = 524
+[   41.749] TICK = 524
+[   41.783] TICK = 524
+[   41.816] TICK = 524
+[   41.849] TICK = 524
+[   41.883] TICK = 524
+[   41.916] TICK = 524
+[   41.949] TICK = 524
+[   41.983] TICK = 524
+[   42.016] TICK = 524
+[   42.049] TICK = 524
+[   42.083] TICK = 524
+[   42.116] TICK = 524
+[   42.150] TICK = 524
+[   42.183] TICK = 524
+[   42.216] TICK = 524
+[   42.250] TICK = 524
+[   42.283] TICK = 524
+[   42.317] TICK = 524
+[   42.350] TICK = 524
+[   42.383] TICK = 524
+[   42.417] TICK = 524
+[   42.450] TICK = 524
+[   42.483] TICK = 524
+[   42.517] TICK = 524
+[   42.550] TICK = 524
+[   42.583] TICK = 524
+[   42.617] TICK = 524
+[   42.650] TICK = 524
+[   42.684] TICK = 524
+[   42.717] TICK = 524
+[   42.750] TICK = 524
+[   42.784] TICK = 524
+[   42.817] TICK = 524
+[   42.850] TICK = 524
+[   42.884] TICK = 524
+[   42.911] gputime: exec 30.0/s cpu 6.13 gpu 6.86 ms | in-between 90.5/s cpu 3.21 gpu 7.02 ms (start 0.10 draw 5.44 display 1.48 restore 0.00) | frame image 24.0/s cpu 0.33 gpu 1.44 ms
+[   42.911] gputime: per frame draws 318, GS-path sprites 44, other GS-path primitives 260, native triangles 7158
+[   42.911] gputime: per in-between draws 515, GS-path sprites 45, other GS-path primitives 260, native triangles 7172
+[   42.911] gputime detail: 6 sampled replays | scene 3.89 ms (depth-write 2.62, blend 0.37, blend+depth-write 0.78, other 0.11) | copies 2.04 ms (setup 0.10, color 0.16, depth 1.77)
+[   42.911] gputime detail: blits per sampled replay setup 13.0, color 1.0, depth 26.5
+[   42.911] gputime detail: FBP 0 scene 3.56 ms, 303.2 batches per sampled replay
+[   42.911] gputime detail: FBP 150 scene 0.19 ms, 1.0 batches per sampled replay
+[   42.911] gputime detail: FBP 380 scene 0.14 ms, 16.8 batches per sampled replay
+[   42.917] TICK = 524
+[   42.917] knife: back to no weapon (slot 15, item 0, count 0)
+[   42.951] TICK = 524
+[   42.959] RGB565
+[   42.960] RGB565
+[   42.984] TICK = 524
+[   43.017] TICK = 524
+[   43.051] TICK = 524
+[   43.084] TICK = 524
+[   43.117] TICK = 524
+[   43.151] TICK = 524
+[   43.184] TICK = 524
+[   43.217] TICK = 524
+[   43.251] TICK = 524
+[   43.284] TICK = 524
+[   43.317] TICK = 524
+[   43.351] TICK = 524
+[   43.384] TICK = 524
+[   43.418] TICK = 524
+[   43.451] TICK = 524
+[   43.484] TICK = 524
+[   43.518] TICK = 524
+[   43.551] TICK = 524
+[   43.584] TICK = 524
+[   43.618] TICK = 524
+[   43.651] TICK = 524
+[   43.685] TICK = 524
+[   43.718] TICK = 524
+[   43.751] TICK = 524
+[   43.785] TICK = 524
+[   43.818] TICK = 524
+[   43.851] TICK = 524
+[   43.885] TICK = 524
+[   43.918] TICK = 524
+[   43.951] TICK = 524
+[   43.985] TICK = 524
+[   44.018] TICK = 524
+[   44.052] TICK = 524
+[   44.085] TICK = 524
+[   44.118] TICK = 524
+[   44.152] TICK = 524
+[   44.185] TICK = 524
+[   44.218] TICK = 524
+[   44.252] TICK = 524
+[   44.285] TICK = 524
+[   44.318] TICK = 524
+[   44.352] TICK = 524
+[   44.385] TICK = 524
+[   44.419] TICK = 524
+[   44.452] TICK = 524
+[   44.452] knife: drawn from the always-there entry 15 (before: slot 0, item 0, count 0)
+[   44.485] TICK = 524
+[   44.489] RGB565
+[   44.489] RGB565
+[   44.489] RGB565
+[   44.519] TICK = 524
+[   44.519] malloc area = 35291700
+[   44.552] TICK = 524
+[   44.585] TICK = 524
+[   44.619] TICK = 524
+[   44.652] TICK = 524
+[   44.686] TICK = 524
+[   44.719] TICK = 524
+[   44.752] TICK = 524
+[   44.786] TICK = 524
+[   44.819] TICK = 524
+[   44.852] TICK = 524
+[   44.886] TICK = 524
+[   44.914] gputime: exec 30.0/s cpu 6.87 gpu 7.05 ms | in-between 82.4/s cpu 3.49 gpu 7.86 ms (start 0.10 draw 6.28 display 1.48 restore 0.00) | frame image 24.5/s cpu 0.29 gpu 1.45 ms
+[   44.914] gputime: per frame draws 333, GS-path sprites 12, other GS-path primitives 273, native triangles 8184
+[   44.914] gputime: per in-between draws 371, GS-path sprites 12, other GS-path primitives 274, native triangles 8246
+[   44.914] gputime detail: 5 sampled replays | scene 4.56 ms (depth-write 3.22, blend 0.39, blend+depth-write 0.85, other 0.11) | copies 1.00 ms (setup 0.10, color 0.13, depth 0.77)
+[   44.914] gputime detail: blits per sampled replay setup 13.0, color 0.8, depth 29.2
+[   44.914] gputime detail: FBP 0 scene 4.25 ms, 322.2 batches per sampled replay
+[   44.914] gputime detail: FBP 150 scene 0.18 ms, 1.0 batches per sampled replay
+[   44.914] gputime detail: FBP 380 scene 0.13 ms, 16.8 batches per sampled replay
+[   44.919] TICK = 524
+[   44.952] TICK = 524
+[   44.986] TICK = 524
+[   45.019] TICK = 524
+[   45.053] TICK = 524
+[   45.086] TICK = 524
+[   45.119] TICK = 524
+[   45.153] TICK = 524
+[   45.186] TICK = 524
+[   45.219] TICK = 524
+[   45.253] TICK = 524
+[   45.286] TICK = 524
+[   45.319] TICK = 524
+[   45.353] TICK = 524
+[   45.386] TICK = 524
+[   45.420] TICK = 524
+[   45.453] TICK = 524
+[   45.486] TICK = 524
+[   45.520] TICK = 524
+[   45.553] TICK = 524
+[   45.586] TICK = 524
+[   45.620] TICK = 524
+[   45.653] TICK = 524
+[   45.687] TICK = 524
+[   45.720] TICK = 524
+[   45.753] TICK = 524
+[   45.787] TICK = 524
+[   45.820] TICK = 524
+[   45.853] TICK = 524
+[   45.887] TICK = 524
+[   45.920] TICK = 524
+[   45.953] TICK = 524
+[   45.953] knife: released in mode 0/0
+[   45.987] TICK = 524
+[   46.020] TICK = 524
+[   46.054] TICK = 524
+[   46.087] TICK = 524
+[   46.120] TICK = 524
+[   46.154] TICK = 524
+[   46.187] TICK = 524
+[   46.220] TICK = 524
+[   46.254] TICK = 524
+[   46.287] TICK = 524
+[   46.320] TICK = 524
+[   46.354] TICK = 524
+[   46.387] TICK = 524
+[   46.421] TICK = 524
+[   46.454] TICK = 524
+[   46.487] TICK = 524
+[   46.521] TICK = 524
+[   46.554] TICK = 524
+[   46.587] TICK = 524
+[   46.621] TICK = 524
+[   46.654] TICK = 524
+[   46.687] TICK = 524
+[   46.721] TICK = 524
+[   46.754] TICK = 524
+[   46.788] TICK = 524
+[   46.821] TICK = 524
+[   46.854] TICK = 524
+[   46.888] TICK = 524
+[   46.914] gputime: exec 30.0/s cpu 5.84 gpu 7.53 ms | in-between 81.0/s cpu 3.14 gpu 8.66 ms (start 0.10 draw 7.06 display 1.50 restore 0.00) | frame image 16.5/s cpu 0.30 gpu 1.60 ms
+[   46.914] gputime: per frame draws 349, GS-path sprites 32, other GS-path primitives 258, native triangles 9695
+[   46.914] gputime: per in-between draws 355, GS-path sprites 32, other GS-path primitives 259, native triangles 9734
+[   46.914] gputime detail: 5 sampled replays | scene 5.25 ms (depth-write 3.78, blend 0.44, blend+depth-write 0.93, other 0.11) | copies 1.06 ms (setup 0.10, color 0.17, depth 0.79)
+[   46.914] gputime detail: blits per sampled replay setup 13.0, color 1.0, depth 29.2
+[   46.914] gputime detail: FBP 0 scene 4.93 ms, 317.6 batches per sampled replay
+[   46.914] gputime detail: FBP 150 scene 0.20 ms, 1.0 batches per sampled replay
+[   46.914] gputime detail: FBP 380 scene 0.13 ms, 15.8 batches per sampled replay
+[   46.921] TICK = 524
+[   46.954] TICK = 524
+[   46.988] TICK = 524
+[   47.021] TICK = 524
+[   47.055] TICK = 524
+[   47.088] TICK = 524
+[   47.121] TICK = 524
+[   47.155] TICK = 524
+[   47.188] TICK = 524
+[   47.221] TICK = 524
+[   47.255] TICK = 524
+[   47.288] TICK = 524
+[   47.322] TICK = 524
+[   47.355] TICK = 524
+[   47.388] TICK = 524
+[   47.422] TICK = 524
+[   47.455] TICK = 524
+[   47.488] TICK = 524
+[   47.522] TICK = 524
+[   47.555] TICK = 524
+[   47.588] TICK = 524
+[   47.622] TICK = 524
+[   47.655] TICK = 524
+[   47.689] TICK = 524
+[   47.722] TICK = 524
+[   47.755] TICK = 524
+[   47.789] TICK = 524
+[   47.822] TICK = 524
+[   47.855] TICK = 524
+[   47.889] TICK = 524
+[   47.922] TICK = 524
+[   47.955] TICK = 524
+[   47.989] TICK = 524
+[   48.022] TICK = 524
+[   48.056] TICK = 524
+[   48.089] TICK = 524
+[   48.089] knife: back to no weapon (slot 15, item 0, count 0)
+[   48.122] TICK = 524
+[   48.127] RGB565
+[   48.127] RGB565
+[   48.156] TICK = 524
+[   48.189] TICK = 524
+[   48.222] TICK = 524
+[   48.256] TICK = 524
+[   48.289] TICK = 524
+[   48.322] TICK = 524
+[   48.322] knife: drawn from the always-there entry 15 (before: slot 0, item 0, count 0)
+[   48.356] TICK = 524
+[   48.360] RGB565
+[   48.360] RGB565
+[   48.360] RGB565
+[   48.389] TICK = 524
+[   48.389] malloc area = 35291700
+[   48.423] TICK = 524
+[   48.456] TICK = 524
+[   48.489] TICK = 524
+[   48.523] TICK = 524
+[   48.556] TICK = 524
+[   48.589] TICK = 524
+[   48.623] TICK = 524
+[   48.656] TICK = 524
+[   48.689] TICK = 524
+[   48.723] TICK = 524
+[   48.756] TICK = 524
+[   48.790] TICK = 524
+[   48.823] TICK = 524
+[   48.856] TICK = 524
+[   48.891] TICK = 524
+[   48.916] gputime: exec 30.0/s cpu 6.91 gpu 7.24 ms | in-between 83.4/s cpu 3.29 gpu 8.06 ms (start 0.10 draw 6.48 display 1.48 restore 0.00) | frame image 22.0/s cpu 0.26 gpu 1.52 ms
+[   48.916] gputime: per frame draws 354, GS-path sprites 20, other GS-path primitives 274, native triangles 10168
+[   48.916] gputime: per in-between draws 423, GS-path sprites 20, other GS-path primitives 275, native triangles 10177
+[   48.916] gputime detail: 5 sampled replays | scene 4.54 ms (depth-write 3.14, blend 0.41, blend+depth-write 0.87, other 0.11) | copies 1.06 ms (setup 0.10, color 0.10, depth 0.86)
+[   48.916] gputime detail: blits per sampled replay setup 13.0, color 0.6, depth 32.2
+[   48.916] gputime detail: FBP 0 scene 4.21 ms, 345.8 batches per sampled replay
+[   48.916] gputime detail: FBP 150 scene 0.19 ms, 1.0 batches per sampled replay
+[   48.916] gputime detail: FBP 380 scene 0.13 ms, 16.4 batches per sampled replay
+[   48.923] TICK = 524
+[   48.956] TICK = 524
+[   48.990] TICK = 524
+[   49.023] TICK = 524
+[   49.057] TICK = 524
+[   49.090] TICK = 524
+[   49.123] TICK = 524
+[   49.157] TICK = 524
+[   49.190] TICK = 524
+[   49.223] TICK = 524
+[   49.257] TICK = 524
+[   49.290] TICK = 524
+[   49.323] TICK = 524
+[   49.357] TICK = 524
+[   49.390] TICK = 524
+[   49.424] TICK = 524
+[   49.457] TICK = 524
+[   49.490] TICK = 524
+[   49.524] TICK = 524
+[   49.557] TICK = 524
+[   49.590] TICK = 524
+[   49.624] TICK = 524
+[   49.657] TICK = 524
+[   49.691] TICK = 524
+[   49.724] TICK = 524
+[   49.757] TICK = 524
+[   49.791] TICK = 524
+[   49.824] TICK = 524
+[   49.857] TICK = 524
+[   49.891] TICK = 524
+[   49.924] TICK = 524
+[   49.957] TICK = 524
+[   49.991] TICK = 524
+[   50.024] TICK = 524
+[   50.057] TICK = 524
+[   50.091] TICK = 524
+[   50.124] TICK = 524
+[   50.158] TICK = 524
+[   50.191] TICK = 524
+[   50.224] TICK = 524
+[   50.258] TICK = 524
+[   50.291] TICK = 524
+[   50.324] TICK = 524
+[   50.325] knife: released in mode 1/65
+[   50.358] TICK = 524
+[   50.391] TICK = 524
+[   50.425] TICK = 524
+[   50.458] TICK = 524
+[   50.491] TICK = 524
+[   50.525] TICK = 524
+[   50.558] TICK = 524
+[   50.558] knife: back to no weapon (slot 15, item 0, count 0)
+[   50.598] TICK = 524
+[   50.607] RGB565
+[   50.607] RGB565
+[   50.625] TICK = 524
+[   50.658] TICK = 524
+[   50.692] TICK = 524
+[   50.725] TICK = 524
+[   50.758] TICK = 524
+[   50.792] TICK = 524
+[   50.825] TICK = 524
+[   50.858] TICK = 524
+[   50.892] TICK = 524
+[   50.925] TICK = 524
+[   50.935] gputime: exec 30.2/s cpu 6.79 gpu 7.36 ms | in-between 82.7/s cpu 3.14 gpu 7.64 ms (start 0.10 draw 6.06 display 1.49 restore 0.00) | frame image 26.3/s cpu 0.33 gpu 1.42 ms
+[   50.935] gputime: per frame draws 320, GS-path sprites 10, other GS-path primitives 262, native triangles 9647
+[   50.935] gputime: per in-between draws 431, GS-path sprites 10, other GS-path primitives 261, native triangles 9631
+[   50.935] gputime detail: 5 sampled replays | scene 4.30 ms (depth-write 3.11, blend 0.36, blend+depth-write 0.72, other 0.11) | copies 0.97 ms (setup 0.10, color 0.16, depth 0.71)
+[   50.935] gputime detail: blits per sampled replay setup 13.0, color 1.0, depth 26.2
+[   50.935] gputime detail: FBP 0 scene 3.98 ms, 288.6 batches per sampled replay
+[   50.935] gputime detail: FBP 150 scene 0.18 ms, 1.0 batches per sampled replay
+[   50.935] gputime detail: FBP 380 scene 0.13 ms, 16.0 batches per sampled replay
+[   50.958] TICK = 524
+[   50.992] TICK = 524
+[   51.025] TICK = 524
+[   51.059] TICK = 524
+[   51.092] TICK = 524
+[   51.125] TICK = 524
+[   51.159] TICK = 524
+[   51.192] TICK = 524
+[   51.225] TICK = 524
+[   51.259] TICK = 524
+[   51.292] TICK = 524
+[   51.325] TICK = 524
+[   51.359] TICK = 524
+[   51.392] TICK = 524
+[   51.426] TICK = 524
+[   51.459] TICK = 524
+[   51.492] TICK = 524
+[   51.526] TICK = 524
+[   51.559] TICK = 524
+[   51.592] TICK = 524
+[   51.626] TICK = 524
+[   51.659] TICK = 524
+[   51.693] TICK = 524
+[   51.726] TICK = 524
+[   51.759] TICK = 524
+[   51.793] TICK = 524
+[   51.826] TICK = 524
+[   51.859] TICK = 524
+[   51.893] TICK = 524
+[   51.926] TICK = 524
+[   51.959] TICK = 524
+[   51.993] TICK = 524
+[   52.026] TICK = 524
+[   52.060] TICK = 524
+[   52.093] TICK = 524
+[   52.126] TICK = 524
+[   52.160] TICK = 524
+[   52.193] TICK = 524
+[   52.226] TICK = 524
+[   52.260] TICK = 524
+[   52.293] TICK = 524
+[   52.327] TICK = 524
+[   52.360] TICK = 524
+[   52.393] TICK = 524
+[   52.427] TICK = 524
+[   52.460] TICK = 524
+[   52.493] TICK = 524
+[   52.527] TICK = 524
+[   52.560] TICK = 524
+[   52.593] TICK = 524
+[   52.627] TICK = 524
+[   52.660] TICK = 524
+[   52.693] TICK = 524
+[   52.727] TICK = 524
+[   52.760] TICK = 524
+[   52.794] TICK = 524
+[   52.827] TICK = 524
+[   52.860] TICK = 524
+[   52.894] TICK = 524
+[   52.927] TICK = 524
+[   52.961] TICK = 524
+[   52.962] gputime: exec 29.6/s cpu 6.66 gpu 8.45 ms | in-between 73.5/s cpu 3.11 gpu 9.03 ms (start 0.10 draw 7.44 display 1.49 restore 0.00) | frame image 17.8/s cpu 0.29 gpu 1.58 ms
+[   52.962] gputime: per frame draws 328, GS-path sprites 9, other GS-path primitives 254, native triangles 9221
+[   52.962] gputime: per in-between draws 403, GS-path sprites 9, other GS-path primitives 253, native triangles 9198
+[   52.962] gputime detail: 5 sampled replays | scene 5.78 ms (depth-write 4.26, blend 0.44, blend+depth-write 0.97, other 0.11) | copies 1.05 ms (setup 0.10, color 0.16, depth 0.78)
+[   52.962] gputime detail: blits per sampled replay setup 13.0, color 1.0, depth 29.6
+[   52.962] gputime detail: FBP 0 scene 5.47 ms, 309.2 batches per sampled replay
+[   52.962] gputime detail: FBP 150 scene 0.18 ms, 1.0 batches per sampled replay
+[   52.963] gputime detail: FBP 380 scene 0.13 ms, 15.6 batches per sampled replay
+[   52.994] TICK = 524
+[   53.027] TICK = 524
+[   53.061] TICK = 524
+[   53.094] TICK = 524
+[   53.127] TICK = 524
+[   53.161] TICK = 524
+[   53.194] TICK = 524
+[   53.227] TICK = 524
+[   53.261] TICK = 524
+[   53.294] TICK = 524
+[   53.327] TICK = 524
+[   53.361] TICK = 524
+[   53.394] TICK = 524
+[   53.428] TICK = 524
+[   53.461] TICK = 524
+[   53.494] TICK = 524
+[   53.528] TICK = 524
+[   53.561] TICK = 524
+[   53.594] TICK = 524
+[   53.628] TICK = 524
+[   53.661] TICK = 524
+[   53.695] TICK = 524
+[   53.728] TICK = 524
+[   53.761] TICK = 524
+[   53.795] TICK = 524
+[   53.828] TICK = 524
+[   53.832] door: to 0/9 entry 0, animation 6 skipped (load screen)
+[   53.861] TICK = 524
+[   53.895] TICK = 524
+[   53.928] TICK = 524
+[   53.961] TICK = 524
+[   53.995] TICK = 524
+[   54.028] TICK = 524
+[   54.062] TICK = 524
+[   54.095] TICK = 524
+[   54.128] TICK = 524
+[   54.162] TICK = 524
+[   54.195] TICK = 524
+[   54.229] TICK = 524
+[   54.262] TICK = 524
+[   54.262] read file = RM_0090.RDX
+[   54.295] TICK = 524
+[   54.347] room: RM_0090 7271 KB expanded, 69162 KB of the room arena left
+[   54.347] TICK = 786
+[   54.347] ARGB4444
+[   54.348] ARGB4444
+[   54.348] ARGB4444
+[   54.348] ARGB4444
+[   54.348] ARGB4444
+[   54.348] ARGB4444
+[   54.379] TICK = 524
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] RGB565
+[   54.379] ARGB4444
+[   54.379] RGB565
+[   54.380] RGB565
+[   54.380] RGB565
+[   54.380] RGB565
+[   54.380] RGB565
+[   54.380] RGB565
+[   54.380] RGB565
+[   54.380] RGB565
+[   54.380] RGB565
+[   54.380] RGB565
+[   54.380] RGB565
+[   54.380] RGB565
+[   54.381] RGB565
+[   54.381] RGB565
+[   54.381] RGB565
+[   54.381] RGB565
+[   54.381] ARGB1555
+[   54.381] RGB565
+[   54.381] RGB565
+[   54.381] RGB565
+[   54.381] RGB565
+[   54.381] RGB565
+[   54.381] RGB565
+[   54.381] ARGB1555
+[   54.381] ARGB1555
+[   54.382] ARGB1555
+[   54.382] ARGB1555
+[   54.382] ARGB1555
+[   54.382] ARGB1555
+[   54.382] ARGB1555
+[   54.382] ARGB1555
+[   54.382] ARGB1555
+[   54.382] ARGB1555
+[   54.382] ARGB1555
+[   54.382] RGB565
+[   54.382] RGB565
+[   54.382] RGB565
+[   54.382] RGB565
+[   54.382] RGB565
+[   54.382] RGB565
+[   54.382] ARGB4444
+[   54.382] RGB565
+[   54.382] RGB565
+[   54.382] RGB565
+[   54.382] RGB565
+[   54.382] RGB565
+[   54.382] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] ARGB4444
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] ARGB4444
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.383] RGB565
+[   54.384] RGB565
+[   54.384] RGB565
+[   54.384] RGB565
+[   54.384] RGB565
+[   54.384] RGB565
+[   54.384] RGB565
+[   54.384] RGB565
+[   54.384] RGB565
+[   54.384] ARGB1555
+[   54.384] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] ARGB4444
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.385] RGB565
+[   54.386] RGB565
+[   54.386] RGB565
+[   54.412] TICK = 524
+[   54.412] malloc area = 352a21b0
+[   54.445] TICK = 524
+[   54.446] malloc area = 353d3480
+[   54.479] TICK = 524
+[   54.512] TICK = 524
+[   54.512] adxt: start 0/0 (48000 Hz, 2 ch, 3229463 samples, loop 1) voice 0
+[   54.513] room: RM_0090 ready 20 frames after the door
+[   54.546] TICK = 524
+[   54.579] TICK = 524
+[   54.660] TICK = 524
+[   54.667] TICK = 786
+[   54.695] TICK = 524
+[   54.729] TICK = 524
+[   54.762] TICK = 524
+[   54.796] TICK = 524
+[   54.829] TICK = 524
+[   54.862] TICK = 524
+[   54.896] TICK = 524
+[   54.929] TICK = 524
+[   54.962] TICK = 524
+[   54.963] gputime: exec 29.5/s cpu 5.14 gpu 5.93 ms | in-between 82.5/s cpu 2.54 gpu 6.03 ms (start 0.10 draw 4.48 display 1.45 restore 0.00) | frame image 47.5/s cpu 0.62 gpu 1.16 ms
+[   54.963] gputime: per frame draws 155, GS-path sprites 8, other GS-path primitives 113, native triangles 4175
+[   54.963] gputime: per in-between draws 265, GS-path sprites 10, other GS-path primitives 133, native triangles 4714
+[   54.963] gputime detail: 5 sampled replays | scene 3.41 ms (depth-write 2.84, blend 0.11, blend+depth-write 0.35, other 0.11) | copies 0.65 ms (setup 0.10, color 0.09, depth 0.46)
+[   54.963] gputime detail: blits per sampled replay setup 13.0, color 0.6, depth 11.4
+[   54.963] gputime detail: FBP 0 scene 3.16 ms, 140.6 batches per sampled replay
+[   54.963] gputime detail: FBP 150 scene 0.14 ms, 1.0 batches per sampled replay
+[   54.963] gputime detail: FBP 380 scene 0.11 ms, 6.4 batches per sampled replay
+[   54.996] TICK = 524
+[   55.029] TICK = 524
+[   55.063] TICK = 524
+[   55.096] TICK = 524
+[   55.129] TICK = 524
+[   55.163] TICK = 524
+[   55.196] TICK = 524
+[   55.229] TICK = 524
+[   55.263] TICK = 524
+[   55.296] TICK = 524
+[   55.329] TICK = 524
+[   55.363] TICK = 524
+[   55.396] TICK = 524
+[   55.430] TICK = 524
+[   55.463] TICK = 524
+[   55.496] TICK = 524
+[   55.530] TICK = 524
+[   55.563] TICK = 524
+[   55.596] TICK = 524
+[   55.630] TICK = 524
+[   55.663] TICK = 524
+[   55.696] TICK = 524
+[   55.730] TICK = 524
+[   55.763] TICK = 524
+[   55.797] TICK = 524
+[   55.830] TICK = 524
+[   55.863] TICK = 524
+[   55.897] TICK = 524
+[   55.930] TICK = 524
+[   55.963] TICK = 524
+[   55.997] TICK = 524
+[   56.030] TICK = 524
+[   56.064] TICK = 524
+[   56.097] TICK = 524
+[   56.130] TICK = 524
+[   56.164] TICK = 524
+[   56.197] TICK = 524
+[   56.230] TICK = 524
+[   56.264] TICK = 524
+[   56.297] TICK = 524
+[   56.330] TICK = 524
+[   56.364] TICK = 524
+[   56.397] TICK = 524
+[   56.431] TICK = 524
+[   56.464] TICK = 524
+[   56.497] TICK = 524
+[   56.531] TICK = 524
+[   56.564] TICK = 524
+[   56.597] TICK = 524
+[   56.631] TICK = 524
+[   56.664] TICK = 524
+[   56.698] TICK = 524
+[   56.731] TICK = 524
+[   56.764] TICK = 524
+[   56.798] TICK = 524
+[   56.831] TICK = 524
+[   56.865] TICK = 524
+[   56.898] TICK = 524
+[   56.931] TICK = 524
+[   56.981] TICK = 524
+[   56.988] gputime: exec 30.1/s cpu 6.52 gpu 8.06 ms | in-between 81.5/s cpu 2.86 gpu 8.05 ms (start 0.10 draw 6.42 display 1.54 restore 0.00) | frame image 16.3/s cpu 0.31 gpu 1.65 ms
+[   56.988] gputime: per frame draws 285, GS-path sprites 8, other GS-path primitives 211, native triangles 12108
+[   56.988] gputime: per in-between draws 290, GS-path sprites 8, other GS-path primitives 211, native triangles 12104
+[   56.988] gputime detail: 5 sampled replays | scene 5.12 ms (depth-write 4.58, blend 0.08, blend+depth-write 0.35, other 0.10) | copies 0.46 ms (setup 0.10, color 0.15, depth 0.21)
+[   56.988] gputime detail: blits per sampled replay setup 13.0, color 1.0, depth 7.0
+[   56.988] gputime detail: FBP 0 scene 4.85 ms, 267.2 batches per sampled replay
+[   56.988] gputime detail: FBP 150 scene 0.16 ms, 1.0 batches per sampled replay
+[   56.988] gputime detail: FBP 380 scene 0.12 ms, 15.6 batches per sampled replay
+[   56.998] TICK = 524
+[   57.031] TICK = 524
+[   57.064] TICK = 524
+[   57.098] TICK = 524
+[   57.131] TICK = 524
+[   57.165] TICK = 524
+[   57.198] TICK = 524
+[   57.231] TICK = 524
+[   57.265] TICK = 524
+[   57.298] TICK = 524
+[   57.331] TICK = 524
+[   57.365] TICK = 524
+[   57.398] TICK = 524
+[   57.432] TICK = 524
+[   57.465] TICK = 524
+[   57.498] TICK = 524
+[   57.532] TICK = 524
+[   57.565] TICK = 524
+[   57.598] TICK = 524
+[   57.632] TICK = 524
+[   57.665] TICK = 524
+[   57.698] TICK = 524
+[   57.732] TICK = 524
+[   57.765] TICK = 524
+[   57.799] TICK = 524
+[   57.832] TICK = 524
+[   57.865] TICK = 524
+[   57.899] TICK = 524
+[   57.932] TICK = 524
+[   57.965] TICK = 524
+[   57.999] TICK = 524
+[   58.032] TICK = 524
+[   58.066] TICK = 524
+[   58.099] TICK = 524
+[   58.132] TICK = 524
+[   58.166] TICK = 524
+[   58.199] TICK = 524
+[   58.232] TICK = 524
+[   58.266] TICK = 524
+[   58.299] TICK = 524
+[   58.332] TICK = 524
+[   58.366] TICK = 524
+[   58.399] TICK = 524
+[   58.433] TICK = 524
+
+process exiting (exit() called)
